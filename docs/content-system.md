@@ -250,7 +250,8 @@ CatBoost (урок 10)
 
 Проверка запускается:
 - При старте бэкенда (быстрая проверка изменённых файлов)
-- Через CLI: `python -m backend.check_integrity`
+- Через CLI: `PYTHONPATH= uv run python -m app.cli.content validate` (без изменения БД)
+- При каждой синхронизации: `PYTHONPATH= uv run python -m app.cli.content sync`
 - В CI (при добавлении новых материалов)
 
 ## Инкрементальное обновление каталога
@@ -271,3 +272,109 @@ CatBoost (урок 10)
    - POST /api/content/reload (ручной триггер)
    - Watch-режим (опционально, через watchdog)
 ```
+
+---
+
+# Реализация каталога (Фаза 2)
+
+## Правила включения файлов (реализация в `app/services/content_parser.py`)
+
+Парсер сканирует `content/vault` и **исключает**:
+
+1. Служебные каталоги всегда: `.obsidian/`, `.trash/`, `_meta/`,
+   `00 Главная/`, `01 Входящие/`, `02 Ежедневные заметки/`,
+   `90 Шаблоны/`, `99 Вложения/`.
+2. Dot-файлы (`.hermes.md` и т.п.).
+3. Типы, которые не каталогизируются: `moc`, `meta`, `router`, `template`,
+   `solution`, `source` (навигация/служебные/справочные).
+4. Заметки без frontmatter или с нечитаемым frontmatter (ошибка).
+5. `app: exclude`; `status: deprecated`; отсутствие обязательного `id` (ошибка).
+
+**В каталог попадают** заметки с `app: include` (объекты навигации приложения:
+курсы, модули, уроки, кейсы) и `app: source` (канонический контент:
+concept/practice/interview/project), если `type` из списка:
+`course, module, lesson, practice, concept, interview, project, deep-dive`.
+
+`publish = (app == "include")`.
+
+## Схема таблиц SQLite (миграция `a1b2c3d4e5f6`)
+
+### content_items — одна строка = одна заметка каталога
+
+| Поле | Тип | Назначение |
+|---|---|---|
+| `id` | TEXT PK | Стабильный content ID из frontmatter |
+| `path` | TEXT UNIQUE | Относительный путь в vault (абсолютных путей нет) |
+| `type` | TEXT | course/module/lesson/practice/concept/interview/project/deep-dive |
+| `title`, `slug` | TEXT | Заголовок и slug (из имени файла) |
+| `area`, `status`, `language` | TEXT | Предметная область, статус, язык |
+| `app` | TEXT | include \| source |
+| `rag`, `rag_collection` | TEXT | Флаги RAG |
+| `publish` | BOOLEAN | `app == "include"` |
+| `course_id`, `module_id` | TEXT FK | Ссылки на курс/модуль |
+| `module_order`, `lesson_order` | INT | Порядок в маршруте |
+| `content_path` | TEXT | Путь к канонической заметке урока |
+| `practice_kind` | TEXT | exercise/mini-case/module-case/mixed-case/project |
+| `skill_ids`, `aliases`, `tags` | JSON | Списки metadata |
+| `difficulty`, `estimated_minutes`, `estimated_hours` | — | Длительность |
+| `frontmatter` | JSON | Полный YAML (без битых типов) |
+| `prerequisites` | JSON | Явные prerequisites из frontmatter (если есть) |
+| `content_hash` | TEXT | SHA-256 файла (для идемпотентного sync) |
+| `file_mtime`, `synced_at`, `created_at`, `updated_at` | TEXT | Времена |
+| `validation_status` | TEXT | ok (материалы с ошибками не хранятся) |
+
+### content_links — связи между материалами
+
+`source_id → target_id`, `relation`: `link` (wiki/markdown), `prerequisite`
+(явный/неявный порядок), `applied_in` (lesson → concept через `content_path`);
+`kind`: `wiki | markdown | content_path | explicit | implied`. Уникальность:
+`(source_id, target_id, relation, kind)`.
+
+### content_issues — ошибки/предупреждения последней валидации
+
+`path`, `severity` (`error|warning`), `code`, `message`, `synced_at`.
+Пересоздаётся при каждом sync.
+
+### sync_runs — история запусков
+
+Счётчики `scanned/created/updated/unchanged/removed/errors/warnings`.
+
+## Как строятся связи и prerequisites (реализация)
+
+- Все wiki-ссылки (`[[Target]]`, `[[Target|alias]]`, `[[Target#Heading]]`,
+  включая path-цели) и markdown-ссылки извлекаются из **текстовых токенов**
+  markdown-it (кодовые блоки и inline-код исключаются).
+- Резолв: имя файла → alias → относительный путь; вложения (.png/.canvas)
+  не считаются битыми ссылками.
+- Ссылка на файл вне каталога (MOC/router/главная) — норма, рёбра не создаются.
+- Нераспознанная ссылка на заметку → warning `unresolved_wikilink`.
+- В vault **нет поля `prerequisites`** (см. VAULT_SPEC): поле поддерживается
+  и валидируется, но на практике порядок задаётся структурой. Для уроков внутри
+  модуля порядок `lesson_order` даёт неявные рёбра `prerequisite` (lesson[i] → lesson[i+1]).
+- `content_path` урока/кейса даёт ребро `applied_in` (lesson → concept).
+
+## Ошибки и предупреждения валидации
+
+**error (материал не публикуется):** отсутствие `id`, дубликат `id`, неизвестный
+`type`, отсутствие заголовка, недопустимые `app`/`rag`, битые `course_id`/
+`module_id`/`prerequisites`, несуществующий `content_path`, цикл prerequisites,
+конфликт slug, нечитаемый frontmatter.
+
+**warning (материал можно использовать):** отсутствие `area`/`status`/`language`,
+нераспознанная wiki-ссылка, заголовок только в H1 (без поля `title`).
+
+## Результаты валидации реального vault (2026-08-05)
+
+```
+PYTHONPATH= uv run python -m app.cli.content validate
+Валидация: 0 ошибок, 0 предупреждений
+
+PYTHONPATH= uv run python -m app.cli.content sync
+scanned: 264, created: 189, updated: 0, unchanged: 0, removed: 0, errors: 0, warnings: 0
+(повторный запуск: created: 0, unchanged: 189 — идемпотентно)
+```
+
+Материалы по типам: `course 1`, `module 5`, `lesson 13`, `practice 78`,
+`concept 67`, `interview 18`, `project 7`. Опубликовано: 26.
+Из сканированных 264 файлов исключено 75 (moc/router/solution/source/meta,
+app:exclude, deprecated).

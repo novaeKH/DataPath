@@ -1,0 +1,107 @@
+import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import App from './App'
+import type { AtlasData, CourseSummary, SystemStatus } from './lib/api'
+
+/**
+ * Роутинг: маршруты /, /today, /atlas, /focus, /studio, /system.
+ * API замокан, чтобы тесты не ходили в сеть.
+ */
+
+const systemStatus: SystemStatus = {
+  status: 'ok',
+  version: '0.1.0',
+  environment: 'test',
+  database: { available: true },
+  vault: { exists: true, markdown_files: 3 },
+  ollama: 'not_configured',
+  chromadb: 'not_configured',
+}
+
+const atlas: AtlasData = {
+  nodes: [],
+  edges: [],
+  prerequisites: [],
+  areas: ['ml'],
+  node_types: ['course'],
+  routes: {},
+  layout: { width: 800, height: 600, mode: 'deterministic' },
+}
+
+const courses: CourseSummary[] = []
+
+function mockFetch() {
+  return vi.fn((input: RequestInfo | URL) => {
+    const url = String(input)
+    if (url.includes('/api/system/status')) {
+      return Promise.resolve(new Response(JSON.stringify(systemStatus), { status: 200 }))
+    }
+    if (url.includes('/api/atlas')) {
+      return Promise.resolve(new Response(JSON.stringify(atlas), { status: 200 }))
+    }
+    if (url.includes('/api/content/courses')) {
+      return Promise.resolve(new Response(JSON.stringify({ courses }), { status: 200 }))
+    }
+    return Promise.resolve(new Response('{}', { status: 404 }))
+  }) as unknown as typeof fetch
+}
+
+describe('App routing', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch())
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function renderAt(path: string) {
+    return render(
+      <MemoryRouter initialEntries={[path]}>
+        <App />
+      </MemoryRouter>,
+    )
+  }
+
+  it('redirects / to /today', () => {
+    renderAt('/')
+    expect(screen.getByRole('heading', { name: /Today/i })).toBeInTheDocument()
+  })
+
+  it('renders Today at /today', () => {
+    renderAt('/today')
+    expect(screen.getByRole('heading', { name: /Today/i })).toBeInTheDocument()
+  })
+
+  it('renders Atlas at /atlas', () => {
+    renderAt('/atlas')
+    expect(screen.getByRole('heading', { name: /Atlas знаний/i })).toBeInTheDocument()
+  })
+
+  it('renders Focus at /focus', () => {
+    renderAt('/focus')
+    expect(screen.getByRole('heading', { name: /Focus/i })).toBeInTheDocument()
+  })
+
+  it('renders Studio at /studio', () => {
+    renderAt('/studio')
+    expect(screen.getByRole('heading', { name: /Studio/i })).toBeInTheDocument()
+  })
+
+  it('renders system status at /system', async () => {
+    renderAt('/system')
+    expect(await screen.findByText(/DataPath v0.1.0/)).toBeInTheDocument()
+  })
+
+  it('unknown route redirects to /today', () => {
+    renderAt('/no-such-route')
+    expect(screen.getByRole('heading', { name: /Today/i })).toBeInTheDocument()
+  })
+
+  it('sidebar navigation links exist', () => {
+    renderAt('/today')
+    expect(screen.getByRole('link', { name: /Atlas/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Focus/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Studio/i })).toBeInTheDocument()
+  })
+})

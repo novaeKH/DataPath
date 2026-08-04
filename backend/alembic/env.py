@@ -9,6 +9,10 @@ from pathlib import Path
 
 from alembic import context
 from app.core.config import get_settings
+
+# Импортируем модели, чтобы Base.metadata содержала предметные таблицы
+# (нужно для autogenerate и для проверки схемы).
+from app.db import models  # noqa: F401
 from app.db.base import Base
 from sqlalchemy import engine_from_config, pool
 

@@ -9,10 +9,12 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
   return (
     <span
       className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium ${
-        ok ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300'
+        ok
+          ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+          : 'bg-rose-500/10 text-rose-700 dark:text-rose-300'
       }`}
     >
-      <span className={`h-2 w-2 rounded-full ${ok ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+      <span className={`h-2 w-2 rounded-full ${ok ? 'bg-emerald-500' : 'bg-rose-500'}`} />
       {label}
     </span>
   )
@@ -30,9 +32,13 @@ function StatusCard({
   hint?: string
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
-      <div className="text-sm text-slate-400">{title}</div>
-      <div className={`mt-2 text-2xl font-semibold ${ok ? 'text-slate-100' : 'text-rose-300'}`}>
+    <div className="rounded-xl border border-slate-200 bg-white/60 p-5 dark:border-slate-800 dark:bg-slate-900/60">
+      <div className="text-sm text-slate-500 dark:text-slate-400">{title}</div>
+      <div
+        className={`mt-2 text-2xl font-semibold ${
+          ok ? 'text-slate-900 dark:text-slate-100' : 'text-rose-600 dark:text-rose-300'
+        }`}
+      >
         {value}
       </div>
       {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
@@ -41,8 +47,8 @@ function StatusCard({
 }
 
 /**
- * Техническая страница Фазы 1: статус backend, SQLite, vault и счётчик
- * Markdown-файлов. Никаких бизнес-расчётов — только отображение данных API.
+ * Техническая страница: статус backend, SQLite, vault и счётчик Markdown-файлов.
+ * Никаких бизнес-расчётов — только отображение данных API.
  */
 export function SystemStatusView() {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
@@ -78,14 +84,16 @@ export function SystemStatusView() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-100">Статус системы</h1>
-            <p className="mt-1 text-sm text-slate-400">
-              Техническая страница Фазы 1 — проверка соединения frontend ↔ backend
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              Статус системы
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Техническая страница — проверка соединения frontend ↔ backend
             </p>
           </div>
           <button
             onClick={() => void load()}
-            className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-700"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Обновить
           </button>
@@ -98,15 +106,17 @@ export function SystemStatusView() {
         )}
 
         {state.kind === 'error' && (
-          <div className="mt-10 rounded-xl border border-rose-800/60 bg-rose-950/40 p-6">
-            <div className="flex items-center gap-2 text-rose-300">
-              <span className="h-2 w-2 rounded-full bg-rose-400" />
+          <div className="mt-10 rounded-xl border border-rose-300 bg-rose-50 p-6 dark:border-rose-800/60 dark:bg-rose-950/40">
+            <div className="flex items-center gap-2 text-rose-700 dark:text-rose-300">
+              <span className="h-2 w-2 rounded-full bg-rose-500" />
               <span className="font-semibold">Backend недоступен</span>
             </div>
-            <p className="mt-3 text-sm leading-relaxed text-rose-200/80">{state.message}</p>
+            <p className="mt-3 text-sm leading-relaxed text-rose-600 dark:text-rose-200/80">
+              {state.message}
+            </p>
             <button
               onClick={() => void load()}
-              className="mt-4 rounded-lg bg-rose-500/20 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/30"
+              className="mt-4 rounded-lg bg-rose-500/15 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-500/25 dark:text-rose-200"
             >
               Попробовать снова
             </button>

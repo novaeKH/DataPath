@@ -174,19 +174,65 @@ content/vault/
 
 ## Структура базы данных (SQLite)
 
+Реализация Фазы 2 (миграция `a1b2c3d4e5f6`) — полная схема в docs/content-system.md.
+Кратко:
+
 ```sql
--- Контент-каталог: зеркало структуры vault
-CREATE TABLE content_catalog (
+-- Контент-каталог: зеркало структуры vault (реализовано в Фазе 2)
+CREATE TABLE content_items (
     id          TEXT PRIMARY KEY,          -- стабильный ID из frontmatter
-    path        TEXT NOT NULL,             -- относительный путь в content/vault
-    type        TEXT NOT NULL,             -- concept, lesson, course, practice...
-    area        TEXT,                      -- ml, math, python, sql...
+    path        TEXT NOT NULL UNIQUE,      -- относительный путь в content/vault
+    type        TEXT NOT NULL,             -- course, module, lesson, practice, concept...
     title       TEXT NOT NULL,
-    frontmatter JSON NOT NULL,            -- полный YAML как JSON
-    content_hash TEXT NOT NULL,           -- для инкрементального обновления
-    updated_at  TEXT NOT NULL             -- mtime файла
+    slug        TEXT NOT NULL,
+    area        TEXT, status TEXT, language TEXT,
+    app         TEXT NOT NULL,             -- include | source
+    rag         TEXT, rag_collection TEXT,
+    publish     BOOLEAN NOT NULL,          -- app == 'include'
+    course_id   TEXT REFERENCES content_items(id),
+    module_id   TEXT REFERENCES content_items(id),
+    module_order INTEGER, lesson_order INTEGER,
+    content_path TEXT, practice_kind TEXT,
+    skill_ids JSON, aliases JSON, tags JSON,
+    difficulty TEXT, estimated_minutes INT, estimated_hours REAL,
+    frontmatter JSON NOT NULL,             -- полный YAML как JSON
+    prerequisites JSON,                    -- явные prerequisites (если есть)
+    content_hash TEXT NOT NULL,            -- SHA-256 для инкрементального обновления
+    file_mtime TEXT, synced_at TEXT, created_at TEXT, updated_at TEXT,
+    validation_status TEXT NOT NULL
 );
 
+-- Связи между материалами (wiki/markdown, prerequisites, applied_in)
+CREATE TABLE content_links (
+    id INTEGER PRIMARY KEY,
+    source_id TEXT NOT NULL REFERENCES content_items(id) ON DELETE CASCADE,
+    target_id TEXT NOT NULL REFERENCES content_items(id) ON DELETE CASCADE,
+    relation TEXT NOT NULL,                -- link | prerequisite | applied_in
+    kind TEXT NOT NULL,                    -- wiki | markdown | content_path | explicit | implied
+    UNIQUE (source_id, target_id, relation, kind)
+);
+
+-- Ошибки/предупреждения последней валидации
+CREATE TABLE content_issues (
+    id INTEGER PRIMARY KEY,
+    item_id TEXT REFERENCES content_items(id),
+    path TEXT NOT NULL, severity TEXT, code TEXT, message TEXT, synced_at TEXT
+);
+
+-- История запусков синхронизации
+CREATE TABLE sync_runs (
+    id INTEGER PRIMARY KEY,
+    started_at TEXT, finished_at TEXT,
+    scanned INT, created INT, updated INT, unchanged INT, removed INT,
+    errors INT, warnings INT
+);
+```
+
+Таблицы прогресса (`skill_assessment`), повторения (`review_queue`), AI-диалогов
+(`ai_conversation`, `ai_message`) и взаимодействий (`interaction_log`) — Фазы 4–6.
+Целевые схемы (реализация — в соответствующих фазах):
+
+```sql
 -- Пользовательский прогресс (один пользователь)
 CREATE TABLE skill_assessment (
     skill_id      TEXT NOT NULL,          -- из learning catalog (ml.tree_ensembles)
@@ -249,35 +295,40 @@ ds-learning-rag/
 │   ├── rag-design.md
 │   └── decisions.md
 ├── backend/
-│   ├── pyproject.toml         # uv, зависимости, ruff, pytest
+│   ├── pyproject.toml         # uv, зависимости (python-frontmatter, markdown-it-py), ruff, pytest
 │   ├── uv.lock
 │   ├── alembic/               # Миграции БД
-│   │   └── versions/          #   (Фаза 1: пустая baseline)
+│   │   └── versions/          #   647b2d093cad baseline + a1b2c3d4e5f6 content catalog (Фаза 2)
 │   ├── alembic.ini
 │   ├── app/                   # код пакета backend (в проекте нет src/)
 │   │   ├── main.py            # FastAPI entry point
 │   │   ├── api/
 │   │   │   ├── health.py      # /health
 │   │   │   ├── system.py      # /system/status
-│   │   │   ├── content.py     # /courses, /lessons, /atlas (Фаза 2)
-│   │   │   ├── progress.py    # /progress/skills (Фаза 2)
-│   │   │   ├── review.py      # /review/today (Фаза 2)
-│   │   │   └── ai.py          # /ai/ask, SSE (Фаза 6)
+│   │   │   └── content.py     # /content/status, /courses, /items/{id}, /atlas (Фаза 2)
+│   │   │   # progress.py, review.py — Фазы 4–5; ai.py (SSE) — Фаза 6
+│   │   ├── cli/
+│   │   │   └── content.py     # python -m app.cli.content {sync|validate|status} (Фаза 2)
 │   │   ├── services/
 │   │   │   ├── system.py      # SystemStatusService (Фаза 1)
-│   │   │   ├── content.py     # ContentParser, ContentCatalog (Фаза 2)
-│   │   │   ├── progress.py    # SkillAssessment (Фаза 2)
-│   │   │   ├── review.py      # ReviewQueue (Фаза 2)
-│   │   │   └── rag.py         # RAGPipeline (Фаза 6)
+│   │   │   ├── content_parser.py    # VaultScanner, MarkdownParser (Фаза 2)
+│   │   │   ├── content_validator.py # ContentValidator, FileIndex (Фаза 2)
+│   │   │   ├── content_sync.py      # ContentSyncService (Фаза 2)
+│   │   │   ├── content_catalog.py   # ContentCatalogService — чтение каталога (Фаза 2)
+│   │   │   ├── atlas.py             # AtlasBuilder + детерминированная раскладка (Фаза 2)
+│   │   │   # progress.py, review.py — Фазы 4–5; rag.py — Фаза 6
 │   │   ├── db/
 │   │   │   ├── session.py     # engine + session management
-│   │   │   └── base.py        # DeclarativeBase; models.py — Фаза 2
+│   │   │   ├── base.py        # DeclarativeBase
+│   │   │   └── models.py      # ContentItem, ContentLink, ContentIssue, SyncRun (Фаза 2)
 │   │   ├── core/
 │   │   │   ├── config.py      # Settings (paths, model names)
 │   │   │   └── logging.py     # базовое логирование
 │   │   └── __init__.py
 │   └── tests/
 │       ├── conftest.py
+│       ├── fixture_vault.py   # сборка временного vault для тестов
+│       ├── test_parser.py / test_validator.py / test_sync.py / test_api.py
 │       ├── test_health.py
 │       ├── test_system_status.py
 │       └── test_config.py

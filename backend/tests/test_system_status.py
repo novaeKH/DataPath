@@ -1,10 +1,15 @@
 """Тесты GET /api/system/status и сервиса SystemStatusService."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
+from app.api.system import get_system_service
 from app.core.config import Settings
+from app.main import create_app
 from app.services.system import SystemStatusService
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
 
 
 def _fill_vault(vault: Path) -> None:
@@ -21,9 +26,29 @@ def _fill_vault(vault: Path) -> None:
     (vault / ".trash" / "deleted.md").write_text("# Deleted", encoding="utf-8")
 
 
-def test_system_status_shape(make_client, test_settings):
-    _fill_vault(test_settings.vault_dir)
-    client: TestClient = make_client()
+def _status_client(tmp_path: Path, vault: Path) -> TestClient:
+    """Клиент system/status на отдельной БД и своём vault (не зависит от fixture_vault)."""
+    settings = Settings(
+        environment="test",
+        database_url=f"sqlite:///{tmp_path / 'sys-test.db'}",
+        vault_path=str(vault),
+    )
+    engine = create_engine(
+        settings.resolved_database_url,
+        connect_args={"check_same_thread": False},
+    )
+    app = create_app(settings)
+    app.dependency_overrides[get_system_service] = lambda: SystemStatusService(
+        settings=settings, engine=engine
+    )
+    return TestClient(app)
+
+
+def test_system_status_shape(tmp_path: Path) -> None:
+    vault = tmp_path / "sysvault"
+    vault.mkdir()
+    _fill_vault(vault)
+    client = _status_client(tmp_path, vault)
     response = client.get("/api/system/status")
 
     assert response.status_code == 200
@@ -37,20 +62,22 @@ def test_system_status_shape(make_client, test_settings):
     assert body["chromadb"] == "not_configured"
 
 
-def test_system_status_no_absolute_paths(make_client, test_settings):
+def test_system_status_no_absolute_paths(tmp_path: Path) -> None:
     """Клиенту не должны утекать абсолютные пути файловой системы."""
-    _fill_vault(test_settings.vault_dir)
-    client: TestClient = make_client()
+    vault = tmp_path / "sysvault2"
+    vault.mkdir()
+    _fill_vault(vault)
+    client = _status_client(tmp_path, vault)
     response = client.get("/api/system/status")
 
     assert response.status_code == 200
     text = response.text
-    assert str(test_settings.vault_dir) not in text
+    assert str(vault) not in text
     assert "/Users/" not in text
     assert "content/vault" not in text
 
 
-def test_system_status_vault_missing(tmp_path):
+def test_system_status_vault_missing(tmp_path: Path) -> None:
     settings = Settings(
         environment="test",
         database_url=f"sqlite:///{tmp_path / 'test.db'}",
@@ -63,7 +90,7 @@ def test_system_status_vault_missing(tmp_path):
     assert status["vault"]["markdown_files"] == 0
 
 
-def test_count_markdown_files_excludes_service_dirs(tmp_path):
+def test_count_markdown_files_excludes_service_dirs(tmp_path: Path) -> None:
     vault = tmp_path / "vault"
     vault.mkdir()
     _fill_vault(vault)
