@@ -1,0 +1,448 @@
+{
+  "schema_version": 2,
+  "courses": [
+    {
+      "id": "course.classic-ml",
+      "title": "Классический ML — от задачи до сильного baseline",
+      "type": "course",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/00 Курс — Классический ML.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": null,
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": null
+    }
+  ],
+  "modules": [
+    {
+      "id": "module.classic-ml.framing",
+      "title": "Постановка задачи и честная оценка",
+      "type": "module",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Модули/01 Постановка задачи и оценка.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 115
+    },
+    {
+      "id": "module.classic-ml.linear",
+      "title": "Линейные модели и регуляризация",
+      "type": "module",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Модули/02 Линейные модели.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 125
+    },
+    {
+      "id": "module.classic-ml.trees",
+      "title": "Деревья и ансамбли",
+      "type": "module",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Модули/03 Деревья и ансамбли.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 195
+    },
+    {
+      "id": "module.classic-ml.unsupervised",
+      "title": "Кластеризация и снижение размерности",
+      "type": "module",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Модули/04 Unsupervised ML.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 90
+    },
+    {
+      "id": "module.classic-ml.end-to-end",
+      "title": "End-to-end решение",
+      "type": "module",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Модули/05 End-to-end.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 60
+    }
+  ],
+  "lessons": [
+    {
+      "id": "lesson.classic-ml.framing.problem",
+      "title": "Как поставить ML-задачу",
+      "type": "lesson",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Уроки/01 Как поставить ML-задачу.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.framing",
+      "skill_ids": [
+        "ml.problem_framing",
+        "ml.object_target",
+        "ml.baseline"
+      ],
+      "estimated_minutes": 30
+    },
+    {
+      "id": "lesson.classic-ml.framing.validation",
+      "title": "Validation, split и data leakage",
+      "type": "lesson",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Уроки/02 Validation, split и data leakage.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.framing",
+      "skill_ids": [
+        "ml.validation_split",
+        "ml.data_leakage"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.classic-ml.framing.metrics",
+      "title": "Метрика, probability и threshold",
+      "type": "lesson",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Уроки/03 Метрика, probability и threshold.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.framing",
+      "skill_ids": [
+        "ml.metrics_threshold"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.classic-ml.linear.regression",
+      "title": "Linear Regression как модель и baseline",
+      "type": "lesson",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Уроки/04 Linear Regression.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.linear",
+      "skill_ids": [
+        "ml.linear_logistic_models"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.classic-ml.linear.logistic",
+      "title": "Logistic Regression и вероятности",
+      "type": "lesson",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Уроки/05 Logistic Regression.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.linear",
+      "skill_ids": [
+        "ml.linear_logistic_models",
+        "ml.metrics_threshold"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.classic-ml.linear.regularization",
+      "title": "Bias, variance и regularization",
+      "type": "lesson",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Уроки/06 Bias, variance и regularization.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.linear",
+      "skill_ids": [
+        "ml.bias_variance_regularization"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.classic-ml.trees.tree",
+      "title": "Decision Tree без магии",
+      "type": "lesson",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Уроки/07 Decision Tree.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.trees",
+      "skill_ids": [
+        "ml.tree_ensembles"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.classic-ml.trees.forest",
+      "title": "Bagging и Random Forest",
+      "type": "lesson",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Уроки/08 Random Forest.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.trees",
+      "skill_ids": [
+        "ml.tree_ensembles",
+        "ml.bias_variance_regularization"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.classic-ml.trees.boosting",
+      "title": "Gradient Boosting как последовательное исправление ошибок",
+      "type": "lesson",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Уроки/09 Gradient Boosting.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.trees",
+      "skill_ids": [
+        "ml.tree_ensembles",
+        "ml.error_analysis"
+      ],
+      "estimated_minutes": 50
+    },
+    {
+      "id": "lesson.classic-ml.trees.libraries",
+      "title": "XGBoost, LightGBM и CatBoost",
+      "type": "lesson",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Уроки/10 XGBoost LightGBM CatBoost.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.trees",
+      "skill_ids": [
+        "ml.tree_ensembles"
+      ],
+      "estimated_minutes": 55
+    },
+    {
+      "id": "lesson.classic-ml.unsupervised.kmeans",
+      "title": "K-Means и смысл кластера",
+      "type": "lesson",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Уроки/11 K-Means.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.unsupervised",
+      "skill_ids": [
+        "ml.unsupervised.kmeans"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.classic-ml.unsupervised.pca",
+      "title": "PCA как проекция с сохранением variance",
+      "type": "lesson",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Уроки/12 PCA.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.unsupervised",
+      "skill_ids": [
+        "ml.unsupervised.pca"
+      ],
+      "estimated_minutes": 50
+    },
+    {
+      "id": "lesson.classic-ml.end-to-end.pipeline",
+      "title": "End-to-end classification pipeline",
+      "type": "lesson",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Уроки/13 End-to-end classification pipeline.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.end-to-end",
+      "skill_ids": [
+        "ml.problem_framing",
+        "ml.validation_split",
+        "ml.data_leakage",
+        "ml.metrics_threshold",
+        "ml.error_analysis"
+      ],
+      "estimated_minutes": 60
+    }
+  ],
+  "cases": [
+    {
+      "id": "case.classic-ml.validation-leakage",
+      "title": "Мини-кейс — Нечестная валидация",
+      "type": "practice",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Кейсы/01 Мини-кейс — Нечестная валидация.md",
+      "rag": "include",
+      "rag_collection": "practice",
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": null,
+      "skill_ids": [
+        "ml.problem_framing",
+        "ml.validation_split",
+        "ml.data_leakage",
+        "ml.metrics_threshold"
+      ],
+      "estimated_minutes": 35
+    },
+    {
+      "id": "case.classic-ml.interpretable-baseline",
+      "title": "Мини-кейс — Интерпретируемый baseline",
+      "type": "practice",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Кейсы/02 Мини-кейс — Интерпретируемый baseline.md",
+      "rag": "include",
+      "rag_collection": "practice",
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": null,
+      "skill_ids": [
+        "ml.linear_logistic_models",
+        "ml.bias_variance_regularization",
+        "ml.metrics_threshold"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "case.classic-ml.tree-ensemble-choice",
+      "title": "Мини-кейс — Выбор ансамбля для оттока",
+      "type": "practice",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Кейсы/03 Мини-кейс — Выбор ансамбля для оттока.md",
+      "rag": "include",
+      "rag_collection": "practice",
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": null,
+      "skill_ids": [
+        "ml.tree_ensembles",
+        "ml.bias_variance_regularization",
+        "ml.error_analysis"
+      ],
+      "estimated_minutes": 60
+    },
+    {
+      "id": "case.classic-ml.customer-segmentation",
+      "title": "Мини-кейс — Сегментация клиентов",
+      "type": "practice",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Кейсы/04 Мини-кейс — Сегментация клиентов.md",
+      "rag": "include",
+      "rag_collection": "practice",
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": null,
+      "skill_ids": [
+        "ml.unsupervised.kmeans",
+        "ml.unsupervised.pca"
+      ],
+      "estimated_minutes": 50
+    },
+    {
+      "id": "case.classic-ml.churn-end-to-end",
+      "title": "Итоговый кейс — Churn end-to-end",
+      "type": "practice",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Кейсы/05 Итоговый кейс — Churn end-to-end.md",
+      "rag": "include",
+      "rag_collection": "practice",
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": null,
+      "skill_ids": [
+        "ml.problem_framing",
+        "ml.validation_split",
+        "ml.data_leakage",
+        "ml.metrics_threshold",
+        "ml.linear_logistic_models",
+        "ml.tree_ensembles",
+        "ml.error_analysis"
+      ],
+      "estimated_minutes": 150
+    },
+    {
+      "id": "case.mixed.local-rag",
+      "title": "Смешанный кейс — Локальный RAG",
+      "type": "practice",
+      "area": "ml",
+      "path": "05 Курсы/Смешанные кейсы/Смешанный кейс — Локальный RAG.md",
+      "rag": "include",
+      "rag_collection": "practice",
+      "app": "include",
+      "course_id": null,
+      "module_id": null,
+      "skill_ids": [
+        "nlp.chunking",
+        "retrieval.hybrid",
+        "retrieval.reranking",
+        "llm.evaluation",
+        "systems.local-runtime"
+      ],
+      "estimated_minutes": 210
+    },
+    {
+      "id": "case.mixed.credit-scoring",
+      "title": "Смешанный кейс — Скоринг клиентов",
+      "type": "practice",
+      "area": "ml",
+      "path": "05 Курсы/Смешанные кейсы/Смешанный кейс — Скоринг клиентов.md",
+      "rag": "include",
+      "rag_collection": "practice",
+      "app": "include",
+      "course_id": null,
+      "module_id": null,
+      "skill_ids": [
+        "sql.aggregation",
+        "pandas.join",
+        "ml.validation_split",
+        "ml.metrics_threshold",
+        "ml.tree_ensembles",
+        "business.communication"
+      ],
+      "estimated_minutes": 180
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+# macOS
+.DS_Store
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python / uv
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.python-version-local
+*.egg-info/
+build/
+dist/
+
+# Кэши тестов и линтеров
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Локальная SQLite-база
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Локальные данные ChromaDB
+chroma/
+chromadb/
+*.chroma
+
+# Логи
+*.log
+logs/
+
+# Временные файлы
+tmp/
+temp/
+*.tmp
+*.swp
+*~
+
+# Obsidian — только локальное состояние, контент vault остаётся в Git
+content/vault/.trash/
+content/vault/.obsidian/workspace.json
+content/vault/.obsidian/workspace-mobile.json
+content/vault/.obsidian/cache/
+content/vault/.obsidian/graph.json

@@ -1,0 +1,44 @@
+# DataPath — Docker Compose (Фаза 1)
+# Запускает только backend (FastAPI) и frontend (nginx со static build).
+# Ollama, ChromaDB и RAG в этой фазе НЕ запускаются.
+
+name: datapath
+
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: datapath-backend
+    environment:
+      DATAPATH_ENVIRONMENT: production
+      DATAPATH_PROJECT_ROOT: /app
+      DATAPATH_DATABASE_URL: sqlite:////app/data/datapath.db
+      DATAPATH_VAULT_PATH: content/vault
+      DATAPATH_CORS_ORIGINS: http://localhost:8080,http://localhost:5173
+      DATAPATH_LOG_LEVEL: INFO
+    volumes:
+      # Канонический vault монтируется read-only: контейнер только читает.
+      - ./content/vault:/app/content/vault:ro
+      # Локальная SQLite сохраняется в named volume.
+      - datapath_data:/app/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: datapath-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+
+volumes:
+  datapath_data:

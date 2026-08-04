@@ -1,0 +1,21 @@
+# Operating-system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local Obsidian state and deleted notes
+.trash/
+.obsidian/workspace*.json
+.obsidian/cache/
+
+# Plugin-local state may contain machine-specific or sensitive values
+.obsidian/plugins/*/data.json
+
+# Temporary files
+*.tmp
+*.swp
+*~
+# DataPath local application state
+data/
+*.sqlite3
+_meta/generated/*.tmp

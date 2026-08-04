@@ -1,0 +1,79 @@
+{
+  "nodes": [
+    {
+      "id": "m1",
+      "type": "file",
+      "file": "05 Курсы/Классический ML/Модули/01 Постановка задачи и оценка.md",
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 220
+    },
+    {
+      "id": "m2",
+      "type": "file",
+      "file": "05 Курсы/Классический ML/Модули/02 Линейные модели.md",
+      "x": 520,
+      "y": 120,
+      "width": 400,
+      "height": 220
+    },
+    {
+      "id": "m3",
+      "type": "file",
+      "file": "05 Курсы/Классический ML/Модули/03 Деревья и ансамбли.md",
+      "x": 1040,
+      "y": 0,
+      "width": 400,
+      "height": 220
+    },
+    {
+      "id": "m4",
+      "type": "file",
+      "file": "05 Курсы/Классический ML/Модули/04 Unsupervised ML.md",
+      "x": 1560,
+      "y": 120,
+      "width": 400,
+      "height": 220
+    },
+    {
+      "id": "m5",
+      "type": "file",
+      "file": "05 Курсы/Классический ML/Модули/05 End-to-end.md",
+      "x": 2080,
+      "y": 0,
+      "width": 400,
+      "height": 220
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "fromNode": "m1",
+      "fromSide": "right",
+      "toNode": "m2",
+      "toSide": "left"
+    },
+    {
+      "id": "e2",
+      "fromNode": "m2",
+      "fromSide": "right",
+      "toNode": "m3",
+      "toSide": "left"
+    },
+    {
+      "id": "e3",
+      "fromNode": "m3",
+      "fromSide": "right",
+      "toNode": "m4",
+      "toSide": "left"
+    },
+    {
+      "id": "e4",
+      "fromNode": "m4",
+      "fromSide": "right",
+      "toNode": "m5",
+      "toSide": "left"
+    }
+  ]
+}

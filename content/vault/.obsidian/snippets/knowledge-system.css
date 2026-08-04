@@ -1,0 +1,275 @@
+/*
+  My_brain_v2 — спокойное оформление для чтения и навигации.
+  Работает и в светлой, и в тёмной теме.
+*/
+
+body {
+  --file-line-width: 880px;
+  --radius-s: 7px;
+  --radius-m: 11px;
+  --radius-l: 16px;
+  --link-decoration: none;
+  --link-decoration-hover: none;
+  --tag-radius: 999px;
+}
+
+.theme-dark {
+  --interactive-accent: #8b7cf6;
+  --interactive-accent-hover: #9f93ff;
+  --text-accent: #a99fff;
+  --text-accent-hover: #c1baff;
+}
+
+.theme-light {
+  --interactive-accent: #6757d9;
+  --interactive-accent-hover: #5545c6;
+  --text-accent: #5e4fd0;
+  --text-accent-hover: #493ab4;
+}
+
+/* Читаемая ширина и ритм */
+.markdown-source-view.mod-cm6 .cm-content,
+.markdown-preview-view .markdown-preview-sizer {
+  max-width: var(--file-line-width);
+  margin-inline: auto;
+}
+
+.markdown-rendered p,
+.markdown-rendered li {
+  line-height: 1.65;
+}
+
+.markdown-rendered h1 {
+  margin-top: 0.35em;
+  letter-spacing: -0.025em;
+}
+
+.markdown-rendered h2 {
+  margin-top: 1.8em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.markdown-rendered h3 {
+  margin-top: 1.35em;
+}
+
+.markdown-rendered a.internal-link {
+  font-weight: 550;
+}
+
+/* Карточки и подсказки */
+.callout {
+  border-radius: var(--radius-l);
+  border-width: 1px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 5%);
+}
+
+.callout[data-callout="summary"],
+.callout[data-callout="tip"],
+.callout[data-callout="important"] {
+  padding-block: 0.2rem;
+}
+
+.callout[data-callout="nav"] {
+  --callout-color: 124, 108, 242;
+  --callout-icon: lucide-compass;
+  background: color-mix(in srgb, var(--background-secondary) 82%, var(--interactive-accent) 18%);
+  min-width: 0;
+}
+
+.callout[data-callout="nav"] .callout-title {
+  font-size: 1rem;
+}
+
+.callout[data-callout="question"] {
+  --callout-color: 84, 132, 255;
+  --callout-icon: lucide-message-circle-question;
+  box-shadow: none;
+}
+
+.callout[data-callout="question"] .callout-title {
+  font-weight: 650;
+}
+
+.callout[data-callout="nav"] ul,
+.callout[data-callout="nav"] ol {
+  margin-block: 0.35rem 0;
+}
+
+/* Колонки на главной и картах; на узком экране складываются вертикально */
+.callout[data-callout="columns"] {
+  --callout-color: transparent;
+  --callout-icon: none;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.callout[data-callout="columns"] > .callout-title {
+  display: none;
+}
+
+.callout[data-callout="columns"] > .callout-content {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.callout[data-callout="columns"] > .callout-content > .callout {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .callout[data-callout="columns"] > .callout-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Главная панель */
+.dashboard .metadata-container,
+.markdown-source-view.dashboard .metadata-container,
+.markdown-preview-view.dashboard .metadata-container {
+  display: none !important;
+}
+
+.interview-bank .metadata-container,
+.markdown-source-view.interview-bank .metadata-container,
+.markdown-preview-view.interview-bank .metadata-container {
+  display: none !important;
+}
+
+.dashboard .markdown-rendered h1 {
+  font-size: 2.15em;
+}
+
+.dashboard .block-language-dataview table {
+  margin-top: 0.4rem;
+}
+
+/* Таблицы без визуального шума */
+.markdown-rendered table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+}
+
+.markdown-rendered th {
+  background: var(--background-secondary);
+}
+
+.markdown-rendered tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Папки верхнего уровня легче различать в боковой панели */
+.nav-folder.mod-root > .nav-folder-children > .nav-folder > .nav-folder-title {
+  font-weight: 600;
+  border-radius: var(--radius-s);
+}
+
+.nav-folder-title[data-path="00 Главная"] {
+  color: var(--text-accent);
+}
+
+.nav-folder-title[data-path="01 Входящие"] {
+  color: var(--color-orange);
+}
+
+.nav-folder-title[data-path="10 Знания"] {
+  color: var(--color-blue);
+}
+
+.nav-folder-title[data-path="40 Проекты"] {
+  color: var(--color-green);
+}
+
+.nav-folder-title[data-path="60 Карьера"] {
+  color: var(--color-pink);
+}
+
+/* Небольшие детали */
+.tag {
+  padding-inline: 0.6em;
+}
+
+input[type="checkbox"] {
+  border-radius: 5px;
+}
+
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title.is-active {
+  font-weight: 650;
+}
+
+
+/* DataPath course layer */
+.nav-folder-title[data-path="05 Курсы"] {
+  color: var(--color-green);
+}
+
+.course-home .metadata-container,
+.course-module .metadata-container,
+.course-lesson .metadata-container,
+.course-case .metadata-container {
+  display: none !important;
+}
+
+.callout[data-callout="hero"] {
+  --callout-color: 88, 164, 132;
+  --callout-icon: lucide-sparkles;
+  border: 0;
+  padding: 1.05rem 1.15rem;
+  background:
+    radial-gradient(circle at 92% 12%, rgb(var(--callout-color) / 18%), transparent 35%),
+    color-mix(in srgb, var(--background-secondary) 90%, rgb(var(--callout-color)) 10%);
+  box-shadow: 0 12px 34px rgb(0 0 0 / 6%);
+}
+
+.callout[data-callout="course-card"] {
+  --callout-color: 96, 155, 130;
+  --callout-icon: lucide-route;
+  background: var(--background-primary-alt);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 75%, rgb(var(--callout-color)) 25%);
+  box-shadow: none;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.callout[data-callout="course-card"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 9px 24px rgb(0 0 0 / 7%);
+}
+
+.callout[data-callout="path"] {
+  --callout-color: 100, 116, 210;
+  --callout-icon: lucide-git-branch;
+  background: color-mix(in srgb, var(--background-secondary) 92%, rgb(var(--callout-color)) 8%);
+}
+
+.callout[data-callout="case"] {
+  --callout-color: 218, 142, 82;
+  --callout-icon: lucide-briefcase-business;
+  background: color-mix(in srgb, var(--background-secondary) 92%, rgb(var(--callout-color)) 8%);
+}
+
+.course-lesson .markdown-rendered h1,
+.course-module .markdown-rendered h1,
+.course-case .markdown-rendered h1 {
+  font-size: 2rem;
+  max-width: 760px;
+}
+
+.course-home .block-language-dataview table,
+.course-module .block-language-dataview table {
+  margin-top: .65rem;
+}
+
+.course-home .markdown-rendered h2,
+.course-module .markdown-rendered h2,
+.course-lesson .markdown-rendered h2,
+.course-case .markdown-rendered h2 {
+  border-bottom-color: color-mix(in srgb, var(--background-modifier-border) 75%, var(--interactive-accent) 25%);
+}

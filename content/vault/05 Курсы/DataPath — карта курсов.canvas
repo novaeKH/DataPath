@@ -1,0 +1,79 @@
+{
+  "nodes": [
+    {
+      "id": "home",
+      "type": "file",
+      "file": "05 Курсы/00 Каталог курсов.md",
+      "x": 0,
+      "y": 0,
+      "width": 420,
+      "height": 240
+    },
+    {
+      "id": "classic",
+      "type": "file",
+      "file": "05 Курсы/Классический ML/00 Курс — Классический ML.md",
+      "x": 600,
+      "y": -150,
+      "width": 440,
+      "height": 260
+    },
+    {
+      "id": "mixed",
+      "type": "file",
+      "file": "05 Курсы/Смешанные кейсы/00 Смешанные кейсы.md",
+      "x": 600,
+      "y": 220,
+      "width": 440,
+      "height": 240
+    },
+    {
+      "id": "knowledge",
+      "type": "file",
+      "file": "10 Знания/Знания — карта.md",
+      "x": 1200,
+      "y": -150,
+      "width": 420,
+      "height": 240
+    },
+    {
+      "id": "practice",
+      "type": "file",
+      "file": "15 Практика/00 Практика — карта.md",
+      "x": 1200,
+      "y": 220,
+      "width": 420,
+      "height": 240
+    }
+  ],
+  "edges": [
+    {
+      "id": "a1",
+      "fromNode": "home",
+      "fromSide": "right",
+      "toNode": "classic",
+      "toSide": "left"
+    },
+    {
+      "id": "a2",
+      "fromNode": "home",
+      "fromSide": "right",
+      "toNode": "mixed",
+      "toSide": "left"
+    },
+    {
+      "id": "a3",
+      "fromNode": "classic",
+      "fromSide": "right",
+      "toNode": "knowledge",
+      "toSide": "left"
+    },
+    {
+      "id": "a4",
+      "fromNode": "mixed",
+      "fromSide": "right",
+      "toNode": "practice",
+      "toSide": "left"
+    }
+  ]
+}

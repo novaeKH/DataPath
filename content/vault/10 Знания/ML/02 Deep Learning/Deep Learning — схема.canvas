@@ -1,0 +1,127 @@
+{
+  "nodes": [
+    {
+      "id": "main",
+      "type": "file",
+      "file": "10 Знания/ML/02 Deep Learning/Deep Learning — карта.md",
+      "x": 0,
+      "y": 0,
+      "width": 420,
+      "height": 280
+    },
+    {
+      "id": "map",
+      "type": "file",
+      "file": "10 Знания/ML/02 Deep Learning/02 Шаблоны задач/00 - Карта выбора шаблона.md",
+      "x": 520,
+      "y": 0,
+      "width": 420,
+      "height": 280
+    },
+    {
+      "id": "base",
+      "type": "file",
+      "file": "10 Знания/ML/02 Deep Learning/01 База/01 - Паспорт задачи и честный split.md",
+      "x": 1040,
+      "y": -360,
+      "width": 420,
+      "height": 260
+    },
+    {
+      "id": "tasks",
+      "type": "file",
+      "file": "10 Знания/ML/02 Deep Learning/02 Шаблоны задач/06 - Классификация текста Transformer.md",
+      "x": 1040,
+      "y": 0,
+      "width": 420,
+      "height": 260
+    },
+    {
+      "id": "debug",
+      "type": "file",
+      "file": "10 Знания/ML/02 Deep Learning/03 Диагностика и ускорение/01 - Диагностика от симптома.md",
+      "x": 1040,
+      "y": 360,
+      "width": 420,
+      "height": 260
+    },
+    {
+      "id": "theory",
+      "type": "file",
+      "file": "10 Знания/ML/02 Deep Learning/04 Теория/00 - Карта теории.md",
+      "x": 520,
+      "y": 520,
+      "width": 420,
+      "height": 260
+    },
+    {
+      "id": "practice",
+      "type": "file",
+      "file": "10 Знания/ML/02 Deep Learning/05 Тренажер/00 - Карта тренажера.md",
+      "x": 0,
+      "y": 520,
+      "width": 420,
+      "height": 260
+    },
+    {
+      "id": "storyweaver",
+      "type": "file",
+      "file": "10 Знания/ML/02 Deep Learning/02 Шаблоны задач/10 - Causal LM и StoryWeaver.md",
+      "x": -520,
+      "y": 260,
+      "width": 420,
+      "height": 260
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "fromNode": "main",
+      "fromSide": "right",
+      "toNode": "map",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-2",
+      "fromNode": "map",
+      "fromSide": "right",
+      "toNode": "base",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-3",
+      "fromNode": "map",
+      "fromSide": "right",
+      "toNode": "tasks",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-4",
+      "fromNode": "map",
+      "fromSide": "right",
+      "toNode": "debug",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-5",
+      "fromNode": "main",
+      "fromSide": "right",
+      "toNode": "theory",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-6",
+      "fromNode": "theory",
+      "fromSide": "right",
+      "toNode": "practice",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-7",
+      "fromNode": "main",
+      "fromSide": "right",
+      "toNode": "storyweaver",
+      "toSide": "left"
+    }
+  ]
+}

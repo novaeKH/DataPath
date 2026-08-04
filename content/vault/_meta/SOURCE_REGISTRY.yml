@@ -1,0 +1,179 @@
+schema_version: 1
+reviewed_at: '2026-08-05'
+policy:
+  tier_1: официальная документация, исходная статья или сайт авторов
+  tier_2: канонический открытый учебник или университетский курс
+  rule: Новые фактические утверждения добавляются в canonical note только после сверки
+    минимум с одним источником tier 1; для спорных тем — с двумя независимыми источниками.
+sources:
+- id: python-tutorial
+  title: The Python Tutorial
+  organization: Python Software Foundation
+  kind: official-docs
+  trust_tier: 1
+  url: https://docs.python.org/3/tutorial/
+  used_for:
+  - python
+- id: pandas-user-guide
+  title: pandas User Guide
+  organization: pandas project
+  kind: official-docs
+  trust_tier: 1
+  url: https://pandas.pydata.org/docs/user_guide/
+  used_for:
+  - pandas
+  - data
+- id: postgresql-tutorial
+  title: PostgreSQL Tutorial
+  organization: PostgreSQL Global Development Group
+  kind: official-docs
+  trust_tier: 1
+  url: https://www.postgresql.org/docs/current/tutorial-sql.html
+  used_for:
+  - sql
+- id: sklearn-user-guide
+  title: scikit-learn User Guide
+  organization: scikit-learn project
+  kind: official-docs
+  trust_tier: 1
+  url: https://scikit-learn.org/stable/user_guide.html
+  used_for:
+  - classical-ml
+  - metrics
+  - validation
+- id: google-mlcc
+  title: Machine Learning Crash Course
+  organization: Google for Developers
+  kind: official-course
+  trust_tier: 1
+  url: https://developers.google.com/machine-learning/crash-course
+  used_for:
+  - ml-foundations
+  - generalization
+  - metrics
+- id: stanford-cs229
+  title: 'CS229: Machine Learning'
+  organization: Stanford University
+  kind: university-course
+  trust_tier: 2
+  url: https://cs229.stanford.edu/
+  used_for:
+  - classical-ml
+  - math
+- id: islr
+  title: An Introduction to Statistical Learning
+  organization: Springer / authors
+  kind: open-textbook
+  trust_tier: 2
+  url: https://www.statlearning.com/
+  used_for:
+  - classical-ml
+  - practice
+- id: pytorch-basics
+  title: Learn the Basics — PyTorch Tutorials
+  organization: PyTorch Foundation
+  kind: official-docs
+  trust_tier: 1
+  url: https://docs.pytorch.org/tutorials/beginner/basics/intro.html
+  used_for:
+  - deep-learning
+  - pytorch
+- id: huggingface-llm-course
+  title: Hugging Face LLM Course
+  organization: Hugging Face
+  kind: official-course
+  trust_tier: 1
+  url: https://huggingface.co/learn/llm-course/en/chapter1/1
+  used_for:
+  - nlp
+  - transformers
+  - llm
+- id: fastai-course
+  title: Practical Deep Learning for Coders
+  organization: fast.ai
+  kind: open-course
+  trust_tier: 2
+  url: https://course.fast.ai/
+  used_for:
+  - deep-learning
+  - practice
+- id: full-stack-dl
+  title: Full Stack Deep Learning
+  organization: The Full Stack
+  kind: open-course
+  trust_tier: 2
+  url: https://fullstackdeeplearning.com/course/
+  used_for:
+  - ml-systems
+  - llm-systems
+- id: made-with-ml
+  title: MLOps Course
+  organization: Made With ML / Anyscale
+  kind: open-course
+  trust_tier: 2
+  url: https://madewithml.com/courses/mlops/
+  used_for:
+  - mlops
+  - production-ml
+- id: xgboost-paper
+  title: 'XGBoost: A Scalable Tree Boosting System'
+  organization: KDD 2016
+  kind: primary-paper
+  trust_tier: 1
+  url: https://arxiv.org/abs/1603.02754
+  used_for:
+  - xgboost
+  - gradient-boosting
+- id: lightgbm-paper
+  title: 'LightGBM: A Highly Efficient Gradient Boosting Decision Tree'
+  organization: NeurIPS 2017
+  kind: primary-paper
+  trust_tier: 1
+  url: https://papers.nips.cc/paper/6907-lightgbm-a-highly-efficient-gradient-boosting-decision-tree
+  used_for:
+  - lightgbm
+  - gradient-boosting
+- id: catboost-paper
+  title: 'CatBoost: unbiased boosting with categorical features'
+  organization: NeurIPS 2018
+  kind: primary-paper
+  trust_tier: 1
+  url: https://papers.neurips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features
+  used_for:
+  - catboost
+  - categorical-features
+- id: rag-paper
+  title: Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks
+  organization: NeurIPS 2020
+  kind: primary-paper
+  trust_tier: 1
+  url: https://papers.neurips.cc/paper/2020/hash/6b493230205f780e1bc26945df7481e5-Abstract.html
+  used_for:
+  - rag
+- id: retrieval-practice
+  title: Repeated Retrieval During Learning Is the Key to Long-Term Retention
+  organization: Journal of Memory and Language
+  kind: primary-paper
+  trust_tier: 1
+  url: https://doi.org/10.1016/j.jml.2006.09.004
+  used_for:
+  - learning-design
+  - review
+- id: spacing-meta-analysis
+  title: 'Distributed Practice in Verbal Recall Tasks: A Review and Quantitative Synthesis'
+  organization: Psychological Bulletin
+  kind: meta-analysis
+  trust_tier: 1
+  url: https://doi.org/10.1037/0033-2909.132.3.354
+  used_for:
+  - learning-design
+  - spaced-repetition
+- id: effective-learning-techniques
+  title: Improving Students’ Learning With Effective Learning Techniques
+  organization: Psychological Science in the Public Interest
+  kind: review
+  trust_tier: 1
+  url: https://doi.org/10.1177/1529100612453266
+  used_for:
+  - learning-design
+  - practice
