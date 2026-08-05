@@ -75,6 +75,13 @@ Feature subsampling может сделать отдельный tree слабе
 
 ## Bias и variance
 
+**Интуиция с монеткой:** подбросьте одну монетку 10 раз — можете получить 8 орлов (сильная случайная ошибка). Подбросьте 100 монеток по 10 раз и усредните — результат будет близок к 50%. Усреднение многих независимых «голосований» сглаживает случайные ошибки.
+
+Для деревьев: одно глубокое дерево сильно зависит от конкретной обучающей выборки — небольшое изменение данных может полностью изменить структуру дерева (high variance). Если обучить $M$ деревьев на разных bootstrap-выборках и усреднить предсказания:
+- каждое дерево имеет низкий bias (глубокое) и высокую индивидуальную variance;
+- но ошибки деревьев **нескоррелированы** (разные выборки, разные features на каждом split);
+- при усреднении независимые ошибки компенсируют друг друга.
+
 - Более глубокие trees: lower bias, higher individual variance.
 - Больше trees: обычно ниже Monte Carlo variance, но больше latency/memory.
 - Меньше `max_features`: больше diversity, возможен higher bias.
@@ -124,6 +131,10 @@ Extremely Randomized Trees добавляют randomness thresholds/splits. Эт
 - трактовать importance causally;
 - ожидать extrapolation в regression.
 
+## Ответ для собеседования
+
+Random Forest — ансамбль Decision Trees, где каждое дерево обучается на bootstrap-выборке строк и случайном подмножестве признаков на каждом split. Предсказание — усреднение (регрессия) или голосование (классификация). **Ключевая идея:** усреднение некоррелированных деревьев снижает variance. Одно дерево может сильно переобучиться; $M$ деревьев на разных выборках ошибаются по-разному, и при усреднении ошибки компенсируются. **Преимущества:** стабильнее одного дерева, OOB-оценка заменяет validation set для baseline, feature importance, параллельное обучение. **Ограничения:** не экстраполирует за пределы train-диапазона, хуже boosting на сложных зависимостях, требует кодирования категорий.
+
 ## Связи
 
 - [[Decision Trees]] — base learner и split mechanics.
@@ -132,3 +143,4 @@ Extremely Randomized Trees добавляют randomness thresholds/splits. Эт
 - [[Expectation Variance Covariance and Correlation]] — correlation errors определяет предел averaging.
 - [[Validation Splits and Data Leakage]] — OOB не заменяет structure-aware split.
 - [[Trees and Random Forest — Interview]] — короткий формат.
+- [[Ensemble Comparison]] — comparison table и decision framework.

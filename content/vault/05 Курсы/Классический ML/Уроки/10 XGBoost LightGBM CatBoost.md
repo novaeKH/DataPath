@@ -54,11 +54,11 @@ Canonical source: [[XGBoost LightGBM and CatBoost]]. Приложение заг
     },
     {
       "type": "content",
-      "source_heading": "Коротко"
+      "source_heading": "Идея за 30 секунд"
     },
     {
       "type": "content",
-      "source_heading": "Интуиция"
+      "source_heading": "Общая основа"
     },
     {
       "type": "interactive",

@@ -54,11 +54,11 @@ Canonical source: [[Linear Regression]]. Приложение загружает
     },
     {
       "type": "content",
-      "source_heading": "Коротко"
+      "source_heading": "Идея за 30 секунд"
     },
     {
       "type": "content",
-      "source_heading": "Интуиция"
+      "source_heading": "Зачем нужно"
     },
     {
       "type": "interactive",

@@ -57,11 +57,11 @@ Canonical source: [[sklearn End-to-End Classification — Practice]]. Прило
     },
     {
       "type": "content",
-      "source_heading": "Коротко"
+      "source_heading": "Цель"
     },
     {
       "type": "content",
-      "source_heading": "Интуиция"
+      "source_heading": "Полная прямая реализация"
     },
     {
       "type": "interactive",

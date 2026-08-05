@@ -8,20 +8,20 @@
 
 | # | Target ID | Файл | Проблема | Предлагаемое исправление | Статус |
 |---|---|---|---|---|---|
-| C1 | Все lesson | `05 Курсы/Классический ML/Уроки/*.md` | datapath `source_heading: "Коротко"/"Интуиция"` не существует в source-заметках; аудит показывает `source_heading_fallback` | Обновить `source_heading` на реальные H2 (например «Идея за 30 секунд») или добавить секции «Коротко»/«Интуиция» в source-заметки | отложено (vault заморожен) |
+| C1 | Все lesson | `05 Курсы/Классический ML/Уроки/*.md` | datapath `source_heading: "Коротко"/"Интуиция"` не существует в source-заметках; аудит показывает `source_heading_fallback` | Обновить `source_heading` на реальные H2 | **исправлено (Phase 6A.1)**: «Коротко»→«Идея за 30 секунд» (12 уроков, →«Цель» для 13-го), «Интуиция»→ближайший H2 |
 | C2 | `concept.ml.xgboost-lightgbm-and-catboost` | `10 Знания/ML/01 Classical ML/XGBoost LightGBM and CatBoost.md` | Список критериев сравнения («на одинаковых folds; …») — валидный Markdown; маркеры терял frontend | Правка vault НЕ требуется (рендер исправлен: `list-disc`/`list-decimal` в MarkdownContent) | закрыто без правки vault |
 | C3 | `concept.ml.decision-trees` | `10 Знания/ML/01 Classical ML/Decision Trees.md` | Gain formula: источник корректен; проблема была в sanitize (KaTeX style) | Правка vault НЕ требуется (исправлено в `MarkdownContent.tsx`) | закрыто без правки vault |
 
 Черновиков в `docs/content-drafts/`: **7 файлов** (см. раздел «Черновики»).
 
-## Priority 1 — до RAG (критические исправления)
+## Priority 1 — до RAG (критические исправления) — **ВЫПОЛНЕНО (Phase 6A.1)**
 
-| # | Target ID | Файл | Проблема | Предлагаемые секции | Цель |
+| # | Target ID | Файл | Проблема | Предлагаемые секции | Статус |
 |---|---|---|---|---|---|
-| 1.1 | Все lesson | `05 Курсы/.../Уроки/*.md` | datapath source_heading не совпадает | Обновить source_heading на реальные H2 | Нормализованный source_heading |
-| 1.2 | `concept.ml.decision-trees` | `10 Знания/ML/01 Classical ML/Decision Trees.md` | Нет численного примера split | ## Пример расчёта Gain с числами | Пример для retrieval |
-| 1.3 | `concept.ml.regularization` | `10 Знания/ML/01 Classical ML/Regularization.md` | Нет численного примера coefficients | ## Пример: Lasso vs Ridge на synthetic data | Пример для retrieval |
-| 1.4 | Все concept | `10 Знания/ML/01 Classical ML/*.md` | Нет interview-ответов | ## Ответ для собеседования (3–5 предложений) | RAG-collection interview |
+| 1.1 | Все lesson | `05 Курсы/.../Уроки/*.md` | datapath source_heading не совпадает | Обновить source_heading на реальные H2 | ✅ исправлено |
+| 1.2 | `concept.ml.decision-trees` | `10 Знания/ML/01 Classical ML/Decision Trees.md` | Нет численного примера split | ## Пример расчёта Gain с числами | ✅ интегрировано |
+| 1.3 | `concept.ml.regularization` | `10 Знания/ML/01 Classical ML/Regularization.md` | Нет численного примера coefficients | ## Пример: Lasso vs Ridge | ⏸ deferred (пример bias/variance для деревьев добавлен в DT) |
+| 1.4 | Все concept | `10 Знания/ML/01 Classical ML/*.md` | Нет interview-ответов | ## Ответ для собеседования | ✅ интегрировано (DT, BV, RF, GB, CB, Ensemble) |
 
 **Skills:** `ml.tree_ensembles`, `ml.bias_variance_regularization`, `ml.error_analysis`
 **Scene roles:** example, interview_summary
@@ -36,10 +36,10 @@
 | 2.1 | `concept.ml.decision-trees` | То же | Нет визуализации | ## Визуализация дерева (Mermaid или описание графика) | Уровень Solid |
 | 2.2 | `concept.ml.regularization` | То же | Нет графика coefficient paths | ## Визуализация: L1 vs L2 paths | Уровень Solid |
 | 2.3 | `concept.ml.bagging-and-random-forest` | `Bagging and Random Forest.md` | Нет кода | ## Пример: Random Forest на sklearn | Уровень Solid |
-| 2.4 | `concept.ml.gradient-boosting` | `Gradient Boosting.md` | Нет численного примера | ## Пример: 3 шага boosting на synthetic data | Уровень Solid |
-| 2.5 | Новый `concept.ml.ensemble-comparison` | Новый файл | Нет канонического сравнения | ## Когда что выбирать: DT/RF/GB/CB | Retrieval-ресурс |
+| 2.4 | `concept.ml.gradient-boosting` | `Gradient Boosting.md` | Нет численного примера | ## Пример: 3 шага boosting на synthetic data | ✅ интегрировано (Phase 6A.1) |
+| 2.5 | Новый `concept.ml.ensemble-comparison` | Новый файл | Нет канонического сравнения | ## Когда что выбирать: DT/RF/GB/CB | ✅ интегрировано (Phase 6A.1, concept-заметка) |
 | 2.6 | `concept.ml.xgboost-lightgbm-and-catboost` | То же | Нет графика сравнения | ## Визуализация: learning curves трёх библиотек | Уровень Solid |
-| 2.7 | Все concept | Все файлы | Нет interview-ответов | ## Ответ для собеседования | Interview collection |
+| 2.7 | Все concept | Все файлы | Нет interview-ответов | ## Ответ для собеседования | ✅ интегрировано (Phase 6A.1) |
 | 2.8 | Все concept | Все файлы | Нет checkpoints | Дополнительные вопросы в lessons | Уровень Solid |
 
 **Skills:** все навыки MVP-маршрута

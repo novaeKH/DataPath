@@ -54,11 +54,11 @@ Canonical source: [[Principal Component Analysis]]. Приложение заг�
     },
     {
       "type": "content",
-      "source_heading": "Коротко"
+      "source_heading": "Идея за 30 секунд"
     },
     {
       "type": "content",
-      "source_heading": "Интуиция"
+      "source_heading": "Зачем нужно"
     },
     {
       "type": "interactive",

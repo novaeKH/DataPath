@@ -1,4 +1,4 @@
-# DataPath — MVP Content Coverage (Фаза 6A)
+# DataPath — MVP Content Coverage (Фаза 6A.1)
 
 Покрытие 6 тем MVP-маршрута по 15 измерениям качества.
 Статусы: **good** / **partial** / **missing** / **needs correction** / **N/A**.
@@ -16,7 +16,7 @@
 | intuition | good | «Как строится prediction» |
 | mechanism/algorithm | good | Split gain, criteria |
 | mathematics | good | Gini, Entropy, Gain, MSE |
-| example | partial | Нет численного примера split |
+| example | good | Численный пример Gain с Gini и checkpoint |
 | visualization | missing | Нет графика дерева |
 | code | good | Псевдокод структуры дерева |
 | hyperparameters | partial | Упомянуты depth, leaves, но без таблицы |
@@ -25,7 +25,7 @@
 | practice | good | 2 лаборатории (split + overfitting) |
 | review | good | 3 review templates |
 | case | partial | Участвует в ensemble-кейсе |
-| interview answer | missing | — |
+| interview answer | good | «Ответ для собеседования» (3–4 предложения) |
 | RAG readiness | good | Чёткие H2, самодостаточные секции |
 
 **Что сделано хорошо:** структура, математика, pitfalls.
@@ -55,7 +55,7 @@
 | practice | partial | 1 лаборатория (overfitting, косвенно) |
 | review | good | 3 review templates |
 | case | partial | Участвует в ensemble-кейсе |
-| interview answer | missing | — |
+| interview answer | good | «Ответ для собеседования» (3–4 предложения) |
 | RAG readiness | good | Чёткая структура |
 
 **Что сделано хорошо:** математика, Bayesian интерпретация.
@@ -85,7 +85,7 @@
 | practice | good | 1 лаборатория (ensemble-comparison) |
 | review | good | 3 review templates |
 | case | partial | Участвует в ensemble-кейсе |
-| interview answer | missing | — |
+| interview answer | good | «Ответ для собеседования» (3–4 предложения) |
 | RAG readiness | good | Чёткая структура |
 
 **Что сделано хорошо:** объяснение variance reduction, OOB, failure modes.
@@ -115,7 +115,7 @@
 | practice | good | 1 лаборатория (ensemble-comparison) |
 | review | good | 3 review templates |
 | case | partial | Участвует в ensemble-кейсе |
-| interview answer | missing | — |
+| interview answer | good | «Ответ для собеседования» (3–4 предложения) |
 | RAG readiness | good | Чёткая структура |
 
 **Что сделано хорошо:** математика pseudo-residuals, hyperparameters.
@@ -145,7 +145,7 @@
 | practice | good | 1 лаборатория (ensemble-comparison) |
 | review | good | 2 review templates |
 | case | partial | Участвует в ensemble-кейсе |
-| interview answer | missing | — |
+| interview answer | good | «Ответ для собеседования» (3–4 предложения) |
 | RAG readiness | good | Чёткая структура |
 
 **Что сделано хорошо:** сравнение библиотек, tuning order, pitfalls.
@@ -153,17 +153,19 @@
 
 ---
 
-## Model Comparison (кейс)
+## Model Comparison
 
-- **Content ID:** `case.classic-ml.ensemble-choice` (итоговый кейс)
-- **Тема:** сравнение DT / RF / GB / CatBoost
+- **Content ID:** `concept.ml.ensemble-comparison` (новая concept-заметка, Phase 6A.1)
+- **Кейс:** `case.classic-ml.tree-ensemble-choice`
 
 | Измерение | Статус |
 |---|---|
-| Отдельный lesson | N/A (реализован как case) |
-| Сравнительная таблица | good (в уроке 10) |
-| Decision framework | partial (в case) |
-| Interview answer | missing |
+| Каноническая concept-заметка | **good** (создана `Ensemble Comparison.md`) |
+| Сравнительная таблица | good (в concept-заметке + в уроке 10) |
+| Decision framework | good («Decision framework — когда что выбирать») |
+| Interview answer | good («Ответ для собеседования») |
+| Standalone lesson | N/A (не создавался — требует code changes; текущий MVP-маршрут сохранён) |
+| Связи | good (связан с DT, RF, GB, CB, regularization, case) |
 
 ---
 
@@ -171,12 +173,12 @@
 
 | Тема | Общая оценка | Приоритетные пробелы |
 |---|---|---|
-| Decision Tree | Solid | Визуализация, пример |
-| Bias/Variance | Solid | Визуализация, пример |
+| Decision Tree | Solid | Визуализация |
+| Bias/Variance | Solid | Визуализация |
 | Random Forest | Solid | Код, визуализация |
-| Gradient Boosting | Solid | Визуализация, пример |
-| CatBoost | Solid | Визуализация, пример |
-| Model Comparison | Partial | Interview answer |
+| Gradient Boosting | Solid | Визуализация |
+| CatBoost | Solid | Визуализация |
+| Model Comparison | Solid | Визуализация |
 
 ## Сцены шести тем (Фаза 6A, фактические значения через текущий parser)
 
@@ -187,9 +189,7 @@
 | Random Forest | `lesson.classic-ml.trees.forest` | `concept.ml.bagging-and-random-forest` | 22 | 18 |
 | Gradient Boosting | `lesson.classic-ml.trees.boosting` | `concept.ml.gradient-boosting` | 28 | 21 |
 | CatBoost | `lesson.classic-ml.trees.libraries` | `concept.ml.xgboost-lightgbm-and-catboost` | 35 | 25 |
-| Model Comparison | нет отдельного урока; кейс `case.classic-ml.tree-ensemble-choice` + сцены «Сравнение»/«Практический tuning order» внутри урока CatBoost | `concept.ml.xgboost-lightgbm-and-catboost` | not recorded | 2 |
+| Model Comparison | нет отдельного урока; concept-заметка `concept.ml.ensemble-comparison` + кейс `case.classic-ml.tree-ensemble-choice` + сцены «Сравнение»/«Практический tuning order» внутри урока CatBoost | `concept.ml.ensemble-comparison` | — | — |
 
-**Общий вывод:** MVP-маршрут имеет хорошую теоретическую базу (Solid по 5 из 6 тем).
-Основные пробелы: визуализации, численные примеры, interview answers.
-Критических проблем с контентом нет.
+**Общий вывод:** MVP-маршрут имеет хорошую теоретическую базу (Solid по всем 6 темам). После Phase 6A.1: численные примеры (Gain, boosting steps, CatBoost leakage), interview answers и concept-заметка сравнения ансамблей интегрированы. Оставшиеся пробелы: визуализации (графики, Mermaid-диаграммы), код (sklearn-примеры), доп. checkpoints. Критических проблем с контентом нет. Готово к Phase 6B RAG-индексации.
 

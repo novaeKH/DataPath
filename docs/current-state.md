@@ -1,82 +1,57 @@
 # DataPath — текущее состояние (передача контекста)
 
-> **Stable baseline:** `phase-6a-complete`
+> **Stable baseline:** `phase-6a1-complete`
 > Актуальный commit можно получить командой `git rev-parse HEAD`.
 
 ## Фаза и результат
 
-- Фазы 1–6A выполнены. Фаза 6A: стабилизация парсинга сцен, смысловая
-  группировка, метаданные сцен, content quality audit, управляемое расширение
-  Obsidian-хранилища (черновики вне vault).
+- Фазы 1–6A.1 выполнены. Фаза 6A стабилизировала парсинг сцен, метаданные,
+  content quality audit и подготовила черновики контента. Phase 6A.1
+  интегрировала одобренные content drafts в канонический `content/vault` и
+  исправила source_heading маппинги.
 - Пайплайн: `content/vault → Python parser → валидация → SQLite → REST API → Atlas/Focus/Studio/Review`.
 
-## Фаза 6A: модель сцен и парсинг
+## Phase 6A.1: интеграция контента MVP
 
-- Семантическая группировка сцен: короткие случайные сцены (1–10 слов)
-  детерминированно сливаются; заголовки, списки, формулы, код и пояснения
-  группируются корректно.
-- Пояснения формул поглощаются без дублирования (текст не появляется дважды).
-- Стабильные scene IDs и совместимость прогресса сохранены.
-- Новые метаданные сцены: `word_count`, `source_content_id`, `source_heading`,
-  `semantic_role`, `contains_formula`, `contains_code`, `contains_visual`,
-  `display_title`, `heading_resolution`.
-- `display_title` — детерминированный пользовательский заголовок сцены
-  (H3/H4 → уникальный source_heading → метка формулы/caption → semantic_role →
-  первое предложение → fallback); устраняет дубли заголовков в outline.
+- Канонический MVP-контент улучшен и синхронизирован в `content/vault`.
+- Все 13 уроков Classic ML теперь разрешают `source_heading` через `exact` или
+  `normalized` совпадения (fallback больше не требуется).
+- source_heading fallback warnings:
+  - before: **26**;
+  - after: **0**.
+- Интегрированы **7 content drafts**:
+  - Decision Tree — численный пример Gain;
+  - Bias/Variance и переобучение деревьев;
+  - Random Forest — интуиция variance reduction;
+  - Gradient Boosting — пример трёх шагов;
+  - CatBoost — ordered target-statistics без leakage;
+  - ensemble model comparison;
+  - interview answers.
+- Обновлены канонические темы: Decision Tree; Bias/Variance и переобучение
+  деревьев; Random Forest; Gradient Boosting; CatBoost; сравнение ансамблей;
+  ответы для собеседования.
+- Новый канонический content ID: `concept.ml.ensemble-comparison`.
+- Отдельный урок Model Comparison **не добавлялся**; существующий MVP-маршрут и
+  кейс выбора модели (`case.classic-ml.tree-ensemble-choice`) не изменялись.
 
-## source_heading: статусы разрешения
+## Content quality (Classic ML)
 
-- `exact` — точное совпадение с H2 source-заметки;
-- `normalized` — совпадение после нормализации (trim, регистр, markdown-эмфазис, числовые префиксы);
-- `fallback` — заголовок не найден, используются все секции по порядку;
-- `missing` — source-заметка недоступна/пуста.
-- Fallback и missing видны как warnings в content quality CLI.
+- Errors: **0**.
+- Warnings: **0**.
+- Suggestions: **62** (неблокирующие; в основном про lesson-level пробелы
+  покрытия — пример/визуализация/код/pitfalls/сравнение в выводе уроков).
+- Catalog sync: **190 content items**, без дубликатов ID, errors 0, warnings 0.
 
-## Рендер Markdown/KaTeX (frontend)
+## Готовность к RAG
 
-- Inline- и block-математика рендерятся через KaTeX (remark-math + rehype-katex).
-- Санитизация KaTeX сохраняет необходимые генерируемые positioning-стили
-  (inline `style`/`ariaHidden` на `span`/`code`); `rehypeRaw` не включён —
-  произвольный HTML и JavaScript остаются отключёнными.
-- Gain formula: подстрочные `n_L` и `n_R` рендерятся корректно.
-- Маркеры Markdown-списков восстановлены (Tailwind v4 preflight сбрасывает
-  `list-style`); добавлены классы `list-disc`/`list-decimal`.
-- Добавлена поддержка типов сцен `table` и `visual`.
-
-## Content quality CLI
-
-- Read-only CLI: `PYTHONPATH= uv run python -m app.cli.content quality`
-  (поддерживает фильтр по course/lesson и JSON output).
-- Проверки: errors (битый content_path, path traversal, пустой урок, parser crash),
-  warnings (fallback/missing source_heading, пустые/слишком короткие/слишком
-  большие сцены, урок без skills/checkpoint), suggestions (нет примера,
-  визуализации, кода, pitfalls, comparison и т.д.).
-- Ненулевой exit code только для errors; warnings и suggestions не ломают сборку.
-
-## Показатели и статус Фазы 6A
-
-- Backend tests: **208 passed**.
-- Frontend tests: **97 passed** (7 файлов).
-- Изолированный Docker smoke: **PASS**.
-- Content quality для Classic ML: errors **0**, warnings **26**, suggestions **48**.
-- Warnings — ожидаемые fallback `source_heading` («Коротко»/«Интуиция»), правка
-  которых отложена до ручной коррекции vault.
-- `content/vault` не изменялся приложением.
-
-## Черновики контента
-
-- 7 черновиков в `docs/content-drafts/` (вне vault): примеры, визуализации,
-  интуиция bias/variance, шаги boosting, категории CatBoost без leakage,
-  сравнение ансамблей, интервью-ответы.
-- Перенос в `content/vault` — отдельный подтверждённый шаг (Phase 6A.1).
-
-## Дорожная карта
-
-- Phase 8 (подготовлена в `docs/roadmap.md`): Python content migration;
-  Python Core and Big O; algorithmic patterns and visualizers; safe code runner
-  и interview mode.
-- Финальный объём продукта: full Machine Learning; Deep Learning; NumPy;
-  pandas; scikit-learn; Python; algorithms.
+- Канонический MVP-контент **готов к RAG-индексации** (Phase 6B).
+- Известный некритичный долг (не блокирует 6A.1/6B):
+  - больше визуализаций;
+  - sklearn-примеры кода;
+  - больше checkpoints;
+  - смешение русского и английского в части старого материала source-заметок;
+  - сжатая компоновка маршрута в Atlas;
+  - plain-text code-блоки показывают языковую метку `text`.
 
 ## Ещё не реализовано
 
@@ -85,10 +60,14 @@
 
 ## Следующая работа
 
-1. **Phase 6A.1** — вручную интегрировать одобренные MVP content drafts и
-   исправить `source_heading` в `content/vault`.
-2. **Phase 6B** — локальный RAG и AI-наставник после синхронизации и валидации
+1. **Phase 6B** — локальный RAG и AI-наставник после синхронизации и валидации
    канонического MVP-контента.
+
+## Дорожная карта
+
+- Финальный объём продукта: full Machine Learning; Deep Learning; Python Core;
+  Big O и algorithms; NumPy; pandas; scikit-learn.
+- Phase 8A–8D для Python и algorithms (подготовлено в `docs/roadmap.md`).
 
 ## Команды
 

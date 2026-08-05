@@ -53,11 +53,11 @@ Canonical source: [[Decision Trees]]. Приложение загружает с
     },
     {
       "type": "content",
-      "source_heading": "Коротко"
+      "source_heading": "Идея за 30 секунд"
     },
     {
       "type": "content",
-      "source_heading": "Интуиция"
+      "source_heading": "Как строится prediction"
     },
     {
       "type": "interactive",

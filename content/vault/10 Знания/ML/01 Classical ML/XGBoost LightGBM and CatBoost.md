@@ -169,6 +169,32 @@ $$
 
 Current $y_i$ не участвует. Prior/smoothing снижает variance редких categories.
 
+**Пример: почему наивный target encoding «подглядывает».** Задача — предсказать отток клиента ($y=1$ — ушёл). Признак: город.
+
+| # | Город | Ушёл ($y$) |
+|---|---|---|
+| 1 | Москва | 0 |
+| 2 | Питер | 1 |
+| 3 | Москва | 1 |
+| 4 | Питер | 0 |
+| 5 | Москва | 0 |
+| 6 | Питер | 1 |
+
+**Наивный target encoding (ошибка):** для каждого клиента считаем средний $y$ по городу, включая его собственный ответ. Москва: $(0+1+0)/3 \approx 0.33$, Питер: $(1+0+1)/3 \approx 0.67$. Проблема: клиент #3 (Москва, $y=1$) получает encoding $0.33$, который включает его собственный $y=1$ — модель видит ответ, который пытается предсказать. Это **data leakage.**
+
+**Ordered TS (правильно):** для клиента $i$ encoding считается только по клиентам до него в перестановке:
+
+| # | Город | $y$ | Ordered TS | Пояснение |
+|---|---|---|---|---|
+| 1 | Москва | 0 | 0.5 (prior) | Нет предыдущих — prior |
+| 2 | Питер | 1 | 0.5 (prior) | Нет предыдущих — prior |
+| 3 | Москва | 1 | 0.0 | Только #1: $0/1 = 0$ |
+| 4 | Питер | 0 | 1.0 | Только #2: $1/1 = 1$ |
+| 5 | Москва | 0 | 0.5 | #1, #3: $(0+1)/2 = 0.5$ |
+| 6 | Питер | 1 | 0.5 | #2, #4: $(1+0)/2 = 0.5$ |
+
+Собственный $y_i$ не участвует → нет leakage. Prior (0.5) сглаживает оценки для редких категорий. При повторном обучении CatBoost использует случайную перестановку (permutation) — это дополнительно снижает зависимость от порядка.
+
 Ordered boosting аналогично стремится считать gradient object через model, которая не обучалась на этом object. Это уменьшает prediction shift между train и unseen data.
 
 ### Symmetric trees
@@ -188,6 +214,10 @@ Ordered boosting аналогично стремится считать gradient
 - редкие ID-like categories без stability check;
 - путать ordered statistics и ordered boosting;
 - считать strong defaults заменой validation.
+
+## Ответ для собеседования
+
+XGBoost, LightGBM и CatBoost — три оптимизированные реализации Gradient Boosting. **XGBoost** использует вторые производные (Hessian) для более точного поиска splits и встроенную L1/L2-регуляризацию деревьев. **LightGBM** ускоряет обучение через histogram-based поиск splits и leaf-wise (вместо level-wise) рост деревьев — хорошо для больших данных, но глубокая ветка на малой выборке рискует overfit. **CatBoost** специализируется на категориальных признаках: ordered target statistic вычисляет encoding без утечки целевой переменной (data leakage), плюс symmetric trees для быстрого инференса. **Выбор:** CatBoost — когда много категорий, LightGBM — когда важна скорость на больших данных, XGBoost — когда нужна тонкая настройка и зрелая экосистема (Dask, Spark, MLOps-интеграции).
 
 ## Сравнение
 
@@ -225,3 +255,4 @@ Ordered boosting аналогично стремится считать gradient
 - [[Gradients Chain Rule and Optimization]] — gradients, Hessian и curvature.
 - [[Validation Splits and Data Leakage]] — fair comparison и early stopping.
 - [[Gradient Boosting — Interview]] — короткий формат.
+- [[Ensemble Comparison]] — полная таблица и decision framework.

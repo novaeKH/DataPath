@@ -54,11 +54,11 @@ Canonical source: [[K-Means]]. Приложение загружает соде�
     },
     {
       "type": "content",
-      "source_heading": "Коротко"
+      "source_heading": "Идея за 30 секунд"
     },
     {
       "type": "content",
-      "source_heading": "Интуиция"
+      "source_heading": "Objective"
     },
     {
       "type": "interactive",

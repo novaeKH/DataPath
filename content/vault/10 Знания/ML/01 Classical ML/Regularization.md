@@ -142,6 +142,10 @@ Intercept часто не штрафуют: он задаёт global baseline, �
 - Resampling/weights: effective loss scale меняется, поэтому численное значение $\lambda$ не переносится автоматически.
 - Не все parameters нужно shrink одинаково: embeddings, bias и normalization parameters могут требовать отдельной политики.
 
+## Ответ для собеседования
+
+Ошибка модели раскладывается на **bias** (систематическая ошибка из-за упрощения), **variance** (чувствительность к конкретной обучающей выборке) и неустранимый шум. Простые модели (линейная регрессия, shallow tree) имеют высокий bias и низкую variance. Сложные (глубокое дерево, полином высокой степени) — наоборот: низкий bias, высокая variance. **Оптимальная сложность** минимизирует сумму bias² + variance. Regularization (L1/L2, early stopping, dropout) снижает variance ценой небольшого роста bias — это и есть bias-variance trade-off. **Практический признак high variance:** большой разрыв между train и validation метриками. **Признак high bias:** обе метрики плохие и близки друг к другу.
+
 ## Связи
 
 - [[Likelihood MLE and MAP]] — probabilistic вывод L1/L2.

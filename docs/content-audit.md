@@ -247,7 +247,7 @@ Frontend (`LessonOutline`, `SceneView`) использует `display_title`.
 | P1 | Короткие сцены 1–10 слов | blocker | parser | исправлено |
 | P2 | Заголовок отделён от содержания | blocker | parser | исправлено |
 | P3 | Дублирование formula.explanation | blocker | parser | исправлено |
-| P4 | source_heading не совпадает | important | parser+audit | прозрачно; правка vault отложена |
+| P4 | source_heading не совпадает | important | parser+audit | **исправлено в Phase 6A.1**: «Коротко»→«Идея за 30 секунд» для 12 уроков (→«Цель» для урока 13), «Интуиция»→ближайший H2 в каждой source-заметке; 0 fallback warnings |
 | P5 | Вводный текст списка/кода отделён | important | parser | исправлено |
 | P6 | Code без caption | cosmetic | parser+frontend | исправлено |
 | P8 | Таблица без scroll | cosmetic | frontend | исправлено |
@@ -259,16 +259,47 @@ Frontend (`LessonOutline`, `SceneView`) использует `display_title`.
 
 ## Черновики контента
 
-`docs/content-drafts/` содержит **7 файлов** (точное количество):
+`docs/content-drafts/` содержит **7 файлов** (точное количество). Все интегрированы в Phase 6A.1:
 
-1. `draft-dt-gain-example.md` → `concept.ml.decision-trees`;
-2. `draft-bv-tree-overfitting.md` → `concept.ml.regularization` / `concept.ml.decision-trees`;
-3. `draft-rf-variance-reduction.md` → `concept.ml.bagging-and-random-forest`;
-4. `draft-gb-step-example.md` → `concept.ml.gradient-boosting`;
-5. `draft-cb-categorical-leakage.md` → `concept.ml.xgboost-lightgbm-and-catboost`;
-6. `draft-ensemble-comparison.md` → новый `concept.ml.ensemble-comparison`;
-7. `draft-interview-answers.md` → все концепты MVP-маршрута.
+1. `draft-dt-gain-example.md` → `concept.ml.decision-trees` — **integrated** (новый H2 «Пример расчёта Gain» с численным примером Gini и checkpoint);
+2. `draft-bv-tree-overfitting.md` → `concept.ml.decision-trees` — **integrated** (интуитивный пример кошка/собака в секции «Почему дерево overfit», ссылка на RF);
+3. `draft-rf-variance-reduction.md` → `concept.ml.bagging-and-random-forest` — **integrated** (интуиция с монеткой в секции «Bias и variance»);
+4. `draft-gb-step-example.md` → `concept.ml.gradient-boosting` — **integrated** (новый H2 «Пример: 3 шага boosting» с таблицами, квартиры);
+5. `draft-cb-categorical-leakage.md` → `concept.ml.xgboost-lightgbm-and-catboost` — **integrated** (пример 6 клиентов с наивным и ordered TS в секции CatBoost);
+6. `draft-ensemble-comparison.md` → новый `concept.ml.ensemble-comparison` — **integrated** (создана новая concept-заметка `Ensemble Comparison.md`; standalone lesson НЕ создавался — нет изменений кода);
+7. `draft-interview-answers.md` → все 5 concept MVP-маршрута + `concept.ml.ensemble-comparison` — **integrated** (H2 «Ответ для собеседования» в каждой заметке).
 
-Все семь адресуют подтверждённые пробелы аудита (примеры, визуализации,
-интервью-ответы, сравнение). Ручной перенос в `content/vault` отложен
-(требуется подтверждение пользователя).
+Черновики сохранены в `docs/content-drafts/` для истории.
+
+## Качество контента после Phase 6A.1
+
+Content quality CLI (`course.classic-ml`, 13 уроков):
+
+| Метрика | Phase 6A (baseline) | Phase 6A.1 |
+|---|---|---|
+| Errors | 0 | **0** |
+| Warnings | 26 | **0** |
+| source_heading fallback | 26 | **0** |
+| Suggestions | 48 | **62** |
+
+**Почему suggestions выросли с 48 до 62 (Δ = +14):** аудитор оценивает
+присутствие сцен пример/визуализация/код/pitfalls/сравнение в выводе урока.
+До Phase 6A.1 `source_heading` был в режиме `fallback` — урок отображал все
+секции source-заметки, поэтому многие такие сцены присутствовали, и
+диагностических `no_example`/`no_visualization`/… было меньше. После
+исправления на точные H2 уроки стали отображать только сконфигурированные
+секции, и часть этих диагностик сработала заново. Новый RAG-контент
+(численные примеры, interview answers) живёт в concept-заметках и не входит
+в сценарный вывод уроков, поэтому lesson-аудитор его не учитывает.
+
+Suggestions — неблокирующие (не дают ненулевой exit code) и лежали вне
+таргетированного скоупа Phase 6A.1 (цель — 0 errors / 0 fallback warnings).
+Их число специально не возвращали к 48 и не обнуляли.
+
+## Известный некритичный визуальный/контентный долг (не блокирует 6A.1)
+
+- Видимая языковая метка `text` на plain-text code-блоках (косметика рендера).
+- Смешение русского и английского в части старого learner-facing материала
+  source-заметок (вне скоупа 6A.1; сохраняется для Phase 6B RAG-качества позже).
+- Сжатая компоновка маршрута в Atlas (небольшие расстояния между узлами) —
+  косметика, без редизайна UI.

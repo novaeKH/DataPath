@@ -54,11 +54,11 @@ Canonical source: [[Validation Splits and Data Leakage]]. Приложение �
     },
     {
       "type": "content",
-      "source_heading": "Коротко"
+      "source_heading": "Идея за 30 секунд"
     },
     {
       "type": "content",
-      "source_heading": "Интуиция"
+      "source_heading": "Роли train, validation и test"
     },
     {
       "type": "interactive",

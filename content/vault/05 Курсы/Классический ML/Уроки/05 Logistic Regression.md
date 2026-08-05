@@ -55,11 +55,11 @@ Canonical source: [[Logistic Regression]]. Приложение загружае
     },
     {
       "type": "content",
-      "source_heading": "Коротко"
+      "source_heading": "Идея за 30 секунд"
     },
     {
       "type": "content",
-      "source_heading": "Интуиция"
+      "source_heading": "Формальная модель"
     },
     {
       "type": "interactive",

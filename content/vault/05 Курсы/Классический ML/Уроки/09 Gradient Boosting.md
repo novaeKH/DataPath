@@ -54,11 +54,11 @@ Canonical source: [[Gradient Boosting]]. Приложение загружает
     },
     {
       "type": "content",
-      "source_heading": "Коротко"
+      "source_heading": "Идея за 30 секунд"
     },
     {
       "type": "content",
-      "source_heading": "Интуиция"
+      "source_heading": "Additive model"
     },
     {
       "type": "interactive",

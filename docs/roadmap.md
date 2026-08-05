@@ -235,6 +235,10 @@ SQLite), REST API, базовый Atlas, роутинг, темы light/dark. З
 
 ## Фаза 6: AI-наставник и RAG (~4–5 дней)
 
+**Предварительные фазы (выполнены):**
+- ✅ **Phase 6A:** стабилизация парсинга сцен, content quality audit, черновики контента
+- ✅ **Phase 6A.1 (2026-08-05):** исправлены 26 source_heading fallback-предупреждений (→0), интегрированы 7 content drafts, interview answers, concept-заметка Ensemble Comparison. MVP-контент готов к RAG-индексации.
+
 **Цель:** работающий RAG-наставник с цитатами.
 
 ### 6.1 RAG-индексация
