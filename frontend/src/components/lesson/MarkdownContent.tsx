@@ -6,13 +6,19 @@ import rehypeKatex from 'rehype-katex'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import 'katex/dist/katex.min.css'
 
-// Разрешаем классы (KaTeX) и data-атрибуты; остальное — по умолчанию безопасно.
+// KaTeX позиционирует подстрочные/надстрочные символы и дроби через INLINE
+// style (top/height/margin). rehype-sanitize по умолчанию вырезает style —
+// без него n_L опускается на уровень знаменателя и читается как «n / L».
+// Поэтому style разрешён на span/code (KaTeX создаёт только span; raw HTML
+// из vault не исполняется, т.к. rehypeRaw не подключён). aria-hidden
+// сохраняется, чтобы MathML-дубликат формулы не попадал в a11y-дерево.
 const sanitizeSchema = {
   ...defaultSchema,
   attributes: {
     ...defaultSchema.attributes,
-    span: [...(defaultSchema.attributes?.span ?? []), ['className']],
-    code: [...(defaultSchema.attributes?.code ?? []), ['className']],
+    '*': [...(defaultSchema.attributes?.['*'] ?? []), 'ariaHidden'],
+    span: [...(defaultSchema.attributes?.span ?? []), ['className'], ['style']],
+    code: [...(defaultSchema.attributes?.code ?? []), ['className'], ['style']],
   },
 }
 
@@ -140,6 +146,15 @@ export function MarkdownContent({ markdown }: { markdown: string }) {
               </code>
             )
           },
+          // Tailwind v4 preflight сбрасывает list-style: none — маркеры
+          // списков возвращаем явными классами.
+          ul: (props) => (
+            <ul {...props} className="my-3 list-disc space-y-1 pl-6 marker:text-slate-400" />
+          ),
+          ol: (props) => (
+            <ol {...props} className="my-3 list-decimal space-y-1 pl-6 marker:text-slate-400" />
+          ),
+          li: (props) => <li {...props} className="leading-relaxed" />,
           table: (props) => (
             <div className="overflow-x-auto">
               <table

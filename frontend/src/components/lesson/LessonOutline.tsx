@@ -33,7 +33,7 @@ export function LessonOutline({
             ? (scene.lab_title ?? 'Лаборатория')
             : scene.type === 'checkpoint'
               ? `Вопрос ${index + 1}`
-              : (scene.title ?? meta.label)
+              : (scene.display_title ?? scene.title ?? meta.label)
         return (
           <button
             key={scene.id}

@@ -76,6 +76,20 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_quality(args: argparse.Namespace) -> int:
+    """Read-only content quality audit (Фаза 6A)."""
+    from app.services.content_quality import ContentQualityAuditor
+
+    auditor = ContentQualityAuditor()
+    result = auditor.audit(
+        course_id=args.course,
+        lesson_id=args.lesson,
+    )
+    auditor.print_report(result, json_output=args.json)
+    # Ненулевой exit code только для errors
+    return 1 if result["errors"] else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="content", description="DataPath content catalog CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -91,6 +105,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = subparsers.add_parser("status", help="Показать состояние каталога")
     status.set_defaults(func=cmd_status)
+
+    quality = subparsers.add_parser("quality", help="Аудит качества контента (read-only, Фаза 6A)")
+    quality.add_argument("--course", help="Фильтр по course_id")
+    quality.add_argument("--lesson", help="Фильтр по lesson_id")
+    quality.add_argument("--json", action="store_true", help="Вывод в JSON")
+    quality.set_defaults(func=cmd_quality)
 
     return parser
 

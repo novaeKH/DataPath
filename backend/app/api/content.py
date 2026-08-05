@@ -215,6 +215,7 @@ class LessonScene(BaseModel):
     id: str
     type: str
     title: str | None = None
+    display_title: str | None = None
     markdown: str | None = None
     formula: str | None = None
     explanation: str | None = None
@@ -225,6 +226,23 @@ class LessonScene(BaseModel):
     question: str | None = None
     lab_id: str | None = None
     lab_title: str | None = None
+    # Фаза 6A: метаданные сцены
+    word_count: int = 0
+    source_content_id: str | None = None
+    source_heading: str | None = None
+    semantic_role: str | None = None
+    contains_formula: bool = False
+    contains_code: bool = False
+    contains_visual: bool = False
+
+
+class HeadingResolution(BaseModel):
+    """Диагностика source_heading: exact | normalized | fallback | missing."""
+
+    requested_heading: str | None = None
+    status: str
+    selected_heading: str | None = None
+    known_alias: str | None = None
 
 
 class LessonMaterialRef(BaseModel):
@@ -259,6 +277,13 @@ class LessonDetailResponse(BaseModel):
     scenes: list[LessonScene] = Field(default_factory=list)
     laboratory_ids: list[str] = Field(default_factory=list)
     materials: list[LessonMaterialRef] = Field(default_factory=list)
+    # Фаза 6A: диагностика source_heading + source metadata (обратно совместимо)
+    heading_resolution: list[HeadingResolution] = Field(
+        default_factory=list,
+        description="Статусы source_heading (exact/normalized/fallback/missing)",
+    )
+    source_content_id: str | None = None
+    source_path: str | None = None
 
 
 @router.get("/courses/{course_id}", response_model=CourseDetailResponse)

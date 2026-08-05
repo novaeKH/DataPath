@@ -3,14 +3,18 @@ import type { LessonScene } from '../../lib/api'
 import { MarkdownContent } from './MarkdownContent'
 import { LabHost } from '../interactive/LabHost'
 
+/** Пользовательский заголовок сцены: display_title (Фаза 6A) → title. */
+function sceneTitle(scene: LessonScene): string | null {
+  return scene.display_title ?? scene.title ?? null
+}
+
 /** Сцена-маркдаун: заголовок секции + связный текст. */
 function MarkdownScene({ scene }: { scene: LessonScene }) {
+  const title = sceneTitle(scene)
   return (
     <section className="datapath-scene">
-      {scene.title && (
-        <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
-          {scene.title}
-        </h3>
+      {title && (
+        <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
       )}
       {scene.markdown && <MarkdownContent markdown={scene.markdown} />}
     </section>
@@ -19,8 +23,12 @@ function MarkdownScene({ scene }: { scene: LessonScene }) {
 
 /** Сцена-формула: LaTeX через KaTeX (remark-math + rehype-katex). */
 function FormulaScene({ scene }: { scene: LessonScene }) {
+  const title = sceneTitle(scene)
   return (
     <section className="datapath-scene rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/50">
+      {title && (
+        <h3 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+      )}
       <div className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
         Формула
       </div>
@@ -30,7 +38,9 @@ function FormulaScene({ scene }: { scene: LessonScene }) {
         </div>
       )}
       {scene.explanation && (
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{scene.explanation}</p>
+        <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          <MarkdownContent markdown={scene.explanation} />
+        </div>
       )}
     </section>
   )
@@ -38,12 +48,11 @@ function FormulaScene({ scene }: { scene: LessonScene }) {
 
 /** Сцена-код: язык, код, подпись. */
 function CodeScene({ scene }: { scene: LessonScene }) {
+  const title = sceneTitle(scene)
   return (
     <section className="datapath-scene">
-      {scene.title && (
-        <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
-          {scene.title}
-        </h3>
+      {title && (
+        <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
       )}
       <div className="overflow-hidden rounded-lg border border-slate-700">
         <div className="flex items-center justify-between bg-slate-800 px-4 py-1.5 text-xs text-slate-300">
@@ -54,7 +63,9 @@ function CodeScene({ scene }: { scene: LessonScene }) {
         </pre>
       </div>
       {scene.caption && (
-        <p className="mt-2 text-sm italic text-slate-500 dark:text-slate-400">{scene.caption}</p>
+        <div className="mt-2 text-sm italic text-slate-500 dark:text-slate-400">
+          <MarkdownContent markdown={scene.caption} />
+        </div>
       )}
     </section>
   )
@@ -62,12 +73,11 @@ function CodeScene({ scene }: { scene: LessonScene }) {
 
 /** Сцена-callout: важная мысль/предупреждение/пример. */
 function CalloutScene({ scene }: { scene: LessonScene }) {
+  const title = sceneTitle(scene)
   return (
     <section className="datapath-scene">
-      {scene.title && (
-        <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
-          {scene.title}
-        </h3>
+      {title && (
+        <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
       )}
       {scene.markdown && (
         <MarkdownContent markdown={`> [${scene.callout_type ?? 'note'}] ${scene.markdown}`} />
@@ -126,6 +136,12 @@ export function SceneView({ scene }: { scene: LessonScene }) {
       return <CheckpointScene scene={scene} />
     case 'interactive_lab':
       return scene.lab_id ? <LabHost labId={scene.lab_id} title={scene.lab_title ?? null} /> : null
+    case 'table':
+      // Таблица — рендерится как markdown с table-обёрткой (уже в MarkdownContent)
+      return <MarkdownScene scene={scene} />
+    case 'visual':
+      // Визуализация — placeholder для будущих image/embed сцен (Фаза 6A)
+      return <MarkdownScene scene={scene} />
     default:
       return null
   }

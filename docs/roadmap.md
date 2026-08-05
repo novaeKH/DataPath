@@ -303,6 +303,58 @@ SQLite), REST API, базовый Atlas, роутинг, темы light/dark. З
 
 ---
 
+## Фаза 8: Python-трек (подготовлен, реализация после принятия Фазы 6)
+
+### 8A — Python content audit and migration
+
+- audit `Python_Interview_Preparation.zip`;
+- remove duplication;
+- create canonical notes;
+- normalize metadata;
+- connect skills, tasks, hints and solutions.
+
+### 8B — Python Core and Big O
+
+- Python objects and mutability;
+- containers and hashing;
+- functions, iterators, generators;
+- decorators, OOP, exceptions;
+- memory, GC and GIL;
+- typing and testing;
+- time and space complexity;
+- complexity of Python operations;
+- interactive Big O exercises.
+
+### 8C — Algorithmic patterns and visualizers
+
+- arrays and strings;
+- hash map;
+- two pointers;
+- sliding window;
+- prefix sum;
+- binary search;
+- stack, queue and deque;
+- heap and Top K;
+- linked lists;
+- recursion and backtracking;
+- trees, graphs, BFS and DFS;
+- greedy and dynamic programming;
+- interactive step-by-step state visualizers.
+
+### 8D — Code runner and interview mode
+
+- Python editor;
+- starter code;
+- tests;
+- progressive hints;
+- solution verification;
+- complexity analysis;
+- attempt history;
+- safe isolated runner;
+- interview mode.
+
+---
+
 ## Общий timeline MVP
 
 | Фаза | Содержание | Дней |

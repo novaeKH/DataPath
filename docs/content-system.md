@@ -156,16 +156,21 @@ CatBoost (урок 10)
 }
 ```
 
-**Реализованная модель сцен (Фаза 3)** — фактическое состояние, отличается от
-плановых `datapath`-типов (см. `docs/lesson-system.md`):
+**Реализованная модель сцен (Фаза 3 + Фаза 6A)** — фактическое состояние,
+отличается от плановых `datapath`-типов (см. `docs/lesson-system.md`):
 
-- `markdown`, `formula`, `code`, `callout`, `checkpoint`, `interactive_lab`.
+- `markdown`, `formula`, `code`, `callout`, `checkpoint`, `interactive_lab`,
+  плюс Фаза 6A: `table`, `visual`.
 - Сцены строит backend (`LessonContentService`): hook из datapath/summary-callout,
   контент — секции source-заметки по `content_path`, лабы — из registry,
   checkpoint — из раздела «Проверка понимания».
 - Если `source_heading` из datapath не существует в source-заметке (в текущем
   vault уроки ссылаются на `"Коротко"`/`"Интуиция"`, которых нет) — берутся все
-  секции заметки по порядку.
+  секции заметки по порядку; статус разрешения отдаётся в `heading_resolution`
+  (`exact | normalized | fallback | missing`), quality CLI показывает warning.
+- Фаза 6A добавляет метаданные сцен (`word_count`, `source_content_id`,
+  `source_heading`, `semantic_role`, `contains_*`) и детерминированный
+  `display_title` (уникальные заголовки outline).
 - `retrieval/application/interview/reflection` — не реализованы (Фазы 4–6).
 
 **Интерактивные лабы (реализовано — 3):**

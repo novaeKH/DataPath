@@ -118,6 +118,21 @@ content/vault/
 └─────────────────────────────────────┘
 ```
 
+## Фаза 6A: рендер сцен и аудит контента
+
+- Парсер строит сцены с метаданными (`word_count`, `source_content_id`,
+  `source_heading`, `semantic_role`, `contains_*`) и детерминированным
+  `display_title`; дублирующиеся `source_heading` больше не попадают в outline
+  как одинаковые заголовки.
+- Урок возвращает `heading_resolution` (exact/normalized/fallback/missing);
+  fallback/missing видны как warnings в `python -m app.cli.content quality`.
+- Frontend рендерит Markdown через remark-math + rehype-katex + rehype-sanitize;
+  sanitize-схема разрешает KaTeX-стили (`style`/`ariaHidden` на `span`/`code`),
+  `rehypeRaw` не включён — произвольный HTML/JS не исполняется.
+- Inline-математика работает в сценах, explanation, captions, списках, callouts.
+- Списки получают явные `list-disc`/`list-decimal` (Tailwind v4 preflight
+  сбрасывает маркеры); таблицы и формулы — локальный горизонтальный scroll.
+
 ## Поток данных: RAG-запрос
 
 ```

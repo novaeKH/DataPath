@@ -201,8 +201,17 @@ export interface CourseDetail {
 
 export interface LessonScene {
   id: string
-  type: 'markdown' | 'formula' | 'code' | 'callout' | 'checkpoint' | 'interactive_lab'
+  type:
+    | 'markdown'
+    | 'formula'
+    | 'code'
+    | 'callout'
+    | 'checkpoint'
+    | 'interactive_lab'
+    | 'table'
+    | 'visual'
   title?: string | null
+  display_title?: string | null
   markdown?: string | null
   formula?: string | null
   explanation?: string | null
@@ -213,6 +222,21 @@ export interface LessonScene {
   question?: string | null
   lab_id?: string | null
   lab_title?: string | null
+  // Фаза 6A: метаданные сцены
+  word_count?: number
+  source_content_id?: string | null
+  source_heading?: string | null
+  semantic_role?: string | null
+  contains_formula?: boolean
+  contains_code?: boolean
+  contains_visual?: boolean
+}
+
+export interface HeadingResolution {
+  requested_heading?: string | null
+  status: string
+  selected_heading?: string | null
+  known_alias?: string | null
 }
 
 export interface LessonMaterialRef {
@@ -236,6 +260,9 @@ export interface LessonDetail {
   scenes: LessonScene[]
   laboratory_ids: string[]
   materials: LessonMaterialRef[]
+  heading_resolution?: HeadingResolution[]
+  source_content_id?: string | null
+  source_path?: string | null
 }
 
 export interface LabParameter {

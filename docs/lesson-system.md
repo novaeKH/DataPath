@@ -1,6 +1,8 @@
-# DataPath — система уроков (Фаза 3)
+# DataPath — система уроков (Фаза 3, доработки Фазы 6A)
 
-> Статус: реализовано и проверено (phase-3-complete).
+> Статус: реализовано и проверено (phase-3-complete); Фаза 6A добавляет
+> смысловую группировку сцен, `display_title`, метаданные сцен, прозрачность
+> `source_heading` и рендер inline-математики.
 
 Система уроков связывает каталог vault, Python-парсер сцен и React-frontend.
 Вся предметная логика (построение сцен, расчёты лабораторий, валидация
@@ -13,12 +15,36 @@
 
 | Тип | Поля | Назначение |
 |---|---|---|
-| `markdown` | `title`, `markdown` | Связное объяснение (секция source-заметки) |
-| `formula` | `formula`, `explanation` | LaTeX-формула и краткое пояснение |
-| `code` | `language`, `code`, `caption` | Fenced code block |
+| `markdown` | `title`, `display_title`, `markdown` | Связное объяснение (секция source-заметки) |
+| `formula` | `formula`, `explanation` | LaTeX-формула и пояснение (включая intro) |
+| `code` | `language`, `code`, `caption` | Fenced code block (caption = intro + пояснение) |
 | `callout` | `callout_type`, `markdown` | Obsidian callout (`> [!type]`) |
 | `checkpoint` | `question` | Вопрос самопроверки (без сохранения оценки) |
 | `interactive_lab` | `lab_id`, `lab_title` | Ссылка на зарегистрированную лабораторию |
+| `table` | `markdown` | Таблица (рендерится через MarkdownContent) |
+| `visual` | `markdown` | Визуализация/изображение (placeholder Фазы 6A) |
+
+Каждая сцена содержит метаданные (Фаза 6A): `word_count`,
+`source_content_id`, `source_heading`, `semantic_role` (`motivation`,
+`intuition`, `mechanism`, `mathematics`, `example`, `visualization`, `code`,
+`hyperparameters`, `pitfalls`, `comparison`, `checkpoint`, `lab`,
+`interview_summary` или `null`), `contains_formula`, `contains_code`,
+`contains_visual`.
+
+### display_title
+
+`display_title` — детерминированный пользовательский заголовок сцены,
+отдельный от `source_heading` (который может повторяться у нескольких сцен
+одной H2-секции). Приоритет:
+
+1. H3/H4-заголовок внутри сцены;
+2. уникальный `source_heading`;
+3. смысловая метка формулы (`\operatorname{Gini}` → Gini) / caption кода / таблицы / visual;
+4. локализованная метка `semantic_role`;
+5. короткое первое предложение;
+6. стабильный fallback.
+
+Scene ID, `source_heading`, `semantic_role` и прогресс не меняются.
 
 Порядок сборки урока (`LessonContentService.lesson`):
 
@@ -32,28 +58,58 @@
 `build_source_scenes` (backend, `app/services/lesson_content.py`):
 
 - секции отделяются заголовками `H2`; `H3/H4` остаются внутри секции;
-- `$$...$$` → сцена `formula` (пояснение — следующий короткий абзац ≤ 400 симв.);
-- fenced code block → сцена `code`;
+- `$$...$$` → сцена `formula` (короткий intro до формулы + пояснение после
+  объединяются в `explanation`; текст не дублируется и не создаёт лишних сцен);
+- fenced code block → сцена `code` (intro до блока + пояснение после → `caption`);
 - `> [!type] ...` → сцена `callout`;
 - остальной текст группируется в связные `markdown`-сцены (абзацы не дробятся);
+- короткие сцены (< 15 слов) сливаются с ближайшей содержательной сценой;
 - мета-секции «Связи»/«Источники» пропускаются.
+
+### source_heading: статусы разрешения
 
 Если `datapath`-сценарий урока содержит `content` с `source_heading`, который
 **не существует** в source-заметке (в текущем vault уроки ссылаются на
 `"Коротко"`/`"Интуиция"`, которых нет), берутся **все секции** заметки по
-порядку. Это осознанное отличие от плана в `docs/content-system.md`.
+порядку — осознанное поведение. Для прозрачности урок возвращает
+`heading_resolution`:
+
+- `exact` — точное совпадение с H2 source-заметки;
+- `normalized` — совпадение после нормализации (trim, регистр, markdown-эмфазис, числовые префиксы);
+- `fallback` — заголовок не найден, используются все секции (quality CLI → warning `source_heading_fallback`);
+- `missing` — source недоступен/пуст (quality CLI → warning `source_heading_missing`).
+
+Quality CLI (`python -m app.cli.content quality`) включает в warning:
+lesson_id, source_content_id, requested_heading, selected_heading, status,
+source_path (относительный путь vault), known_alias.
 
 ## 3. API уроков
 
 - `GET /api/content/courses/{course_id}` — курс: модули по порядку, уроки,
   кейсы, `first_lesson_id`/`last_lesson_id`.
 - `GET /api/content/lessons/{lesson_id}` — урок: metadata, `previous_lesson_id`/
-  `next_lesson_id` (порядок курса: `module_order`, `lesson_order`), сцены,
-  `laboratory_ids`, `materials`.
+  `next_lesson_id` (порядок курса: `module_order`, `lesson_order`), сцены
+  (включая `display_title` и метаданные), `laboratory_ids`, `materials`,
+  `heading_resolution`, `source_content_id`, `source_path`.
 
 Ответы не содержат абсолютных путей и сырого frontmatter. Чтение vault
 ограничено двумя файлами на урок (сам урок + source по `content_path`);
 пути резолвятся строго внутри `content/vault` (защита от path traversal).
+
+## 2a. Рендер Markdown/KaTeX (frontend)
+
+`MarkdownContent` использует remark-gfm + remark-math + rehype-katex +
+rehype-sanitize:
+
+- inline-математика (`$n$`, `$I$`, `$n_L$`) рендерится и в обычных сценах,
+  и в explanation формул, и в captions кода;
+- **KaTeX требует inline `style`-атрибуты** для позиционирования дробей и
+  подстрочных символов; sanitize-схема разрешает `style`/`ariaHidden` для
+  `span`/`code`. `rehypeRaw` не включён, произвольный HTML и JavaScript
+  не исполняются, `javascript:`-ссылки санитизируются;
+- списки получают явные `list-disc`/`list-decimal` (Tailwind v4 preflight
+  сбрасывает `list-style`);
+- таблицы и формулы оборачиваются в локальный горизонтальный scroll.
 
 ## 4. Registry лабораторий
 
