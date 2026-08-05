@@ -179,6 +179,6 @@ class ContentCatalogService:
                 "links": {"outgoing": outgoing, "incoming": incoming},
             }
 
-    def atlas(self) -> dict:
+    def atlas(self, review_counts: dict[str, int] | None = None) -> dict:
         with self.session_factory() as db:
-            return AtlasBuilder().build(db)
+            return AtlasBuilder().build(db, review_counts=review_counts)

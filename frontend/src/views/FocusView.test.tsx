@@ -514,8 +514,46 @@ describe('FocusView: прогресс (Фаза 4)', () => {
     renderFocus('/focus/lesson.classic-ml.trees.tree')
     expect(await screen.findByText(/Сцена 1 из 5/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Завершить урок/ }))
-    expect(await screen.findByText(/✓ Урок отмечен завершённым/)).toBeInTheDocument()
+    // Уведомление о завершении + добавлении материала в расписание.
+    expect(await screen.findByText(/материал добавлен в расписание повторений/)).toBeInTheDocument()
     // Кнопка переходит в состояние «завершён».
     expect(screen.getByRole('button', { name: /✓ Урок завершён/ })).toBeInTheDocument()
+  })
+
+  it('показывает ссылку «Повторить тему», когда для урока есть активные повторения', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      if (url.includes('/api/content/courses/course.classic-ml')) {
+        return Promise.resolve(new Response(JSON.stringify(courseDetail), { status: 200 }))
+      }
+      if (url.includes('/api/content/lessons/')) {
+        return Promise.resolve(new Response(JSON.stringify(makeLesson()), { status: 200 }))
+      }
+      if (url.includes('/api/progress/lessons/') && method === 'GET') {
+        return Promise.resolve(new Response('{}', { status: 404 }))
+      }
+      if (url.includes('/api/reviews/summary')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              due_count: 2,
+              overdue_count: 0,
+              completed_today: 0,
+              next_due_at: null,
+              active_items: 2,
+              stages: { review: 2 },
+              recommendation: 'На сегодня запланировано повторений: 2.',
+            }),
+            { status: 200 },
+          ),
+        )
+      }
+      return Promise.resolve(new Response('{}', { status: 404 }))
+    }) as unknown as typeof fetch
+    vi.stubGlobal('fetch', fetchMock)
+    renderFocus('/focus/lesson.classic-ml.trees.tree')
+    expect(await screen.findByText(/Сцена 1 из 5/)).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: /Повторить тему \(2\)/ })).toBeInTheDocument()
   })
 })

@@ -32,6 +32,19 @@ const emptyToday: TodayData = {
       title: 'Decision Tree',
     },
   },
+  review_summary: {
+    due_count: 0,
+    overdue_count: 0,
+    completed_today: 0,
+    next_due_at: null,
+    active_items: 0,
+    stages: {},
+    recommendation: 'Пройдите уроки — повторения появятся здесь.',
+  },
+  due_reviews: 0,
+  overdue_reviews: 0,
+  next_review_at: null,
+  review_action: null,
 }
 
 const withActivity: TodayData = {
@@ -97,6 +110,36 @@ const withActivity: TodayData = {
       current_scene_id: 'scene-03',
     },
   },
+  review_summary: {
+    due_count: 0,
+    overdue_count: 0,
+    completed_today: 0,
+    next_due_at: '2026-08-08T10:00:00+00:00',
+    active_items: 3,
+    stages: { review: 3 },
+    recommendation: 'На сегодня всё.',
+  },
+  due_reviews: 0,
+  overdue_reviews: 0,
+  next_review_at: '2026-08-08T10:00:00+00:00',
+  review_action: null,
+}
+
+const withDueReviews: TodayData = {
+  ...withActivity,
+  review_summary: {
+    due_count: 5,
+    overdue_count: 2,
+    completed_today: 1,
+    next_due_at: null,
+    active_items: 5,
+    stages: { review: 3, relearning: 2 },
+    recommendation: 'Просрочено повторений: 2.',
+  },
+  due_reviews: 5,
+  overdue_reviews: 2,
+  next_review_at: null,
+  review_action: 'review_session',
 }
 
 function stubFetch(payload: TodayData) {
@@ -185,5 +228,37 @@ describe('TodayView with activity', () => {
     expect(await screen.findByRole('link', { name: /Уроки/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /^Atlas$/ })).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: /Studio/ }).length).toBeGreaterThan(0)
+  })
+
+  it('shows review card with «на сегодня всё» when queue is empty but items exist', async () => {
+    renderToday()
+    expect(await screen.findByText(/На сегодня всё/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /К повторениям/ })).toBeInTheDocument()
+  })
+})
+
+describe('TodayView with due reviews', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', stubFetch(withDueReviews))
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('review session is the primary action with counts', async () => {
+    renderToday()
+    expect(
+      await screen.findByRole('heading', { name: /5 повторений на сегодня/ }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/2 просрочено/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Начать повторение/ })).toBeInTheDocument()
+  })
+
+  it('continue lesson remains available as a secondary action', async () => {
+    renderToday()
+    expect(
+      await screen.findByRole('heading', { name: /Bagging и Random Forest/ }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Продолжить урок/ })).toBeInTheDocument()
   })
 })

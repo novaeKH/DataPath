@@ -271,3 +271,67 @@ class CaseAttempt(Base):
     answers: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     result: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     completed_at: Mapped[str] = mapped_column(String, nullable=False)
+
+
+# --- Фаза 5: интервальное повторение (review_items, review_attempts) ---
+
+
+class ReviewItem(Base):
+    """Текущее состояние элемента повторения (одна строка на template).
+
+    template_id стабилен и уникален: один шаблон не создаёт несколько
+    активных элементов. Даты — ISO-8601 UTC. stage: learning | review |
+    relearning. status: active | suspended.
+    """
+
+    __tablename__ = "review_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    template_id: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    primary_skill_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    source_type: Mapped[str] = mapped_column(
+        String, nullable=False
+    )  # lesson | lab | case (что активировало элемент)
+    source_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    stage: Mapped[str] = mapped_column(String, nullable=False, default="learning")
+    status: Mapped[str] = mapped_column(String, nullable=False, default="active")
+    due_at: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    interval_days: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    ease_factor: Mapped[float] = mapped_column(Float, nullable=False, default=2.5)
+    repetitions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    lapses: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_reviewed_at: Mapped[str | None] = mapped_column(String)
+    created_at: Mapped[str] = mapped_column(String, nullable=False)
+    updated_at: Mapped[str] = mapped_column(String, nullable=False)
+
+    __table_args__ = (
+        Index("ix_review_items_status_due", "status", "due_at"),
+        Index("ix_review_items_source", "source_type", "source_id"),
+    )
+
+
+class ReviewAttempt(Base):
+    """Неизменяемая история ответов на повторения (append-only).
+
+    dedup_key предотвращает повторную запись одной отправки: повторный
+    submit с тем же ключом возвращает существующую попытку и не начисляет
+    evidence повторно.
+    """
+
+    __tablename__ = "review_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    review_item_id: Mapped[int] = mapped_column(
+        ForeignKey("review_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    answer: Mapped[dict | None] = mapped_column(MutableDict.as_mutable(JSON))
+    objective_score: Mapped[float | None] = mapped_column(Float)
+    is_correct: Mapped[bool | None] = mapped_column(Boolean)
+    user_rating: Mapped[str | None] = mapped_column(String)
+    effective_rating: Mapped[str] = mapped_column(String, nullable=False)
+    hints_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    response_time_ms: Mapped[int | None] = mapped_column(Integer)
+    dedup_key: Mapped[str | None] = mapped_column(String, unique=True)
+    created_at: Mapped[str] = mapped_column(String, nullable=False, index=True)
+
+    item: Mapped[ReviewItem] = relationship("ReviewItem")

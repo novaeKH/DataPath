@@ -115,6 +115,12 @@ API: `GET /api/labs/{lab_id}` (metadata + параметры + `initial_result`)
   `POST /api/progress/labs/{lab_id}/record` (идемпотентно, без дубликатов).
 - Подробности — [`docs/progress-system.md`](progress-system.md).
 
+**Повторения (Фаза 5):** завершение урока активирует review items по
+шаблонам урока, успешная лаборатория (score ≥ 0.6) — по шаблонам
+application/interpretation. Элементы появляются лениво и идемпотентно при
+первом запросе `/api/reviews/*` или `/api/today`; незавершённый урок не
+ставит материал в очередь. Подробности — [`docs/review-system.md`](review-system.md).
+
 ## 9. Известные ограничения
 
 - `datapath`-типы `retrieval/application/interview/reflection` не реализованы

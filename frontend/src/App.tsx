@@ -5,6 +5,7 @@ import { SystemStatusView } from './views/SystemStatusView'
 import { TodayView } from './views/TodayView'
 import { AtlasView } from './views/AtlasView'
 import { FocusView } from './views/FocusView'
+import { ReviewView } from './views/ReviewView'
 import { StudioView } from './views/StudioView'
 
 const ROUTES = [
@@ -12,6 +13,7 @@ const ROUTES = [
   { path: '/atlas', element: <AtlasView /> },
   { path: '/focus', element: <FocusView /> },
   { path: '/focus/:lessonId', element: <FocusView /> },
+  { path: '/review', element: <ReviewView /> },
   { path: '/studio', element: <StudioView /> },
   { path: '/system', element: <SystemStatusView /> },
 ]

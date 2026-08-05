@@ -6,6 +6,7 @@ const SECTIONS: { to: string; label: string; soon?: boolean }[] = [
   { to: '/today', label: 'Today' },
   { to: '/atlas', label: 'Atlas' },
   { to: '/focus', label: 'Focus' },
+  { to: '/review', label: 'Review' },
   { to: '/studio', label: 'Studio' },
   { to: '/system', label: 'Статус системы' },
 ]

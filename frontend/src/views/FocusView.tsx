@@ -7,6 +7,7 @@ import {
   fetchCourseDetail,
   fetchLesson,
   fetchLessonProgress,
+  fetchReviewSummary,
   type CourseDetail,
   type LessonDetail,
   type LessonProgressDetail,
@@ -200,6 +201,7 @@ function LessonView({
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [completing, setCompleting] = useState(false)
   const [completedFlash, setCompletedFlash] = useState(false)
+  const [reviewCount, setReviewCount] = useState<number | null>(null)
   const saveTimerRef = useRef<number | null>(null)
 
   const load = useCallback(
@@ -208,6 +210,11 @@ function LessonView({
       try {
         const lesson = await fetchLesson(lessonId, signal)
         setState({ kind: 'ready', lesson })
+
+        // Число активных повторений урока (для ссылки «Повторить тему»).
+        fetchReviewSummary(lessonId, signal)
+          .then((summary) => setReviewCount(summary.active_items))
+          .catch(() => setReviewCount(null))
 
         // Восстановление позиции: последняя незавершённая сцена.
         try {
@@ -308,6 +315,10 @@ function LessonView({
     try {
       await completeLesson(lessonId)
       setCompletedFlash(true)
+      // После завершения урока материал попадает в расписание повторений.
+      fetchReviewSummary(lessonId)
+        .then((summary) => setReviewCount(summary.active_items))
+        .catch(() => setReviewCount(null))
       const completedAt = new Date().toISOString()
       setProgress((prev) => {
         if (prev) return { ...prev, completed_at: completedAt }
@@ -497,8 +508,16 @@ function LessonView({
                   </button>
                   {completedFlash && (
                     <div className="mt-2 rounded-lg bg-emerald-50 px-2 py-1.5 text-center text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                      ✓ Урок отмечен завершённым, навыки обновлены.
+                      ✓ Урок завершён — навыки обновлены, материал добавлен в расписание повторений.
                     </div>
+                  )}
+                  {reviewCount != null && reviewCount > 0 && (
+                    <Link
+                      to="/review"
+                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-emerald-300/70 px-3 py-2 text-xs font-medium text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-800/60 dark:text-emerald-300 dark:hover:bg-emerald-950/20"
+                    >
+                      Повторить тему ({reviewCount}) →
+                    </Link>
                   )}
                 </div>
               </div>

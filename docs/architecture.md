@@ -232,32 +232,41 @@ CREATE TABLE sync_runs (
 `lesson_progress`, `lab_attempts`, `case_attempts`; миграция `f4a1b2c3d4e5`).
 Полная документация — `docs/progress-system.md` и `docs/case-system.md`.
 
-Таблицы повторения (`review_queue`), AI-диалогов (`ai_conversation`,
-`ai_message`) и взаимодействий (`interaction_log`) — Фазы 5–6.
-Целевые схемы (реализация — в соответствующих фазах):
+Таблицы повторения (`review_items`, `review_attempts`) реализованы в Фазе 5
+(миграция `f5a1b2c3d4e5`, детали — `docs/review-system.md`); AI-диалогов
+(`ai_conversation`, `ai_message`) — Фаза 6. Целевая схема повторения:
 
 ```sql
--- Пользовательский прогресс (один пользователь) — реализовано в Фазе 4
--- (упрощённая схема для справки; фактическая — в docs/progress-system.md)
-CREATE TABLE skill_assessments (
-    skill_id      TEXT PRIMARY KEY,        -- из learning catalog (ml.tree_ensembles)
-    axes          JSON NOT NULL,           -- по оси: alpha, beta, evidence_count, score
-    confidence    REAL NOT NULL,
-    evidence_count INTEGER NOT NULL,
-    state         TEXT NOT NULL,           -- not_started|exploring|developing|strong|needs_attention
-    last_activity_at TEXT,
+CREATE TABLE review_items (
+    id            INTEGER PRIMARY KEY,
+    template_id   TEXT NOT NULL UNIQUE,   -- стабильный ID шаблона
+    primary_skill_id TEXT NOT NULL,
+    source_type   TEXT NOT NULL,          -- lesson | lab | case
+    source_id     TEXT NOT NULL,
+    stage         TEXT NOT NULL,          -- learning | review | relearning
+    status        TEXT NOT NULL,          -- active | suspended
+    due_at        TEXT NOT NULL,          -- когда повторить (UTC)
+    interval_days REAL NOT NULL,
+    ease_factor   REAL NOT NULL DEFAULT 2.5,
+    repetitions   INTEGER NOT NULL DEFAULT 0,
+    lapses        INTEGER NOT NULL DEFAULT 0,
+    last_reviewed_at TEXT,
+    created_at    TEXT NOT NULL,
     updated_at    TEXT NOT NULL
 );
 
-CREATE TABLE review_queue (
+CREATE TABLE review_attempts (
     id            INTEGER PRIMARY KEY,
-    skill_id      TEXT NOT NULL,
-    axis          TEXT NOT NULL,
-    due_date      TEXT NOT NULL,          -- когда повторить
-    interval      INTEGER NOT NULL,       -- дней до следующего повтора
-    ease_factor   REAL NOT NULL DEFAULT 2.5,
-    lapses        INTEGER NOT NULL DEFAULT 0,
-    last_reviewed TEXT
+    review_item_id INTEGER NOT NULL REFERENCES review_items(id) ON DELETE CASCADE,
+    answer        JSON,
+    objective_score REAL,
+    is_correct    BOOLEAN,
+    user_rating   TEXT,
+    effective_rating TEXT NOT NULL,
+    hints_used    INTEGER NOT NULL DEFAULT 0,
+    response_time_ms INTEGER,
+    dedup_key     TEXT UNIQUE,
+    created_at    TEXT NOT NULL
 );
 
 -- История взаимодействий (для аналитики, не для RAG)
@@ -328,8 +337,9 @@ ds-learning-rag/
 │   │   │   ├── labs/                # LabRegistry + 3 лаборатории (Фаза 3)
 │   │   │   ├── knowledge_model.py   # KnowledgeModelService — байесовские оценки (Фаза 4)
 │   │   │   ├── progress.py          # ProgressService — уроки, лабы, Today (Фаза 4)
-│   │   │   └── cases/               # CaseRegistry + 2 кейса, CaseService (Фаза 4)
-│   │   │   # review.py — Фаза 5; rag.py — Фаза 6
+│   │   │   ├── cases/               # CaseRegistry + 2 кейса, CaseService (Фаза 4)
+│   │   │   └── reviews/             # ReviewTemplateRegistry, scheduler, queue, answer (Фаза 5)
+│   │   │   # rag.py — Фаза 6
 │   │   ├── db/
 │   │   │   ├── session.py     # engine + session management
 │   │   │   ├── base.py        # DeclarativeBase
@@ -445,6 +455,21 @@ ds-learning-rag/
 3. Atlas: состояния узлов агрегируются из assessments и lesson_progress.
 4. Studio: GET /api/cases → спецификация; POST submit → проверка по правилам,
    сохранение case_attempts и evidence по навыкам кейса.
+```
+
+### Повторение (Фаза 5 — реализовано)
+
+```text
+1. Завершение урока / успешной лаборатории / кейса активирует review items
+   (ленивый идемпотентный bootstrap при первом запросе queue или Today).
+2. GET /api/reviews/queue → очередь с приоритетом (overdue+needs_attention →
+   overdue → due today → confidence → due_at), лимит 1–30, без answer key.
+3. POST /api/reviews/{id}/submit → детерминированная проверка ответа,
+   effective rating, SM-2-like интервал, сохранение попытки (dedup_key),
+   learning event + обновление KnowledgeModelService.
+4. Today показывает карточку повторений; Focus — ссылку «Повторить тему»;
+   Atlas — индикатор просроченных повторений на уроках.
+Детали — docs/review-system.md.
 ```
 
 ### AI-наставник (RAG)

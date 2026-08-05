@@ -285,6 +285,27 @@ export function AtlasGraph({
                   stroke={status === 'needs_attention' ? '#ef4444' : selected ? '#ffffff' : color}
                   strokeWidth={status === 'needs_attention' ? 2.5 : selected ? 3 : 1.5}
                 />
+                {/* Индикатор просроченного повторения (Фаза 5, реальные данные) */}
+                {node.review_due && (
+                  <g>
+                    <title>{`${node.label} — ${node.review_due_count ?? 0} просроченных повторений`}</title>
+                    <circle
+                      cx={published ? 17 : 13}
+                      cy={published ? -17 : -13}
+                      r={5.5}
+                      fill="#f59e0b"
+                      stroke="#ffffff"
+                      strokeWidth={1.2}
+                    >
+                      <animate
+                        attributeName="opacity"
+                        values="0.5;1;0.5"
+                        dur="1.8s"
+                        repeatCount="indefinite"
+                      />
+                    </circle>
+                  </g>
+                )}
                 {labelsVisible && (
                   <text
                     y={published ? 34 : 30}

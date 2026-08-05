@@ -81,6 +81,14 @@ def update_skill(skill_id, axis, success: float):
 - Мини-кейс → weight = 1.5 (интегративный сигнал)
 - Итоговый кейс → weight = 2.0 (самый сильный сигнал)
 
+**Повторения (Фаза 5):** ответ на review создаёт событие `review_answer` и
+обновляет оси, заданные шаблоном (`docs/review-system.md`). Mapping по типу
+вопроса: single/multiple → theory, ordering/numeric/parameter_selection →
+apply, error_diagnosis → interpret, reveal_and_rate → theory со слабым весом.
+Правильный ответ после реального интервала — полный вес; немедленный повтор
+после ошибки — ×0.5; hints — ×0.4; Again умеренно снижает ось (одна ошибка
+не обнуляет навык); Easy не даёт мгновенный strong (байесовское обновление).
+
 ### Рубрики для диагностик (из Learning Catalog)
 
 В Learning Catalog каждый `skill.diagnostics[].rubric[]` содержит элементы с весом. При оценке AI-наставник или интерактивный компонент ставит баллы (0/0.5/1) по каждому элементу. Итоговый `success` = взвешенное среднее.

@@ -196,32 +196,40 @@ SQLite), REST API, базовый Atlas, роутинг, темы light/dark. З
 
 ---
 
-## Фаза 5: Повторение (~2–3 дня)
+## Фаза 5: Повторение (~2–3 дня) — ✅ выполнено
 
 **Цель:** очередь повторения и простой алгоритм.
 
 ### 5.1 Алгоритм
 
-- [ ] Простой SM-2-like алгоритм: interval, ease_factor, lapses
-- [ ] Приоритет: слабые темы + давность + блокирующие prerequisites
-- [ ] Обновление после каждого evidence
+- [x] Простой SM-2-like алгоритм: interval, ease_factor, lapses
+- [x] Приоритет: overdue + needs_attention → overdue → due today →
+      более низкая confidence → более ранний due_at
+- [x] Обновление после каждого evidence (review_answer → KnowledgeModelService)
 
 ### 5.2 Очередь
 
-- [ ] `GET /api/review/today` — карточки на сегодня (5/15/30 мин)
-- [ ] `POST /api/review/assess` — оценка после повторения (0/0.5/1)
-- [ ] Карточки разных форматов: free-recall, find-error, multiple-choice
+- [x] `GET /api/reviews/summary` — сводка (due/overdue/completed_today/next_due)
+- [x] `GET /api/reviews/queue` — очередь с приоритетом и дневным лимитом 1–30
+- [x] `POST /api/reviews/{id}/submit` — проверка ответа + оценка
+      (Again/Hard/Good/Easy) + интервал
+- [x] Карточки разных форматов: single_choice, multiple_choice, ordering,
+      numeric, parameter_selection, error_diagnosis, reveal_and_rate
 
 ### 5.3 Интеграция с Today
 
-- [ ] Карточка «Повторение сегодня» с реальной очередью
-- [ ] Выбор длительности сессии
-- [ ] Сессия повторения (Focus-режим)
+- [x] Карточка «Повторение сегодня» с реальной очередью
+- [x] Сессия повторения (экран `/review`) с фиксированным числом элементов
+      (дневной лимит) вместо таймера 5/15/30 минут
+- [x] Ссылка «Повторить тему» в Focus, due-индикатор в Atlas
 
 **Результат фазы 5:**
 - Today показывает реальную очередь повторения
-- Можно пройти сессию на 5/15/30 минут
-- Алгоритм адаптирует интервалы
+- Можно пройти review-сессию и получить разбор с новым интервалом
+- Алгоритм адаптирует интервалы (SM-2-like, ease 1.3–2.8, cap 365 дней)
+- Реализация отличается от исходного плана: сессии по числу элементов
+  (а не по времени), API — `/api/reviews/*` (а не `/api/review/*`);
+  детали — `docs/review-system.md`
 
 ---
 

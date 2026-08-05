@@ -51,6 +51,8 @@ export interface AtlasNode {
   area: string | null
   publish: boolean
   status: string
+  review_due?: boolean
+  review_due_count?: number
   course_id: string | null
   module_id: string | null
   x: number
@@ -403,6 +405,12 @@ export interface TodayData {
   recent_activity: RecentEvent[]
   suggested_case: SuggestedCase | null
   progress_summary: ProgressSummary
+  // Фаза 5: повторения.
+  review_summary: ReviewSummary
+  due_reviews: number
+  overdue_reviews: number
+  next_review_at: string | null
+  review_action: 'review_session' | null
 }
 
 export interface CaseQuestion {
@@ -567,4 +575,175 @@ export async function fetchCaseAttempts(
     signal,
   )
   return data.attempts
+}
+
+// --- Фаза 5: интервальное повторение ---
+
+export type ReviewRating = 'Again' | 'Hard' | 'Good' | 'Easy'
+export type ReviewQuestionType =
+  | 'single_choice'
+  | 'multiple_choice'
+  | 'ordering'
+  | 'numeric'
+  | 'parameter_selection'
+  | 'error_diagnosis'
+  | 'reveal_and_rate'
+
+export interface ReviewStageDistribution {
+  learning?: number
+  review?: number
+  relearning?: number
+}
+
+export interface ReviewSummary {
+  due_count: number
+  overdue_count: number
+  completed_today: number
+  next_due_at: string | null
+  active_items: number
+  stages: ReviewStageDistribution
+  recommendation: string
+}
+
+export interface ReviewQueueItem {
+  id: number
+  template_id: string
+  title: string
+  prompt: string
+  question_type: ReviewQuestionType
+  options: string[]
+  source_content_id: string
+  source_lesson_id: string
+  source_type: string
+  source_id: string
+  primary_skill_id: string
+  difficulty: string
+  objective: boolean
+  stage: string
+  status: string
+  due_at: string
+  interval_days: number
+  ease_factor: number
+  repetitions: number
+  lapses: number
+  skill_state: string | null
+  skill_confidence: number | null
+  skill_evidence_count: number | null
+}
+
+export interface ReviewQueueData {
+  items: ReviewQueueItem[]
+  returned: number
+  due_count: number
+  overdue_count: number
+  next_due_at: string | null
+  limit: number
+}
+
+export interface ReviewItemDetail extends ReviewQueueItem {
+  numeric_tolerance?: number
+}
+
+export interface KnowledgeImpactRow {
+  skill_id: string
+  axis: string
+  score_before: number | null
+  score_after: number
+  weight: number
+  event_id: number
+}
+
+export interface ReviewSubmitResult {
+  review_item_id: number
+  template_id: string
+  title: string
+  objective_score: number | null
+  is_correct: boolean | null
+  user_rating: ReviewRating | null
+  effective_rating: ReviewRating
+  explanation: string
+  correct_answer: string | null
+  interval_days: number
+  ease_factor: number
+  stage: string
+  next_due_at: string
+  repetitions: number
+  lapses: number
+  knowledge_impact: KnowledgeImpactRow[]
+  skill_state: string | null
+  skill_axes: Record<string, SkillAxisState>
+  attempt_id: number
+  deduplicated: boolean
+}
+
+export interface ReviewHistoryRow {
+  id: number
+  review_item_id: number
+  template_id: string | null
+  title: string | null
+  objective_score: number | null
+  is_correct: boolean | null
+  user_rating: ReviewRating | null
+  effective_rating: ReviewRating
+  hints_used: number
+  deduplicated: boolean
+  created_at: string
+}
+
+export interface ReviewHistoryData {
+  attempts: ReviewHistoryRow[]
+  count: number
+}
+
+export async function fetchReviewSummary(
+  lessonId?: string,
+  signal?: AbortSignal,
+): Promise<ReviewSummary> {
+  const query = lessonId ? `?lesson_id=${encodeURIComponent(lessonId)}` : ''
+  return request<ReviewSummary>(`/api/reviews/summary${query}`, signal)
+}
+
+export async function fetchReviewQueue(
+  params: { limit?: number; skill_id?: string; lesson_id?: string } = {},
+  signal?: AbortSignal,
+): Promise<ReviewQueueData> {
+  const search = new URLSearchParams()
+  if (params.limit != null) search.set('limit', String(params.limit))
+  if (params.skill_id) search.set('skill_id', params.skill_id)
+  if (params.lesson_id) search.set('lesson_id', params.lesson_id)
+  const qs = search.toString()
+  return request<ReviewQueueData>(`/api/reviews/queue${qs ? `?${qs}` : ''}`, signal)
+}
+
+export async function fetchReviewItem(
+  reviewItemId: number,
+  signal?: AbortSignal,
+): Promise<ReviewItemDetail> {
+  return request<ReviewItemDetail>(`/api/reviews/${reviewItemId}`, signal)
+}
+
+export async function submitReview(
+  reviewItemId: number,
+  body: {
+    answer: unknown
+    user_rating: ReviewRating
+    hints_used?: number
+    response_time_ms?: number
+    dedup_key?: string
+  },
+): Promise<ReviewSubmitResult> {
+  return postJson<ReviewSubmitResult>(`/api/reviews/${reviewItemId}/submit`, body)
+}
+
+export async function skipReview(
+  reviewItemId: number,
+): Promise<{ skipped: boolean; due_at: string }> {
+  return postJson(`/api/reviews/${reviewItemId}/skip`, {})
+}
+
+export async function fetchReviewHistory(
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<ReviewHistoryData> {
+  return request<ReviewHistoryData>(`/api/reviews/history?limit=${limit}`, signal)
 }

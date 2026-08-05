@@ -3,7 +3,7 @@
 Локальная платформа для структурированного изучения Data Science: интерактивные
 уроки, атлас знаний, интервальное повторение и AI-наставник на базе RAG.
 
-**Статус: Фаза 4 — модель знаний, прогресс пользователя, Today и кейсы.**
+**Статус: Фаза 5 — интервальное повторение, Review и расписание.**
 
 > Решения по архитектуре и стеку зафиксированы в [`docs/decisions.md`](docs/decisions.md)
 > и [`docs/architecture.md`](docs/architecture.md). Правила работы агента — в [`.hermes.md`](.hermes.md).
@@ -113,11 +113,17 @@ PYTHONPATH= uv run python -m app.cli.content status    # состояние ка
 | `POST /api/progress/lessons/{lesson_id}/scenes/{scene_id}/complete` | Сохранение прохождения сцены и позиции (Фаза 4) |
 | `POST /api/progress/lessons/{lesson_id}/complete` | Завершение урока, слабое evidence по теории (Фаза 4) |
 | `POST /api/progress/labs/{lab_id}/record` | Идемпотентное сохранение результата лаборатории + evidence (Фаза 4) |
-| `GET /api/today` | Экран Today: продолжить урок, следующий урок, слабые темы, активность, рекомендуемый кейс (Фаза 4) |
+| `GET /api/today` | Экран Today: повторения, продолжить урок, следующий урок, слабые темы, активность, рекомендуемый кейс (Фаза 4–5) |
 | `GET /api/cases` | Список кейсов (Фаза 4) |
 | `GET /api/cases/{case_id}` | Спецификация кейса по режиму (guided/standard/interview) (Фаза 4) |
 | `POST /api/cases/{case_id}/submit` | Проверка ответов, результат с разбором, evidence (Фаза 4) |
 | `GET /api/cases/{case_id}/attempts` | История попыток кейса (Фаза 4) |
+| `GET /api/reviews/summary` | Сводка повторений: due/overdue/completed_today/next_due (Фаза 5) |
+| `GET /api/reviews/queue` | Очередь повторений с приоритетом, без answer key (Фаза 5) |
+| `GET /api/reviews/{id}` | Элемент повторения: вопрос, варианты, source metadata (Фаза 5) |
+| `POST /api/reviews/{id}/submit` | Проверка ответа, интервал, evidence; повторная отправка дедуплицируется (Фаза 5) |
+| `POST /api/reviews/{id}/skip` | Пропуск без отрицательного evidence (Фаза 5) |
+| `GET /api/reviews/history` | История попыток повторений (Фаза 5) |
 
 Ответы не содержат абсолютных путей файловой системы. Полный Markdown-текст
 через Atlas endpoint не отдаётся.
@@ -149,7 +155,27 @@ PYTHONPATH= uv run python -m app.cli.content status    # состояние ка
   режимы Guided/Standard/Interview, детерминированная оценка и разбор.
   Детали — [`docs/case-system.md`](docs/case-system.md).
 - **Atlas**: состояния узлов вычисляются backend из skill assessments и прогресса
-  уроков; визуальные состояния и режим «Слабые темы».
+  уроков; визуальные состояния и режим «Слабые темы»; индикатор просроченных
+  повторений на узлах уроков (Фаза 5).
+
+## Повторение (Фаза 5)
+
+- **Очередь**: интервальное повторение (SM-2-like). После завершения урока,
+  успешной лаборатории (score ≥ 0.6) и кейса создаются review items
+  (ленивый идемпотентный bootstrap — существующий прогресс Фазы 4 не теряется).
+- **Review**: экран `/review` с сессией: структурированные вопросы
+  (single/multiple/ordering/numeric/parameter_selection/error_diagnosis/
+  reveal_and_rate), проверка без LLM, объяснение, оценки Again/Hard/Good/Easy.
+- **Расписание**: Again → ~10 минут (relearning), Hard → 1 день, Good → 3 дня,
+  Easy → 7 дней; ease factor 1.3–2.8, верхний предел интервала 365 дней.
+- **Правила**: неправильный ответ → effective Again; частичный → не выше Hard;
+  повторная отправка не создаёт дубликата (dedup_key); skip не вредит расписанию.
+- **Knowledge Model**: ответ создаёт learning event (`review_answer`) и обновляет
+  7 осей через существующий KnowledgeModelService (вторая модель mastery не создаётся).
+- **Today/Focus/Atlas**: Today показывает карточку повторений и приоритет review-сессии;
+  Focus — ссылка «Повторить тему (N)»; Atlas — amber-индикатор на уроках
+  с просроченными повторениями.
+- Детали — [`docs/review-system.md`](docs/review-system.md).
 
 ## Локальный запуск
 
@@ -184,7 +210,7 @@ npm run dev
 
 Откройте <http://localhost:5173>. Vite проксирует `/api/*` в backend
 (`http://localhost:8000`), поэтому frontend ходит только по относительным путям.
-Маршруты: `/today`, `/atlas`, `/focus`, `/studio`, `/system`; `/` ведёт на `/today`.
+Маршруты: `/today`, `/atlas`, `/focus`, `/review`, `/studio`, `/system`; `/` ведёт на `/today`.
 
 ### 3. Makefile
 
@@ -232,7 +258,7 @@ Compose запускает **только** backend и frontend. Ollama, ChromaD
 cd backend
 uv run ruff format .          # форматирование
 uv run ruff check .           # линт (Ruff)
-uv run pytest                 # тесты (126 шт.)
+uv run pytest                 # тесты (162 шт.)
 ```
 
 ### Frontend
@@ -242,7 +268,7 @@ cd frontend
 npm run lint                  # ESLint
 npx tsc -b                    # TypeScript check
 npm run format:check          # Prettier check
-npm run test                  # Vitest (53 шт.)
+npm run test                  # Vitest (74 шт.)
 npm run build                 # production build (tsc -b && vite build)
 ```
 
@@ -258,13 +284,12 @@ npm run build                 # production build (tsc -b && vite build)
 (курс + 5 модулей + 13 уроков + 7 кейсов). Atlas содержит 100 узлов,
 296 связей и 8 областей знаний.
 
-## Текущие ограничения (Фаза 4)
+## Текущие ограничения (Фаза 5)
 
 - **RAG не реализован**: нет embeddings, ChromaDB, Ollama, чанкинга, retrieval.
-- **Интервальное повторение не реализовано**: нет review_queue и алгоритма
-  SM-2 — Фаза 5.
-- **AI-оценка свободного текста не реализована**: кейсы используют только
-  структурированные правила; сцены retrieval/application/interview/reflection —
+- **AI-оценка свободного текста не реализована**: кейсы и повторения используют
+  только структурированные правила (reveal_and_rate — слабая самооценка без
+  объективной проверки); сцены retrieval/application/interview/reflection —
   Фаза 6.
 - **Один локальный пользователь**: без авторизации и облачной синхронизации.
 - **Prerequisites** в vault не заданы полем frontmatter (VAULT_SPEC):

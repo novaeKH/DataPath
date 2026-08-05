@@ -14,8 +14,14 @@ from app.api.cases import get_case_service
 from app.api.content import get_catalog_service, get_lesson_service
 from app.api.labs import get_lab_registry
 from app.api.progress import get_progress_service
+from app.api.reviews import get_review_answer_service, get_review_queue_service
 from app.api.system import get_system_service
-from app.api.today import get_progress_service as get_today_progress_service
+from app.api.today import (
+    get_progress_service as get_today_progress_service,
+)
+from app.api.today import (
+    get_review_queue_service as get_today_review_queue_service,
+)
 from app.core.config import Settings
 from app.db.base import Base
 from app.main import create_app
@@ -29,6 +35,9 @@ from app.services.labs.registry import LabRegistry
 from app.services.labs.tree_overfitting import TreeOverfittingLab
 from app.services.lesson_content import LessonContentService
 from app.services.progress import ProgressService
+from app.services.reviews.answer import ReviewAnswerService
+from app.services.reviews.queue import ReviewQueueService
+from app.services.reviews.templates import get_default_registry as get_default_review_registry
 from app.services.system import SystemStatusService
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -148,6 +157,21 @@ def make_client(
         )
         app.dependency_overrides[get_case_service] = lambda: CaseService(
             settings=settings, session_factory=db_session_factory, registry=DEFAULT_CASE_REGISTRY
+        )
+        app.dependency_overrides[get_review_queue_service] = lambda: ReviewQueueService(
+            settings=settings,
+            session_factory=db_session_factory,
+            registry=get_default_review_registry(),
+        )
+        app.dependency_overrides[get_review_answer_service] = lambda: ReviewAnswerService(
+            settings=settings,
+            session_factory=db_session_factory,
+            registry=get_default_review_registry(),
+        )
+        app.dependency_overrides[get_today_review_queue_service] = lambda: ReviewQueueService(
+            settings=settings,
+            session_factory=db_session_factory,
+            registry=get_default_review_registry(),
         )
         return TestClient(app)
 

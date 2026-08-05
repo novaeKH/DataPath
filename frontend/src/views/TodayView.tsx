@@ -121,6 +121,9 @@ export function TodayView() {
 
         <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_320px]">
           <div className="flex flex-col gap-5">
+            {/* Повторение (Фаза 5) */}
+            <ReviewCard data={data} />
+
             {/* Главная карточка действия */}
             <MainAction data={data} />
 
@@ -233,6 +236,64 @@ export function TodayView() {
       </motion.div>
     </div>
   )
+}
+
+function ReviewCard({ data }: { data: TodayData }) {
+  const summary = data.review_summary
+  if (data.review_action === 'review_session') {
+    return (
+      <section className="rounded-xl border border-emerald-300/70 bg-gradient-to-br from-emerald-50 to-cyan-50 p-5 dark:border-emerald-800/60 dark:from-emerald-950/30 dark:to-cyan-950/20">
+        <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+          Повторение
+        </div>
+        <h2 className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">
+          {summary.due_count} повторений на сегодня
+        </h2>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+          {summary.overdue_count > 0
+            ? `${summary.overdue_count} просрочено · короткая сессия вернёт материал.`
+            : 'Короткая сессия закрепит материал в памяти.'}
+        </p>
+        <Link
+          to="/review"
+          className="mt-4 inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
+        >
+          Начать повторение →
+        </Link>
+      </section>
+    )
+  }
+  if (summary.active_items > 0) {
+    return (
+      <section className="rounded-xl border border-slate-200 bg-white/70 p-5 dark:border-slate-800 dark:bg-slate-900/50">
+        <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+          Повторение
+        </div>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+          На сегодня всё
+          {summary.next_due_at ? ` · следующее — ${formatShortDate(summary.next_due_at)}` : ''}.
+        </p>
+        <Link
+          to="/review"
+          className="mt-3 inline-block rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          К повторениям
+        </Link>
+      </section>
+    )
+  }
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white/70 p-5 dark:border-slate-800 dark:bg-slate-900/50">
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Повторение</div>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        Пройдите урок — материал появится в расписании повторений.
+      </p>
+    </section>
+  )
+}
+
+function formatShortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
 }
 
 function MainAction({ data }: { data: TodayData }) {

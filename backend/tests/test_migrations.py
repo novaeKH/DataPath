@@ -31,6 +31,8 @@ def test_alembic_upgrade_creates_progress_tables(tmp_path) -> None:
         "lesson_progress",
         "lab_attempts",
         "case_attempts",
+        "review_items",
+        "review_attempts",
         "content_items",
         "content_links",
         "content_issues",
@@ -86,6 +88,43 @@ def test_alembic_upgrade_creates_progress_tables(tmp_path) -> None:
 
     case_columns = {col["name"] for col in inspector.get_columns("case_attempts")}
     assert {"id", "case_id", "mode", "answers", "result", "completed_at"} <= case_columns
+
+    review_item_columns = {col["name"] for col in inspector.get_columns("review_items")}
+    assert {
+        "id",
+        "template_id",
+        "primary_skill_id",
+        "source_type",
+        "source_id",
+        "stage",
+        "status",
+        "due_at",
+        "interval_days",
+        "ease_factor",
+        "repetitions",
+        "lapses",
+        "last_reviewed_at",
+        "created_at",
+        "updated_at",
+    } <= review_item_columns
+    # template_id уникален — защита от дублирующих активных элементов.
+    unique_constraints = inspector.get_unique_constraints("review_items")
+    assert any("template_id" in uc["column_names"] for uc in unique_constraints)
+
+    attempt_columns = {col["name"] for col in inspector.get_columns("review_attempts")}
+    assert {
+        "id",
+        "review_item_id",
+        "answer",
+        "objective_score",
+        "is_correct",
+        "user_rating",
+        "effective_rating",
+        "hints_used",
+        "response_time_ms",
+        "dedup_key",
+        "created_at",
+    } <= attempt_columns
     engine.dispose()
 
 
@@ -103,6 +142,8 @@ def test_alembic_downgrade_drops_progress_tables(tmp_path) -> None:
     assert "lesson_progress" not in tables
     assert "lab_attempts" not in tables
     assert "case_attempts" not in tables
+    assert "review_items" not in tables
+    assert "review_attempts" not in tables
     # Контентные таблицы остаются.
     assert "content_items" in tables
     engine.dispose()

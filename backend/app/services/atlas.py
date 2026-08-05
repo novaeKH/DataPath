@@ -107,7 +107,13 @@ def aggregate_node_state(
 class AtlasBuilder:
     """Собирает payload Atlas из каталога."""
 
-    def build(self, db: Session) -> dict:
+    def build(self, db: Session, review_counts: dict[str, int] | None = None) -> dict:
+        """Собирает payload Atlas из каталога.
+
+        review_counts: lesson_id → число просроченных повторений (Фаза 5).
+        Для уроков с просроченными reviews узлы получают review_due=True —
+        frontend показывает небольшой индикатор (реальные данные, без фикций).
+        """
         items = {item.id: item for item in db.scalars(select(ContentItem)).all()}
         links = db.scalars(select(ContentLink)).all()
         assessments = {a.skill_id: a for a in db.scalars(select(SkillAssessment)).all()}
@@ -167,6 +173,7 @@ class AtlasBuilder:
         # Навыки, связанные с каждым узлом (для состояния).
         node_skills = self._node_skills(items, links, in_scope)
 
+        review_counts = review_counts or {}
         return {
             "nodes": [
                 {
@@ -180,6 +187,10 @@ class AtlasBuilder:
                         node_skills.get(node.id, []),
                         assessments,
                         lesson_progress,
+                    ),
+                    "review_due": node.type == "lesson" and review_counts.get(node.id, 0) > 0,
+                    "review_due_count": (
+                        review_counts.get(node.id, 0) if node.type == "lesson" else 0
                     ),
                     "course_id": node.course_id,
                     "module_id": node.module_id,

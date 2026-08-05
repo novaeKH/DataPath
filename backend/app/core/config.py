@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # Origins для CORS (локальный Vite dev server и Docker frontend).
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
+    # IANA timezone для границ «сегодня» в интервальном повторении (Фаза 5).
+    # Алгоритм не зависит от timezone контейнера: только эта настройка.
+    timezone: str = "Europe/Moscow"
+
     @property
     def resolved_project_root(self) -> Path:
         root = self.project_root

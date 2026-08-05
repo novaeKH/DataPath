@@ -16,8 +16,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.api.reviews import get_review_queue_service as reviews_get_review_queue_service
 from app.services.content_catalog import ContentCatalogService
 from app.services.lesson_content import LessonContentService
+from app.services.reviews.queue import ReviewQueueService
 
 router = APIRouter(prefix="/content", tags=["content"])
 
@@ -102,6 +104,8 @@ class AtlasNode(BaseModel):
     area: str | None = None
     publish: bool
     status: str = "not_started"
+    review_due: bool = False
+    review_due_count: int = 0
     course_id: str | None = None
     module_id: str | None = None
     x: float
@@ -141,6 +145,8 @@ def get_lesson_service() -> LessonContentService:
 
 CatalogDep = Annotated[ContentCatalogService, Depends(get_catalog_service)]
 LessonDep = Annotated[LessonContentService, Depends(get_lesson_service)]
+get_review_queue_service = reviews_get_review_queue_service
+ReviewQueueDep = Annotated[ReviewQueueService, Depends(get_review_queue_service)]
 
 
 @router.get("/status", response_model=ContentStatusResponse)
@@ -276,8 +282,8 @@ def content_lesson_detail(lesson_id: str, service: LessonDep) -> LessonDetailRes
 
 
 @router.get("/atlas", response_model=AtlasResponse)
-def content_atlas(service: CatalogDep) -> AtlasResponse:
-    return AtlasResponse(**service.atlas())
+def content_atlas(service: CatalogDep, reviews: ReviewQueueDep) -> AtlasResponse:
+    return AtlasResponse(**service.atlas(review_counts=reviews.overdue_counts_by_lesson()))
 
 
 # GET /api/atlas — отдельный путь без префикса /content (см. задание Фазы 2).
@@ -285,5 +291,5 @@ atlas_router = APIRouter(tags=["atlas"])
 
 
 @atlas_router.get("/atlas", response_model=AtlasResponse)
-def atlas(service: CatalogDep) -> AtlasResponse:
-    return AtlasResponse(**service.atlas())
+def atlas(service: CatalogDep, reviews: ReviewQueueDep) -> AtlasResponse:
+    return AtlasResponse(**service.atlas(review_counts=reviews.overdue_counts_by_lesson()))

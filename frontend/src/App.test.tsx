@@ -77,6 +77,19 @@ const todayPayload = {
     cases_completed: 0,
     skill_distribution: {},
   },
+  review_summary: {
+    due_count: 0,
+    overdue_count: 0,
+    completed_today: 0,
+    next_due_at: null,
+    active_items: 0,
+    stages: {},
+    recommendation: 'Пройдите уроки — повторения появятся здесь.',
+  },
+  due_reviews: 0,
+  overdue_reviews: 0,
+  next_review_at: null,
+  review_action: null,
 }
 
 function mockFetch() {
@@ -90,6 +103,37 @@ function mockFetch() {
     }
     if (url.includes('/api/today')) {
       return Promise.resolve(new Response(JSON.stringify(todayPayload), { status: 200 }))
+    }
+    if (url.includes('/api/reviews/summary')) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            due_count: 0,
+            overdue_count: 0,
+            completed_today: 0,
+            next_due_at: null,
+            active_items: 0,
+            stages: {},
+            recommendation: 'Пройдите уроки — повторения появятся здесь.',
+          }),
+          { status: 200 },
+        ),
+      )
+    }
+    if (url.includes('/api/reviews/queue')) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            items: [],
+            returned: 0,
+            due_count: 0,
+            overdue_count: 0,
+            next_due_at: null,
+            limit: 10,
+          }),
+          { status: 200 },
+        ),
+      )
     }
     if (url.includes('/api/cases')) {
       return Promise.resolve(new Response(JSON.stringify({ cases: [] }), { status: 200 }))
@@ -141,6 +185,11 @@ describe('App routing', () => {
   it('renders Focus at /focus', async () => {
     renderAt('/focus')
     expect(await screen.findByRole('heading', { name: /Классический ML/ })).toBeInTheDocument()
+  })
+
+  it('renders Review at /review', async () => {
+    renderAt('/review')
+    expect(await screen.findByRole('heading', { name: /Повторение/ })).toBeInTheDocument()
   })
 
   it('renders Studio at /studio', async () => {
