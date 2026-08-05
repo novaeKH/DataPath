@@ -1,5 +1,30 @@
 # DataPath — дорожная карта MVP
 
+## Порядок выполнения (актуальный)
+
+### Completed
+- Phase 1 — project scaffold;
+- Phase 2 — content catalog and Atlas;
+- Phase 3 — interactive lessons and labs;
+- Phase 4 — Knowledge Model, progress and cases;
+- Phase 5 — spaced repetition;
+- Phase 6A — content parsing and quality foundation;
+- Phase 6A.1 — canonical MVP content integration.
+
+### Next execution step
+**Phase 7 — Non-AI MVP Completion and Visual Polish** (довести приложение до
+сильного самостоятельного продукта без AI-зависимости).
+
+### After Phase 7
+**Phase 6B — Local RAG and AI Mentor.** Сохраняет свой номер и смысл, хотя
+выполняется после Phase 7. Не требует полного финального курса; начинается с
+верифицированного MVP-корпуса и расширяется инкрементальным реиндексированием.
+
+### Then
+**Phase 8 — Python and Algorithms** (8A–8D), затем **Phase 9 — Curriculum
+Expansion** (9A–9F).
+
+---
 ## Фаза 0: Подготовка (текущая)
 
 **Цель:** спроектировать архитектуру, договориться о стеке и составе MVP.
@@ -233,81 +258,103 @@ SQLite), REST API, базовый Atlas, роутинг, темы light/dark. З
 
 ---
 
-## Фаза 6: AI-наставник и RAG (~4–5 дней)
+## Фаза 6B: Local RAG and AI Mentor (выполняется после Phase 7)
 
 **Предварительные фазы (выполнены):**
 - ✅ **Phase 6A:** стабилизация парсинга сцен, content quality audit, черновики контента
 - ✅ **Phase 6A.1 (2026-08-05):** исправлены 26 source_heading fallback-предупреждений (→0), интегрированы 7 content drafts, interview answers, concept-заметка Ensemble Comparison. MVP-контент готов к RAG-индексации.
 
+**Порядок:** Phase 6B намеренно выполняется **после Phase 7** и сохраняет свой
+номер и смысл. RAG начинается с верифицированного MVP-корпуса и расширяется
+инкрементальным реиндексированием; ждать полный финальный курс не требуется.
+
 **Цель:** работающий RAG-наставник с цитатами.
 
-### 6.1 RAG-индексация
+### 6B.1 RAG-индексация
 
-- [ ] Чанкинг по H2/H3
-- [ ] Embedding через Ollama (nomic-embed-text)
-- [ ] ChromaDB: коллекция knowledge (все concept + deep-dive)
-- [ ] Инкрементальное обновление (по хешу)
+- [ ] Индексировать только валидированный контент с `rag: include`
+- [ ] Старт с верифицированного MVP-корпуса
+- [ ] Семантический детерминированный чанкинг (H2/H3)
+- [ ] Стабильные chunk IDs
+- [ ] Инкрементальная индексация (по хешу), а не пересборка архитектуры
+- [ ] Локальные embeddings (Ollama, nomic-embed-text)
+- [ ] Локальное векторное хранилище (ChromaDB)
 - [ ] CLI: `make reindex`
 
-### 6.2 Retrieval
+### 6B.2 Retrieval
 
 - [ ] Semantic search (ChromaDB)
 - [ ] Lexical search (SQLite FTS5)
 - [ ] Hybrid fusion (RRF)
-- [ ] Фильтрация: max 2 чанка от файла, приоритет коллекций
+- [ ] Фильтрация по content, skill и lesson
+- [ ] Ограничение: max 2 чанка от файла, приоритет коллекций
 
-### 6.3 AI-наставник
+### 6B.3 AI-наставник
 
 - [ ] Контекстное окно: выделение текста → «Объяснить проще»
 - [ ] Чат: поле ввода → запрос RAG → генерация → стриминг
 - [ ] Режимы: explain, socratic, debug
-- [ ] Цитирование: `[N]` в ответе + кликабельные ссылки
-- [ ] Сохранение истории диалогов
+- [ ] Grounded answers с source citations (`[N]` + кликабельные ссылки)
+- [ ] История диалогов
+- [ ] Статус локальной модели и graceful degradation
+- [ ] Интеграция с Focus (контекст урока/кейса влияет на retrieval)
 
-### 6.4 Интеграция
-
-- [ ] Наставник доступен из урока (выделение текста)
-- [ ] Наставник доступен из Atlas (вопрос по теме)
-- [ ] Наставник доступен из Studio (помощь в кейсе)
-
-**Результат фазы 6:**
-- AI-наставник отвечает на вопросы, опираясь на vault
-- Ответы содержат цитаты
-- Стриминг работает
-- Контекст урока/кейса влияет на retrieval
+**Результат Phase 6B:**
+- AI-наставник отвечает на вопросы, опираясь на vault, с цитатами
+- Стриминг работает; контекст урока/кейса влияет на retrieval
+- При недоступной локальной модели приложение деградирует без отказа
 
 ---
 
-## Фаза 7: Полировка и документация (~2–3 дня)
+## Phase 7: Non-AI MVP Completion and Visual Polish (NEXT)
 
-### 7.1 UI/UX
+Довести приложение до сильного самостоятельного обучающего продукта **без
+зависимости от AI-агента**. AI остаётся enhancement, а не dependency.
 
-- [ ] Плавные переходы между экранами (Atlas → Focus → Studio)
-- [ ] Анимации состояний узлов (Framer Motion)
-- [ ] Оптимизация рендеринга Atlas
-- [ ] Индикаторы загрузки, пустые состояния, error states
-- [ ] Режим уменьшенной анимации (`prefers-reduced-motion`)
+### 7.1 Visual system и UI
 
-### 7.2 Тестирование
+- [ ] Унифицированная визуальная система
+- [ ] Типографика и композиция уроков
+- [ ] Onboarding
+- [ ] Onboarding / empty / loading / error states
+- [ ] Responsive layout
+- [ ] Light и dark темы
+- [ ] Accessibility
+- [ ] Keyboard behavior
+- [ ] Удаление мелких визуальных несоответствий
+- [ ] Исправление языковой метки `text` на plain-text code-блоках
 
-- [ ] Backend: pytest тесты content parser, progress, review, RAG
-- [ ] Frontend: Vitest тесты компонентов
-- [ ] Ручное тестирование полного цикла: урок → кейс → повторение → AI
+### 7.2 Экраны
 
-### 7.3 Документация
+- [ ] Today
+- [ ] Focus
+- [ ] Review
+- [ ] Studio
+- [ ] Atlas (включая улучшение раскладки Atlas)
+- [ ] Навигация
 
-- [ ] README.md с инструкцией по локальному запуску
-- [ ] Описание MVP-маршрута и компонентов
-- [ ] `.env.example`
+### 7.3 Frontend performance
 
-**Результат фазы 7:**
-- Приложение готово к демонстрации
-- Можно пройти полный цикл обучения по маршруту
-- Код покрыт тестами
+- [ ] Frontend performance
+- [ ] Route-level code splitting
+- [ ] Уменьшение bundle-size
+
+### 7.4 Завершение продукта
+
+- [ ] Финальный non-AI UX flow
+- [ ] Production build и Docker readiness
+
+**Phase 7 не реализует:** embeddings, vector databases, retrieval, LLM calls,
+AI mentor, RAG chat.
+
+**Результат Phase 7:**
+- Приложение — завершённый standalone продукт без AI-зависимости
+- Полный non-AI цикл обучения работает и выглядит целостно
+- Production build и Docker готовы
 
 ---
 
-## Фаза 8: Python-трек (подготовлен, реализация после принятия Фазы 6)
+## Phase 8: Python-трек (выполняется после Phase 6B; подготовлен)
 
 ### 8A — Python content audit and migration
 
@@ -359,19 +406,66 @@ SQLite), REST API, базовый Atlas, роутинг, темы light/dark. З
 
 ---
 
-## Общий timeline MVP
+## Phase 9: Curriculum Expansion (после Phase 8)
 
-| Фаза | Содержание | Дней |
+Финальный объём продукта — отдельные связанные обучающие треки:
+
+- полный Machine Learning;
+- полный Deep Learning;
+- NumPy;
+- pandas;
+- scikit-learn;
+- Python Core;
+- Big O;
+- algorithms;
+- позднее прикладные треки (NLP, recommender systems, LLMs, MLOps).
+
+Структура:
+
+- **9A** — complete Classic ML curriculum;
+- **9B** — NumPy;
+- **9C** — pandas;
+- **9D** — scikit-learn;
+- **9E** — Deep Learning;
+- **9F** — applied ML, NLP, recommender systems, LLM и MLOps tracks.
+
+Расширение контента (новые курсы/заметки) добавляется через инкрементальный
+реиндексинг RAG, а не пересборку RAG-архитектуры.
+
+---
+
+## Продуктовая стратегия
+
+1. DataPath должен хорошо работать без AI.
+2. AI — enhancement, а не dependency (для lessons, progress, review, labs,
+   cases, Today, Atlas).
+3. Не ждать полный финальный курс перед реализацией RAG.
+4. RAG начинается с верифицированного MVP-корпуса и расширяется инкрементальным
+   реиндексированием.
+5. Канонический источник контента — `content/vault`.
+6. Product/business логика — в Python backend.
+7. React/TypeScript — только UI, рендер, интеракции, визуализация, навигация,
+   API-коммуникация.
+8. Не дублировать learning/progress/recommendation/review/content логику в frontend.
+
+---
+
+## Общий timeline MVP (актуальный порядок)
+
+| Фаза | Содержание | Статус / порядок |
 |---|---|---|
 | 0 | Подготовка (документация) | ✓ сделано |
-| 1 | Инфраструктура и каркас | 3–5 |
-| 2 | Контент и навигация | 3–4 |
-| 3 | Интерактивные уроки | 4–5 |
-| 4 | Модель знаний и прогресс | 3–4 |
-| 5 | Повторение | 2–3 |
-| 6 | AI-наставник и RAG | 4–5 |
-| 7 | Полировка и документация | 2–3 |
-| **Итого** | | **21–29 дней** |
+| 1 | Инфраструктура и каркас | ✓ сделано |
+| 2 | Контент и навигация | ✓ сделано |
+| 3 | Интерактивные уроки | ✓ сделано |
+| 4 | Модель знаний и прогресс | ✓ сделано |
+| 5 | Повторение | ✓ сделано |
+| 6A | Парсинг сцен и аудит контента | ✓ сделано |
+| 6A.1 | Канонический MVP-контент | ✓ сделано |
+| 7 | Non-AI MVP Completion и Visual Polish | **следующий** |
+| 6B | Local RAG and AI Mentor | после Phase 7 |
+| 8 | Python-трек (8A–8D) | после Phase 6B |
+| 9 | Curriculum Expansion (9A–9F) | после Phase 8 |
 
 ## За пределами MVP (v1.1+)
 
