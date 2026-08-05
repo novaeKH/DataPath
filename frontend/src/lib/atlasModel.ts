@@ -8,7 +8,7 @@
 
 import type { AtlasData, AtlasNode } from './api'
 
-export type AtlasMode = 'route' | 'all'
+export type AtlasMode = 'route' | 'all' | 'weak'
 
 export interface ViewTransform {
   x: number
@@ -174,3 +174,30 @@ export function nodeScale(k: number): number {
 
 // Ниже этого масштаба подписи скрываются (режим «Весь атлас» в обзоре).
 export const LABEL_MIN_SCALE = 0.3
+
+/**
+ * Режим «Слабые темы»: узлы со статусом needs_attention + их соседи
+ * (1 hop), чтобы было видно контекст. Если слабых узлов нет — пустой
+ * список (фронтенд показывает честное сообщение).
+ */
+export function buildWeakView(data: AtlasData): AtlasData {
+  const weakIds = new Set(
+    data.nodes.filter((node) => node.status === 'needs_attention').map((node) => node.id),
+  )
+  if (weakIds.size === 0) {
+    return { ...data, nodes: [], edges: [], prerequisites: [] }
+  }
+  const inScope = new Set(weakIds)
+  for (const edge of [...data.edges, ...data.prerequisites]) {
+    if (weakIds.has(edge.source)) inScope.add(edge.target)
+    if (weakIds.has(edge.target)) inScope.add(edge.source)
+  }
+  return {
+    ...data,
+    nodes: data.nodes.filter((node) => inScope.has(node.id)),
+    edges: data.edges.filter((edge) => inScope.has(edge.source) && inScope.has(edge.target)),
+    prerequisites: data.prerequisites.filter(
+      (edge) => inScope.has(edge.source) && inScope.has(edge.target),
+    ),
+  }
+}

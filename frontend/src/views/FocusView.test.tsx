@@ -410,3 +410,112 @@ describe('FocusView: лаборатория', () => {
     expect(await screen.findByText(/HTTP 500/)).toBeInTheDocument()
   })
 })
+
+describe('FocusView: прогресс (Фаза 4)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function stubWithProgress(progress: { current_scene_id: string; completed_scenes: string[] }) {
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      if (url.includes('/api/content/courses/course.classic-ml')) {
+        return Promise.resolve(new Response(JSON.stringify(courseDetail), { status: 200 }))
+      }
+      if (url.includes('/api/content/lessons/')) {
+        return Promise.resolve(new Response(JSON.stringify(makeLesson()), { status: 200 }))
+      }
+      if (url.includes('/api/progress/lessons/') && method === 'GET') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              lesson_id: 'lesson.classic-ml.trees.tree',
+              current_scene_id: progress.current_scene_id,
+              completed_scenes: progress.completed_scenes,
+              started_at: '2026-08-05T10:00:00+00:00',
+              completed_at: null,
+              updated_at: '2026-08-05T10:00:00+00:00',
+            }),
+            { status: 200 },
+          ),
+        )
+      }
+      if (url.includes('/api/progress/lessons/') && method === 'POST') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              lesson_id: 'lesson.classic-ml.trees.tree',
+              scene_id: 'scene-03',
+              current_scene_id: 'scene-03',
+              completed_scenes: [...progress.completed_scenes, 'scene-03'],
+              started_at: '2026-08-05T10:00:00+00:00',
+              completed_at: null,
+              event_id: 42,
+            }),
+            { status: 200 },
+          ),
+        )
+      }
+      return Promise.resolve(new Response('{}', { status: 404 }))
+    }) as unknown as typeof fetch
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+
+  it('восстанавливает последнюю сцену из progress', async () => {
+    stubWithProgress({ current_scene_id: 'scene-03', completed_scenes: ['scene-01', 'scene-02'] })
+    renderFocus('/focus/lesson.classic-ml.trees.tree')
+    // scene-03 — code сцена: показывается после восстановления.
+    expect(await screen.findByText(/Сцена 3 из 5/)).toBeInTheDocument()
+    expect(screen.getByText('python')).toBeInTheDocument()
+  })
+
+  it('завершает сцену и обновляет индикатор прогресса', async () => {
+    const user = userEvent.setup()
+    stubWithProgress({ current_scene_id: 'scene-01', completed_scenes: [] })
+    renderFocus('/focus/lesson.classic-ml.trees.tree')
+    expect(await screen.findByText(/Сцена 1 из 5/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Далее/ }))
+    expect(await screen.findByText(/Сцена 2 из 5/)).toBeInTheDocument()
+    // Индикатор «сохранено» появляется после POST scene complete.
+    expect(await screen.findByText(/✓ сохранено/)).toBeInTheDocument()
+  })
+
+  it('завершает урок кнопкой «Завершить урок»', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      if (url.includes('/api/content/courses/course.classic-ml')) {
+        return Promise.resolve(new Response(JSON.stringify(courseDetail), { status: 200 }))
+      }
+      if (url.includes('/api/content/lessons/')) {
+        return Promise.resolve(new Response(JSON.stringify(makeLesson()), { status: 200 }))
+      }
+      if (url.includes('/api/progress/lessons/') && method === 'GET') {
+        return Promise.resolve(new Response('{}', { status: 404 }))
+      }
+      if (url.includes('/api/progress/lessons/lesson.classic-ml.trees.tree/complete')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              lesson_id: 'lesson.classic-ml.trees.tree',
+              completed_at: '2026-08-05T10:10:00+00:00',
+              skills: [{ skill_id: 'ml.tree_ensembles', state: 'exploring', evidence_count: 1 }],
+            }),
+            { status: 200 },
+          ),
+        )
+      }
+      return Promise.resolve(new Response('{}', { status: 404 }))
+    }) as unknown as typeof fetch
+    vi.stubGlobal('fetch', fetchMock)
+    renderFocus('/focus/lesson.classic-ml.trees.tree')
+    expect(await screen.findByText(/Сцена 1 из 5/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Завершить урок/ }))
+    expect(await screen.findByText(/✓ Урок отмечен завершённым/)).toBeInTheDocument()
+    // Кнопка переходит в состояние «завершён».
+    expect(screen.getByRole('button', { name: /✓ Урок завершён/ })).toBeInTheDocument()
+  })
+})

@@ -26,9 +26,15 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # URL из настроек приложения (поддерживает относительный sqlite-путь).
-settings = get_settings()
-resolved_url = settings.resolved_database_url
-config.set_main_option("sqlalchemy.url", resolved_url)
+# Если URL уже задан явно (например, тестами через set_main_option),
+# используем его; иначе берём из настроек приложения.
+configured_url = config.get_main_option("sqlalchemy.url")
+if configured_url:
+    resolved_url = configured_url
+else:
+    settings = get_settings()
+    resolved_url = settings.resolved_database_url
+    config.set_main_option("sqlalchemy.url", resolved_url)
 
 # Гарантируем существование директории для локальной SQLite-базы.
 if resolved_url.startswith("sqlite:///"):

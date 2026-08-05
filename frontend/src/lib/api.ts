@@ -283,3 +283,288 @@ export async function runLab(
 ): Promise<LabRunResult> {
   return postJson<LabRunResult>(`/api/labs/${encodeURIComponent(labId)}/run`, { parameters })
 }
+
+// --- Фаза 4: прогресс, Today, кейсы ---
+
+export interface SkillAxisState {
+  alpha: number
+  beta: number
+  evidence_count: number
+  score: number
+}
+
+export interface SkillOverview {
+  skill_id: string
+  state: SkillState
+  confidence: number
+  evidence_count: number
+  axes: Record<string, SkillAxisState>
+  weak: boolean
+  level?: string
+}
+
+export type SkillState = 'not_started' | 'exploring' | 'developing' | 'strong' | 'needs_attention'
+
+export interface SkillDetail extends SkillOverview {
+  state_reason: string
+  levels: Record<string, string>
+  typical_errors: {
+    error_code: string
+    axis: string | null
+    count: number
+    examples: string[]
+  }[]
+  recent_events: RecentEvent[]
+}
+
+export interface RecentEvent {
+  id: number
+  event_type: string
+  source_type: string
+  source_id: string
+  skill_id: string | null
+  outcome: string | null
+  score: number | null
+  hints_used: number
+  attempts: number
+  error_code: string | null
+  created_at: string
+}
+
+export interface LessonProgressDetail {
+  lesson_id: string
+  current_scene_id: string | null
+  completed_scenes: string[]
+  started_at: string
+  completed_at: string | null
+  updated_at: string
+}
+
+export interface SceneCompleteResult {
+  lesson_id: string
+  scene_id: string
+  current_scene_id: string | null
+  completed_scenes: string[]
+  started_at: string
+  completed_at: string | null
+  event_id: number
+}
+
+export interface LabRecordResult {
+  lab_id: string
+  lesson_id: string | null
+  score: number
+  created_at: string
+  deduplicated: boolean
+  evidence: { skill_id: string; state: string; evidence_count: number }[]
+}
+
+export interface RecommendedAction {
+  action: 'continue_lesson' | 'next_lesson' | 'weak_skill' | 'explore'
+  lesson_id?: string
+  current_scene_id?: string | null
+  title?: string
+  skill_id?: string
+  message?: string
+}
+
+export interface ProgressSummary {
+  lessons_started: number
+  lessons_completed: number
+  labs_completed: number
+  cases_completed: number
+  skill_distribution: Record<string, number>
+  recent_events: RecentEvent[]
+  recommended_action: RecommendedAction
+}
+
+export interface WeakSkill {
+  skill_id: string
+  state: SkillState
+  evidence_count: number
+  axes: Record<string, SkillAxisState>
+}
+
+export interface SuggestedCase {
+  case_id: string
+  title: string
+}
+
+export interface TodayData {
+  continue_lesson: {
+    lesson_id: string
+    title: string
+    current_scene_id: string | null
+    completed_scenes: string[]
+    started_at: string
+  } | null
+  next_lesson: { id: string; title: string; skills: string[] } | null
+  weak_skills: WeakSkill[]
+  recent_activity: RecentEvent[]
+  suggested_case: SuggestedCase | null
+  progress_summary: ProgressSummary
+}
+
+export interface CaseQuestion {
+  id: string
+  type: 'single' | 'multiple' | 'numeric' | 'select' | 'order'
+  prompt: string
+  options: string[]
+  weight: number
+  topic: string | null
+  hint?: string
+  interview_prompt?: string
+}
+
+export interface CaseSpec {
+  id: string
+  title: string
+  content_id: string
+  description: string
+  practice_kind: string
+  lesson_ids: string[]
+  skill_ids: string[]
+  estimated_minutes: number | null
+  difficulty: string | null
+  intro: string
+  conclusion: string
+  mode: string
+  questions: CaseQuestion[]
+}
+
+export interface CaseQuestionResult {
+  question_id: string
+  topic: string | null
+  type: string
+  score: number
+  correct: boolean
+  explanation: string
+  your_answer: unknown
+}
+
+export interface CaseSubmitResult {
+  case_id: string
+  mode: string
+  total_score: number
+  passed: boolean
+  question_results: CaseQuestionResult[]
+  error_codes: string[]
+  summary: string
+  conclusion: string
+  attempt_id: number
+  evidence: {
+    skill_id: string
+    state: string
+    state_reason: string
+    evidence_count: number
+    deduplicated: boolean
+  }[]
+}
+
+export interface CaseAttemptRow {
+  id: number
+  case_id: string
+  mode: string
+  answers: Record<string, unknown>
+  result: CaseSubmitResult
+  completed_at: string
+}
+
+export async function fetchProgressSummary(signal?: AbortSignal): Promise<ProgressSummary> {
+  return request<ProgressSummary>('/api/progress/summary', signal)
+}
+
+export async function fetchSkills(signal?: AbortSignal): Promise<SkillOverview[]> {
+  const data = await request<{ skills: SkillOverview[] }>('/api/progress/skills', signal)
+  return data.skills
+}
+
+export async function fetchSkill(skillId: string, signal?: AbortSignal): Promise<SkillDetail> {
+  return request<SkillDetail>(`/api/progress/skills/${encodeURIComponent(skillId)}`, signal)
+}
+
+export async function fetchLessonProgress(
+  lessonId: string,
+  signal?: AbortSignal,
+): Promise<LessonProgressDetail | null> {
+  try {
+    return await request<LessonProgressDetail>(
+      `/api/progress/lessons/${encodeURIComponent(lessonId)}`,
+      signal,
+    )
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('404')) return null
+    throw err
+  }
+}
+
+export async function completeScene(
+  lessonId: string,
+  sceneId: string,
+  body: { skill_id?: string; scene_type?: string; outcome?: string } = {},
+): Promise<SceneCompleteResult> {
+  return postJson<SceneCompleteResult>(
+    `/api/progress/lessons/${encodeURIComponent(lessonId)}/scenes/${encodeURIComponent(sceneId)}/complete`,
+    body,
+  )
+}
+
+export async function completeLesson(
+  lessonId: string,
+): Promise<{ lesson_id: string; completed_at: string; skills: unknown[] }> {
+  return postJson(`/api/progress/lessons/${encodeURIComponent(lessonId)}/complete`, {})
+}
+
+export async function recordLab(
+  labId: string,
+  body: {
+    lesson_id?: string
+    parameters: Record<string, unknown>
+    result_summary?: Record<string, unknown>
+    score?: number
+  },
+): Promise<LabRecordResult> {
+  return postJson<LabRecordResult>(`/api/progress/labs/${encodeURIComponent(labId)}/record`, body)
+}
+
+export async function fetchToday(signal?: AbortSignal): Promise<TodayData> {
+  return request<TodayData>('/api/today', signal)
+}
+
+export async function fetchCases(mode = 'standard', signal?: AbortSignal): Promise<CaseSpec[]> {
+  const data = await request<{ cases: CaseSpec[] }>(`/api/cases?mode=${mode}`, signal)
+  return data.cases
+}
+
+export async function fetchCase(
+  caseId: string,
+  mode = 'standard',
+  signal?: AbortSignal,
+): Promise<CaseSpec> {
+  return request<CaseSpec>(
+    `/api/cases/${encodeURIComponent(caseId)}?mode=${encodeURIComponent(mode)}`,
+    signal,
+  )
+}
+
+export async function submitCase(
+  caseId: string,
+  mode: string,
+  answers: Record<string, unknown>,
+): Promise<CaseSubmitResult> {
+  return postJson<CaseSubmitResult>(`/api/cases/${encodeURIComponent(caseId)}/submit`, {
+    mode,
+    answers,
+  })
+}
+
+export async function fetchCaseAttempts(
+  caseId: string,
+  signal?: AbortSignal,
+): Promise<CaseAttemptRow[]> {
+  const data = await request<{ case_id: string; attempts: CaseAttemptRow[] }>(
+    `/api/cases/${encodeURIComponent(caseId)}/attempts`,
+    signal,
+  )
+  return data.attempts
+}

@@ -23,6 +23,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
+from sqlalchemy.ext.mutable import MutableDict, MutableList
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -162,3 +163,111 @@ class SyncRun(Base):
     removed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     errors: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     warnings: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+# --- Фаза 4: модель знаний и прогресс пользователя (один локальный пользователь) ---
+
+
+class LearningEvent(Base):
+    """Неизменяемый журнал фактов обучения (append-only).
+
+    Каждое событие — одно измерение: сцена, лаборатория, кейс, завершение урока.
+    `dedup_key` защищает от повторного начисления одинакового evidence
+    (уникален для конкретного источника и результата).
+    """
+
+    __tablename__ = "learning_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_type: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    # event_type: scene_complete | lesson_complete | lab_recorded | case_submitted | checkpoint
+    source_type: Mapped[str] = mapped_column(
+        String, nullable=False, index=True
+    )  # lesson | lab | case
+    source_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    skill_id: Mapped[str | None] = mapped_column(String, index=True)
+    knowledge_axis: Mapped[str | None] = mapped_column(String)
+    outcome: Mapped[str | None] = mapped_column(String)
+    # outcome: completed | correct | incorrect | partial | started
+    score: Mapped[float | None] = mapped_column(Float)
+    confidence: Mapped[float | None] = mapped_column(Float)
+    hints_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    error_code: Mapped[str | None] = mapped_column(String)
+    meta: Mapped[dict | None] = mapped_column("metadata", MutableDict.as_mutable(JSON))
+    dedup_key: Mapped[str | None] = mapped_column(String, unique=True)
+    created_at: Mapped[str] = mapped_column(String, nullable=False, index=True)
+
+    __table_args__ = (
+        Index("ix_learning_events_source", "source_type", "source_id"),
+        Index("ix_learning_events_skill_axis", "skill_id", "knowledge_axis"),
+    )
+
+
+class SkillAssessment(Base):
+    """Текущее агрегированное состояние навыка (одна строка на skill_id).
+
+    Оси из docs/knowledge-model.md хранятся в JSON:
+    {"theory": {"alpha": .., "beta": .., "evidence_count": N, "score": ..}, ...}
+
+    score = alpha / (alpha + beta) — консервативная байесовская оценка.
+    Состояние: not_started | exploring | developing | strong | needs_attention.
+    """
+
+    __tablename__ = "skill_assessments"
+
+    skill_id: Mapped[str] = mapped_column(String, primary_key=True)
+    axes: Mapped[dict] = mapped_column(MutableDict.as_mutable(JSON), nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    evidence_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    state: Mapped[str] = mapped_column(String, nullable=False, default="not_started")
+    last_activity_at: Mapped[str | None] = mapped_column(String)
+    updated_at: Mapped[str] = mapped_column(String, nullable=False)
+
+
+class LessonProgress(Base):
+    """Прогресс по уроку: текущая сцена и завершённые сцены."""
+
+    __tablename__ = "lesson_progress"
+
+    lesson_id: Mapped[str] = mapped_column(String, primary_key=True)
+    current_scene_id: Mapped[str | None] = mapped_column(String)
+    completed_scenes: Mapped[list] = mapped_column(
+        MutableList.as_mutable(JSON), nullable=False, default=list
+    )
+    started_at: Mapped[str] = mapped_column(String, nullable=False)
+    completed_at: Mapped[str | None] = mapped_column(String)
+    updated_at: Mapped[str] = mapped_column(String, nullable=False)
+
+
+class LabAttempt(Base):
+    """Сохранённый результат выполненной лаборатории (идемпотентно).
+
+    Расчёт результата остаётся в Lab API; здесь только фактический результат
+    и создание evidence. `dedup_key` = hash(lab_id + parameters + score).
+    """
+
+    __tablename__ = "lab_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    lab_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    lesson_id: Mapped[str | None] = mapped_column(String)
+    parameters: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    result_summary: Mapped[dict | None] = mapped_column(JSON)
+    score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    evidence: Mapped[dict | None] = mapped_column(JSON)
+    dedup_key: Mapped[str | None] = mapped_column(String, unique=True)
+    created_at: Mapped[str] = mapped_column(String, nullable=False)
+
+
+class CaseAttempt(Base):
+    """Одна попытка прохождения кейса (структурированные ответы)."""
+
+    __tablename__ = "case_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    case_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    mode: Mapped[str] = mapped_column(String, nullable=False)  # guided | standard | interview
+    answers: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    result: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    completed_at: Mapped[str] = mapped_column(String, nullable=False)

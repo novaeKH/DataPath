@@ -26,18 +26,24 @@
 
 ## Модель данных
 
+Реализовано в Фазе 4 (`app/db/models.py`, миграция `f4a1b2c3d4e5`).
+Подробности — [`docs/progress-system.md`](progress-system.md).
+
 ```sql
--- Оценка по одной оси для одного навыка
-CREATE TABLE skill_assessment (
-    skill_id       TEXT NOT NULL,     -- ml.tree_ensembles
-    axis           TEXT NOT NULL,     -- theory
-    alpha          REAL NOT NULL,     -- Байесовский prior: «успехи»
-    beta           REAL NOT NULL,     -- Байесовский prior: «неуспехи»
-    evidence_count INTEGER NOT NULL,  -- Количество измерений
-    last_updated   TEXT NOT NULL,
-    PRIMARY KEY (skill_id, axis)
+-- Оценка по осям для одного навыка (одна строка на skill_id)
+CREATE TABLE skill_assessments (
+    skill_id       TEXT PRIMARY KEY,     -- ml.tree_ensembles
+    axes           JSON NOT NULL,        -- {"theory": {"alpha": .., "beta": .., "evidence_count": N, "score": ..}, ...}
+    confidence     REAL NOT NULL,        -- растёт с числом измерений
+    evidence_count INTEGER NOT NULL,     -- Количество измерений
+    state          TEXT NOT NULL,        -- not_started|exploring|developing|strong|needs_attention
+    last_activity_at TEXT,
+    updated_at     TEXT NOT NULL
 );
 ```
+
+События обучения хранятся отдельно в `learning_events` (append-only, `dedup_key`
+защищает от повторного начисления).
 
 **Почему alpha/beta, а не score:**
 - `score = alpha / (alpha + beta)` — ожидаемое значение Beta-распределения

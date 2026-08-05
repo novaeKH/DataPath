@@ -64,6 +64,21 @@ const courseDetail: CourseDetail = {
   last_lesson_id: 'lesson.classic-ml.trees.tree',
 }
 
+const todayPayload = {
+  continue_lesson: null,
+  next_lesson: { id: 'lesson.classic-ml.trees.tree', title: 'Decision Tree', skills: [] },
+  weak_skills: [],
+  recent_activity: [],
+  suggested_case: null,
+  progress_summary: {
+    lessons_started: 0,
+    lessons_completed: 0,
+    labs_completed: 0,
+    cases_completed: 0,
+    skill_distribution: {},
+  },
+}
+
 function mockFetch() {
   return vi.fn((input: RequestInfo | URL) => {
     const url = String(input)
@@ -72,6 +87,15 @@ function mockFetch() {
     }
     if (url.includes('/api/atlas')) {
       return Promise.resolve(new Response(JSON.stringify(atlas), { status: 200 }))
+    }
+    if (url.includes('/api/today')) {
+      return Promise.resolve(new Response(JSON.stringify(todayPayload), { status: 200 }))
+    }
+    if (url.includes('/api/cases')) {
+      return Promise.resolve(new Response(JSON.stringify({ cases: [] }), { status: 200 }))
+    }
+    if (url.includes('/api/progress/lessons')) {
+      return Promise.resolve(new Response('{}', { status: 404 }))
     }
     if (url.includes('/api/content/courses/course.classic-ml')) {
       return Promise.resolve(new Response(JSON.stringify(courseDetail), { status: 200 }))
@@ -99,14 +123,14 @@ describe('App routing', () => {
     )
   }
 
-  it('redirects / to /today', () => {
+  it('redirects / to /today', async () => {
     renderAt('/')
-    expect(screen.getByRole('heading', { name: /Today/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Сегодня/i })).toBeInTheDocument()
   })
 
-  it('renders Today at /today', () => {
+  it('renders Today at /today', async () => {
     renderAt('/today')
-    expect(screen.getByRole('heading', { name: /Today/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Сегодня/i })).toBeInTheDocument()
   })
 
   it('renders Atlas at /atlas', () => {
@@ -119,9 +143,9 @@ describe('App routing', () => {
     expect(await screen.findByRole('heading', { name: /Классический ML/ })).toBeInTheDocument()
   })
 
-  it('renders Studio at /studio', () => {
+  it('renders Studio at /studio', async () => {
     renderAt('/studio')
-    expect(screen.getByRole('heading', { name: /Studio/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Studio/i })).toBeInTheDocument()
   })
 
   it('renders system status at /system', async () => {
@@ -129,9 +153,9 @@ describe('App routing', () => {
     expect(await screen.findByText(/DataPath v0.1.0/)).toBeInTheDocument()
   })
 
-  it('unknown route redirects to /today', () => {
+  it('unknown route redirects to /today', async () => {
     renderAt('/no-such-route')
-    expect(screen.getByRole('heading', { name: /Today/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Сегодня/i })).toBeInTheDocument()
   })
 
   it('sidebar navigation links exist', () => {

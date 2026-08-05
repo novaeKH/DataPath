@@ -1,7 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { fetchCourseDetail, fetchLesson, type CourseDetail, type LessonDetail } from '../lib/api'
+import {
+  completeLesson,
+  completeScene,
+  fetchCourseDetail,
+  fetchLesson,
+  fetchLessonProgress,
+  type CourseDetail,
+  type LessonDetail,
+  type LessonProgressDetail,
+} from '../lib/api'
 import { SceneView } from '../components/lesson/SceneView'
 import { LessonOutline } from '../components/lesson/LessonOutline'
 
@@ -187,6 +196,11 @@ function LessonView({
 }) {
   const [state, setState] = useState<LessonLoadState>({ kind: 'loading' })
   const [sceneIndex, setSceneIndex] = useState(0)
+  const [progress, setProgress] = useState<LessonProgressDetail | null>(null)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [completing, setCompleting] = useState(false)
+  const [completedFlash, setCompletedFlash] = useState(false)
+  const saveTimerRef = useRef<number | null>(null)
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -194,7 +208,22 @@ function LessonView({
       try {
         const lesson = await fetchLesson(lessonId, signal)
         setState({ kind: 'ready', lesson })
-        setSceneIndex(0)
+
+        // Восстановление позиции: последняя незавершённая сцена.
+        try {
+          const saved = await fetchLessonProgress(lessonId, signal)
+          setProgress(saved)
+          if (saved && saved.current_scene_id && !saved.completed_at) {
+            const idx = lesson.scenes.findIndex((scene) => scene.id === saved.current_scene_id)
+            if (idx >= 0) setSceneIndex(idx)
+            else setSceneIndex(0)
+          } else {
+            setSceneIndex(0)
+          }
+        } catch {
+          setProgress(null)
+          setSceneIndex(0)
+        }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
         const message = err instanceof Error ? err.message : ''
@@ -216,6 +245,88 @@ function LessonView({
     void load(controller.signal)
     return () => controller.abort()
   }, [load])
+
+  // Сохранение текущей сцены при навигации.
+  const saveScene = useCallback(
+    async (index: number) => {
+      if (state.kind !== 'ready') return
+      const scene = state.lesson.scenes[index]
+      if (!scene) return
+      setSaveState('saving')
+      try {
+        const updated = await completeScene(lessonId, scene.id, {
+          scene_type: scene.type,
+          skill_id: state.lesson.skills[0] ?? undefined,
+        })
+        setProgress((prev) => ({
+          lesson_id: updated.lesson_id,
+          current_scene_id: updated.current_scene_id,
+          completed_scenes: updated.completed_scenes,
+          started_at: updated.started_at,
+          completed_at: updated.completed_at,
+          updated_at: prev?.updated_at ?? updated.started_at,
+        }))
+        setSaveState('saved')
+        if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = window.setTimeout(() => setSaveState('idle'), 1800)
+      } catch {
+        setSaveState('error')
+      }
+    },
+    [lessonId, state],
+  )
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
+    }
+  }, [])
+
+  const handleSelectScene = (index: number) => {
+    setSceneIndex(index)
+    void saveScene(index)
+  }
+
+  const handleNext = () => {
+    setSceneIndex((index) => {
+      const next = Math.min(state.kind === 'ready' ? state.lesson.scenes.length - 1 : 0, index + 1)
+      void saveScene(next)
+      return next
+    })
+  }
+
+  const handlePrev = () => {
+    setSceneIndex((index) => {
+      const next = Math.max(0, index - 1)
+      void saveScene(next)
+      return next
+    })
+  }
+
+  const handleCompleteLesson = async () => {
+    setCompleting(true)
+    try {
+      await completeLesson(lessonId)
+      setCompletedFlash(true)
+      const completedAt = new Date().toISOString()
+      setProgress((prev) => {
+        if (prev) return { ...prev, completed_at: completedAt }
+        return {
+          lesson_id: lessonId,
+          current_scene_id: null,
+          completed_scenes: [],
+          started_at: completedAt,
+          completed_at: completedAt,
+          updated_at: completedAt,
+        }
+      })
+      window.setTimeout(() => setCompletedFlash(false), 2500)
+    } catch {
+      setSaveState('error')
+    } finally {
+      setCompleting(false)
+    }
+  }
 
   const scenes = useMemo(() => (state.kind === 'ready' ? state.lesson.scenes : []), [state])
   const currentScene = scenes[sceneIndex] ?? null
@@ -334,13 +445,28 @@ function LessonView({
           <div className="mt-6 grid gap-6 lg:grid-cols-[260px_1fr]">
             <aside className="lg:sticky lg:top-6 lg:self-start">
               <div className="rounded-xl border border-slate-200 bg-white/70 p-4 dark:border-slate-800 dark:bg-slate-900/50">
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Содержание урока
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Содержание урока
+                  </div>
+                  {progress && (
+                    <span className="text-[11px] text-slate-400">
+                      {progress.completed_scenes.length}/{scenes.length}
+                    </span>
+                  )}
                 </div>
-                <LessonOutline scenes={scenes} currentIndex={sceneIndex} onSelect={setSceneIndex} />
+                <LessonOutline
+                  scenes={scenes}
+                  currentIndex={sceneIndex}
+                  completedScenes={progress?.completed_scenes}
+                  onSelect={handleSelectScene}
+                />
                 <div className="mt-4 border-t border-slate-200 pt-3 dark:border-slate-800">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Навигация по курсу
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Навигация по курсу
+                    </div>
+                    <SaveIndicator saveState={saveState} />
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -358,6 +484,22 @@ function LessonView({
                       След. урок →
                     </button>
                   </div>
+                  <button
+                    onClick={() => void handleCompleteLesson()}
+                    disabled={completing || progress?.completed_at != null}
+                    className="mt-3 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition enabled:hover:bg-emerald-500 disabled:opacity-40"
+                  >
+                    {progress?.completed_at
+                      ? '✓ Урок завершён'
+                      : completing
+                        ? 'Завершаем…'
+                        : 'Завершить урок'}
+                  </button>
+                  {completedFlash && (
+                    <div className="mt-2 rounded-lg bg-emerald-50 px-2 py-1.5 text-center text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      ✓ Урок отмечен завершённым, навыки обновлены.
+                    </div>
+                  )}
                 </div>
               </div>
             </aside>
@@ -389,7 +531,7 @@ function LessonView({
 
               <div className="mt-5 flex items-center justify-between gap-3">
                 <button
-                  onClick={() => setSceneIndex((index) => Math.max(0, index - 1))}
+                  onClick={handlePrev}
                   disabled={sceneIndex === 0}
                   className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition enabled:hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:enabled:hover:bg-slate-800"
                 >
@@ -405,7 +547,7 @@ function LessonView({
                   </button>
                 ) : (
                   <button
-                    onClick={() => setSceneIndex((index) => Math.min(scenes.length - 1, index + 1))}
+                    onClick={handleNext}
                     className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                   >
                     Далее →
@@ -424,4 +566,21 @@ function Centered({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-[60vh] flex-col items-center justify-center text-center">{children}</div>
   )
+}
+
+function SaveIndicator({ saveState }: { saveState: 'idle' | 'saving' | 'saved' | 'error' }) {
+  if (saveState === 'saving') {
+    return <span className="text-[11px] text-slate-400">сохраняем…</span>
+  }
+  if (saveState === 'saved') {
+    return (
+      <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+        ✓ сохранено
+      </span>
+    )
+  }
+  if (saveState === 'error') {
+    return <span className="text-[11px] font-medium text-rose-500">ошибка сохранения</span>
+  }
+  return null
 }

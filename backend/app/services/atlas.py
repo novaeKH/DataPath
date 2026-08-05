@@ -20,7 +20,19 @@ from collections import defaultdict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import ContentItem, ContentLink
+from app.db.models import (
+    ContentItem,
+    ContentLink,
+    LessonProgress,
+    SkillAssessment,
+)
+from app.services.knowledge_model import (
+    STATE_DEVELOPING,
+    STATE_EXPLORING,
+    STATE_NEEDS_ATTENTION,
+    STATE_NOT_STARTED,
+    STATE_STRONG,
+)
 
 # Типы, которые участвуют в Atlas (курс и теория вокруг него).
 ATLAS_TYPES: frozenset[str] = frozenset({"course", "module", "lesson", "practice", "concept"})
@@ -35,6 +47,62 @@ LESSON_OFFSET_Y = 150
 KNOWLEDGE_OFFSET_X = 120
 KNOWLEDGE_COL_WIDTH = 320
 
+# Пороги для агрегации состояния узла (согласованы с knowledge_model.py).
+NODE_STRONG_MIN = 3
+NODE_DEVELOPING_MIN = 2
+NODE_NEEDS_ATTENTION_SCORE = 0.45
+
+
+def aggregate_node_state(
+    assessments: list[SkillAssessment],
+    lesson_progress: LessonProgress | None,
+) -> tuple[str, str]:
+    """Состояние узла Atlas по связанным навыкам и прогрессу урока.
+
+    При отсутствии evidence — not_started. Урок, начатый без измерений,
+    получает exploring (изучается). Остальное — те же правила, что в
+    KnowledgeModelService (средняя оценка по осям с evidence).
+    """
+    scored: list[tuple[str, float, int]] = []
+    total_evidence = 0
+    for assessment in assessments:
+        total_evidence += assessment.evidence_count
+        for axis, data in (assessment.axes or {}).items():
+            if data.get("evidence_count", 0) > 0:
+                scored.append((axis, data["score"], data["evidence_count"]))
+
+    if total_evidence <= 0:
+        if lesson_progress is not None:
+            return STATE_EXPLORING, "Урок начат, измерений ещё нет."
+        return STATE_NOT_STARTED, "Нет измерений — не изучалось."
+
+    avg_score = sum(score for _, score, _ in scored) / len(scored)
+    # Учитываем ошибки: если у узла есть needs_attention навык — узел слабый.
+    if any(a.state == STATE_NEEDS_ATTENTION for a in assessments):
+        return (
+            STATE_NEEDS_ATTENTION,
+            f"Есть навык с повторяющимися ошибками; средняя оценка {avg_score:.2f}.",
+        )
+    if total_evidence >= NODE_STRONG_MIN and avg_score >= 0.75:
+        return (
+            STATE_STRONG,
+            f"Уверенное владение: {total_evidence} измерений, средняя оценка {avg_score:.2f}.",
+        )
+    if total_evidence >= NODE_DEVELOPING_MIN and avg_score >= 0.5:
+        return (
+            STATE_DEVELOPING,
+            f"Развивается: {total_evidence} измерений, средняя оценка {avg_score:.2f}.",
+        )
+    if total_evidence >= NODE_DEVELOPING_MIN and avg_score < NODE_NEEDS_ATTENTION_SCORE:
+        return (
+            STATE_NEEDS_ATTENTION,
+            f"Низкая оценка {avg_score:.2f} при {total_evidence} измерениях.",
+        )
+    return (
+        STATE_EXPLORING,
+        f"Изучается: {total_evidence} измерений, средняя оценка {avg_score:.2f}.",
+    )
+
 
 class AtlasBuilder:
     """Собирает payload Atlas из каталога."""
@@ -42,6 +110,8 @@ class AtlasBuilder:
     def build(self, db: Session) -> dict:
         items = {item.id: item for item in db.scalars(select(ContentItem)).all()}
         links = db.scalars(select(ContentLink)).all()
+        assessments = {a.skill_id: a for a in db.scalars(select(SkillAssessment)).all()}
+        lesson_progress = {p.lesson_id: p for p in db.scalars(select(LessonProgress)).all()}
 
         # Замыкание: опубликованные объекты курса + связанная теория.
         in_scope: set[str] = {
@@ -94,6 +164,9 @@ class AtlasBuilder:
         routes = self._build_routes(items, in_scope)
         layout = self._layout(nodes, routes)
 
+        # Навыки, связанные с каждым узлом (для состояния).
+        node_skills = self._node_skills(items, links, in_scope)
+
         return {
             "nodes": [
                 {
@@ -102,7 +175,12 @@ class AtlasBuilder:
                     "type": node.type,
                     "area": node.area,
                     "publish": node.publish,
-                    "status": "not_started",  # Фаза 2: прогресс пользователя не реализован
+                    "status": self._node_status(
+                        node,
+                        node_skills.get(node.id, []),
+                        assessments,
+                        lesson_progress,
+                    ),
                     "course_id": node.course_id,
                     "module_id": node.module_id,
                     "x": layout["positions"][node.id][0],
@@ -121,6 +199,69 @@ class AtlasBuilder:
                 "mode": "deterministic",
             },
         }
+
+    @staticmethod
+    def _node_skills(
+        items: dict[str, ContentItem],
+        links: list[ContentLink],
+        in_scope: set[str],
+    ) -> dict[str, list[str]]:
+        """Навыки узла: собственные + навыки связанных уроков.
+
+        - lesson: собственные skill_ids;
+        - concept/practice: собственные + навыки уроков, связанных ребром;
+        - course/module: навыки уроков курса/модуля (агрегация дочерних).
+        """
+        result: dict[str, list[str]] = {}
+        for item_id in in_scope:
+            item = items[item_id]
+            skills = list(item.skill_ids or [])
+            result[item_id] = skills
+
+        # Связанные уроки (для concept/practice): урок → концепция.
+        for link in links:
+            if link.relation not in {"applied_in", "link"}:
+                continue
+            src = items.get(link.source_id)
+            dst = items.get(link.target_id)
+            if src is None or dst is None:
+                continue
+            if src.type == "lesson" and dst.id in result and src.id in in_scope:
+                result[dst.id].extend(src.skill_ids or [])
+            if dst.type == "lesson" and src.id in result and dst.id in in_scope:
+                result[src.id].extend(dst.skill_ids or [])
+
+        # Агрегация курса/модуля по дочерним урокам.
+        for item_id in in_scope:
+            item = items[item_id]
+            if item.type == "course":
+                children = [
+                    c for c in items.values() if c.course_id == item.id and c.type == "lesson"
+                ]
+            elif item.type == "module":
+                children = [
+                    c for c in items.values() if c.module_id == item.id and c.type == "lesson"
+                ]
+            else:
+                continue
+            for child in children:
+                result[item_id].extend(child.skill_ids or [])
+
+        # Уникализация и порядок.
+        return {key: list(dict.fromkeys(values)) for key, values in result.items()}
+
+    def _node_status(
+        self,
+        node: ContentItem,
+        skills: list[str],
+        assessments: dict[str, SkillAssessment],
+        lesson_progress: dict[str, LessonProgress],
+    ) -> str:
+        """Состояние узла: только статус (без причины — причина в карточке)."""
+        related = [assessments[s] for s in skills if s in assessments]
+        progress = lesson_progress.get(node.id)
+        state, _ = aggregate_node_state(related, progress)
+        return state
 
     @staticmethod
     def _build_routes(items: dict[str, ContentItem], in_scope: set[str]) -> dict:

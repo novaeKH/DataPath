@@ -228,18 +228,25 @@ CREATE TABLE sync_runs (
 );
 ```
 
-Таблицы прогресса (`skill_assessment`), повторения (`review_queue`), AI-диалогов
-(`ai_conversation`, `ai_message`) и взаимодействий (`interaction_log`) — Фазы 4–6.
+Таблицы прогресса реализованы в Фазе 4 (`learning_events`, `skill_assessments`,
+`lesson_progress`, `lab_attempts`, `case_attempts`; миграция `f4a1b2c3d4e5`).
+Полная документация — `docs/progress-system.md` и `docs/case-system.md`.
+
+Таблицы повторения (`review_queue`), AI-диалогов (`ai_conversation`,
+`ai_message`) и взаимодействий (`interaction_log`) — Фазы 5–6.
 Целевые схемы (реализация — в соответствующих фазах):
 
 ```sql
--- Пользовательский прогресс (один пользователь)
-CREATE TABLE skill_assessment (
-    skill_id      TEXT NOT NULL,          -- из learning catalog (ml.tree_ensembles)
-    axis          TEXT NOT NULL,          -- theory, reproduce, apply, code, explain, interview
-    score         REAL NOT NULL DEFAULT 0,-- 0..1, байесовское среднее
-    evidence_count INTEGER NOT NULL DEFAULT 0,
-    last_updated  TEXT NOT NULL
+-- Пользовательский прогресс (один пользователь) — реализовано в Фазе 4
+-- (упрощённая схема для справки; фактическая — в docs/progress-system.md)
+CREATE TABLE skill_assessments (
+    skill_id      TEXT PRIMARY KEY,        -- из learning catalog (ml.tree_ensembles)
+    axes          JSON NOT NULL,           -- по оси: alpha, beta, evidence_count, score
+    confidence    REAL NOT NULL,
+    evidence_count INTEGER NOT NULL,
+    state         TEXT NOT NULL,           -- not_started|exploring|developing|strong|needs_attention
+    last_activity_at TEXT,
+    updated_at    TEXT NOT NULL
 );
 
 CREATE TABLE review_queue (
@@ -318,8 +325,11 @@ ds-learning-rag/
 │   │   │   ├── content_catalog.py   # ContentCatalogService — чтение каталога (Фаза 2)
 │   │   │   ├── atlas.py             # AtlasBuilder + детерминированная раскладка (Фаза 2)
 │   │   │   ├── lesson_content.py    # LessonContentService — сцены урока (Фаза 3)
-│   │   │   └── labs/                # LabRegistry + 3 лаборатории (Фаза 3)
-│   │   │   # progress.py, review.py — Фазы 4–5; rag.py — Фаза 6
+│   │   │   ├── labs/                # LabRegistry + 3 лаборатории (Фаза 3)
+│   │   │   ├── knowledge_model.py   # KnowledgeModelService — байесовские оценки (Фаза 4)
+│   │   │   ├── progress.py          # ProgressService — уроки, лабы, Today (Фаза 4)
+│   │   │   └── cases/               # CaseRegistry + 2 кейса, CaseService (Фаза 4)
+│   │   │   # review.py — Фаза 5; rag.py — Фаза 6
 │   │   ├── db/
 │   │   │   ├── session.py     # engine + session management
 │   │   │   ├── base.py        # DeclarativeBase
@@ -404,21 +414,37 @@ ds-learning-rag/
    - interactive_lab — LabHost → GET /api/labs/{lab_id} (metadata + initial result)
 4. Пользователь меняет параметры → POST /api/labs/{lab_id}/run → результат и объяснение
 5. Навигация: сцены (Назад/Далее) и уроки (Пред./След. по порядку курса)
+6. Прогресс (Фаза 4): при навигации POST scene complete → сохраняется позиция
+   и слабое evidence; кнопка «Завершить урок» → POST lesson complete;
+   лаборатория → кнопка «Сохранить результат в прогресс» (POST lab record,
+   идемпотентно)
 ```
 
 Сцены `retrieval/application/interview/reflection` (AI-оценка и прогресс)
-отложены на Фазы 4–6. Схема сцен — [`docs/lesson-system.md`](lesson-system.md).
+отложены на Фазу 6. Схема сцен — [`docs/lesson-system.md`](lesson-system.md).
 
 ```text
-# Фаза 4+ (целевой поток, не реализовано)
+# Фаза 6+ (целевой поток, не реализовано)
 1. Сцена retrieval (free-recall):
    a. Пользователь пишет объяснение
    b. POST /api/ai/assess → AI оценивает
    c. PATCH /api/progress/skills/{skill_id} → обновление оценки
 2. Финальная сцена reflection:
    a. Обновление skill_assessment по всем evidence сцены
-   b. Добавление в review_queue
+   b. Добавление в review_queue (Фаза 5)
    c. Обновление состояния узла в Atlas (заполнение, цвет кольца)
+```
+
+### Прогресс и кейсы (Фаза 4 — реализовано)
+
+```text
+1. События обучения сохраняются в learning_events (append-only, dedup_key);
+   KnowledgeModelService обновляет skill_assessments по байесовским правилам.
+2. Экран Today: GET /api/today → продолжить урок / следующий урок маршрута,
+   слабые темы (при достаточном evidence), активность, рекомендуемый кейс.
+3. Atlas: состояния узлов агрегируются из assessments и lesson_progress.
+4. Studio: GET /api/cases → спецификация; POST submit → проверка по правилам,
+   сохранение case_attempts и evidence по навыкам кейса.
 ```
 
 ### AI-наставник (RAG)

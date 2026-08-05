@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   buildRouteView,
+  buildWeakView,
   clamp,
   computeFit,
   LABEL_MIN_SCALE,
@@ -32,6 +33,15 @@ const TYPE_COLORS: Record<string, string> = {
   project: '#64748b',
 }
 
+// Визуальные состояния узла (прогресс пользователя).
+const STATE_META: Record<string, { label: string; color: string; ring: string }> = {
+  not_started: { label: 'Не начато', color: '#94a3b8', ring: '#94a3b8' },
+  exploring: { label: 'Изучается', color: '#f59e0b', ring: '#f59e0b' },
+  developing: { label: 'Развивается', color: '#06b6d4', ring: '#06b6d4' },
+  strong: { label: 'Уверенно', color: '#10b981', ring: '#10b981' },
+  needs_attention: { label: 'Требует внимания', color: '#ef4444', ring: '#ef4444' },
+}
+
 const EDGE_COLORS: Record<string, string> = {
   link: '#94a3b8',
   applied_in: '#22d3ee',
@@ -40,6 +50,14 @@ const EDGE_COLORS: Record<string, string> = {
 
 function typeColor(type: string): string {
   return TYPE_COLORS[type] ?? '#94a3b8'
+}
+
+function stateColor(state: string): string {
+  return STATE_META[state]?.color ?? '#94a3b8'
+}
+
+function stateRing(state: string): string {
+  return STATE_META[state]?.ring ?? '#94a3b8'
 }
 
 function edgeColor(relation: string): string {
@@ -214,6 +232,9 @@ export function AtlasGraph({
           {data.nodes.map((node) => {
             const color = typeColor(node.type)
             const selected = node.id === selectedId
+            const status = node.status ?? 'not_started'
+            const stateFill = stateColor(status)
+            const published = node.publish
             return (
               <g
                 key={node.id}
@@ -226,31 +247,52 @@ export function AtlasGraph({
                 role="button"
                 aria-label={node.label}
               >
-                <circle
-                  r={node.publish ? 17 : 13}
-                  fill={color}
-                  fillOpacity={selected ? 0.95 : 0.85}
-                  stroke={selected ? '#ffffff' : color}
-                  strokeWidth={selected ? 3 : 1.5}
-                />
-                {node.publish && (
+                <title>{`${node.label} — ${STATE_META[status]?.label ?? status}`}</title>
+                {/* Кольцо состояния для опубликованных узлов */}
+                {published && status !== 'not_started' && (
+                  <circle
+                    r={25}
+                    fill="none"
+                    stroke={stateRing(status)}
+                    strokeWidth={3}
+                    strokeDasharray={status === 'needs_attention' ? '4 3' : undefined}
+                    opacity={0.9}
+                  >
+                    {status === 'needs_attention' && (
+                      <animate
+                        attributeName="stroke-opacity"
+                        values="0.4;1;0.4"
+                        dur="2.2s"
+                        repeatCount="indefinite"
+                      />
+                    )}
+                  </circle>
+                )}
+                {published && (
                   <circle
                     r={21}
                     fill="none"
-                    stroke={color}
-                    strokeWidth={1.2}
+                    stroke={stateFill}
+                    strokeWidth={1.4}
                     strokeDasharray="3 3"
-                    opacity={0.7}
+                    opacity={0.75}
                   />
                 )}
+                <circle
+                  r={published ? 17 : 13}
+                  fill={color}
+                  fillOpacity={selected ? 0.95 : 0.85}
+                  stroke={status === 'needs_attention' ? '#ef4444' : selected ? '#ffffff' : color}
+                  strokeWidth={status === 'needs_attention' ? 2.5 : selected ? 3 : 1.5}
+                />
                 {labelsVisible && (
                   <text
-                    y={node.publish ? 34 : 30}
+                    y={published ? 34 : 30}
                     textAnchor="middle"
                     className="fill-slate-700 dark:fill-slate-200"
                     style={{
-                      fontSize: node.publish ? 13 : 11,
-                      fontWeight: node.publish ? 600 : 500,
+                      fontSize: published ? 13 : 11,
+                      fontWeight: published ? 600 : 500,
                     }}
                   >
                     {node.label.length > 34 ? `${node.label.slice(0, 33)}…` : node.label}
@@ -273,7 +315,21 @@ export function AtlasGraph({
 
       {/* Легенда */}
       <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg border border-slate-200 bg-white/85 p-2.5 text-[11px] dark:border-slate-700 dark:bg-slate-900/85">
-        <div className="mb-1 font-semibold text-slate-700 dark:text-slate-300">Типы узлов</div>
+        <div className="mb-1 font-semibold text-slate-700 dark:text-slate-300">Состояния</div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-slate-600 dark:text-slate-400">
+          {(['not_started', 'exploring', 'developing', 'strong', 'needs_attention'] as const).map(
+            (state) => (
+              <span key={state} className="flex items-center gap-1.5">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  style={{ background: stateColor(state) }}
+                />
+                {STATE_META[state].label}
+              </span>
+            ),
+          )}
+        </div>
+        <div className="mb-1 mt-2 font-semibold text-slate-700 dark:text-slate-300">Типы узлов</div>
         <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-slate-600 dark:text-slate-400">
           {data.node_types.map((type) => (
             <span key={type} className="flex items-center gap-1.5">
@@ -345,10 +401,12 @@ export function AtlasView() {
   }, [load])
 
   const data = state.kind === 'ready' ? state.data : null
-  const displayed = useMemo(
-    () => (data && mode === 'route' ? buildRouteView(data) : data),
-    [data, mode],
-  )
+  const displayed = useMemo(() => {
+    if (!data) return null
+    if (mode === 'route') return buildRouteView(data)
+    if (mode === 'weak') return buildWeakView(data)
+    return data
+  }, [data, mode])
 
   const selectNode = useCallback((node: AtlasNode | null) => {
     setSelectedId(node?.id ?? null)
@@ -426,60 +484,84 @@ export function AtlasView() {
                     ? 'Atlas пуст'
                     : mode === 'route'
                       ? 'Нет курсов для маршрута'
-                      : 'Atlas пуст'}
+                      : mode === 'weak'
+                        ? 'Слабых тем пока нет'
+                        : 'Atlas пуст'}
                 </div>
                 <p className="max-w-md text-sm text-slate-500">
                   {state.data.nodes.length === 0 ? (
                     'В каталоге нет материалов. Синхронизируйте vault:'
+                  ) : mode === 'weak' ? (
+                    'Недостаточно evidence: слабые темы появляются после 2+ измерений с низкой оценкой или повторяющихся ошибок. Пройдите уроки и лаборатории.'
                   ) : (
                     <>
                       В каталоге нет курсов с маршрутами. Переключитесь в «Весь атлас» или
                       синхронизируйте vault:
                     </>
                   )}
-                  <code className="mt-1 block rounded bg-slate-100 px-2 py-1 font-mono text-xs dark:bg-slate-800">
-                    PYTHONPATH= uv run python -m app.cli.content sync
-                  </code>
+                  {state.data.nodes.length === 0 && (
+                    <code className="mt-1 block rounded bg-slate-100 px-2 py-1 font-mono text-xs dark:bg-slate-800">
+                      PYTHONPATH= uv run python -m app.cli.content sync
+                    </code>
+                  )}
                 </p>
+              </div>
+            )}
+            {state.kind === 'ready' && displayed && (
+              <div className="mb-3 flex flex-wrap items-center gap-3">
+                <div
+                  role="group"
+                  aria-label="Режим Atlas"
+                  className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5 text-sm dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <button
+                    onClick={() => setMode('route')}
+                    aria-pressed={mode === 'route'}
+                    className={`rounded-md px-3.5 py-1.5 font-medium transition ${
+                      mode === 'route'
+                        ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+                    }`}
+                  >
+                    Маршрут
+                  </button>
+                  <button
+                    onClick={() => setMode('all')}
+                    aria-pressed={mode === 'all'}
+                    className={`rounded-md px-3.5 py-1.5 font-medium transition ${
+                      mode === 'all'
+                        ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+                    }`}
+                  >
+                    Весь атлас
+                  </button>
+                  <button
+                    onClick={() => setMode('weak')}
+                    aria-pressed={mode === 'weak'}
+                    className={`rounded-md px-3.5 py-1.5 font-medium transition ${
+                      mode === 'weak'
+                        ? 'bg-rose-600 text-white'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+                    }`}
+                  >
+                    Слабые темы
+                  </button>
+                </div>
+                {mode === 'route' && (
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    MVP-маршрут и непосредственно связанные материалы
+                  </span>
+                )}
+                {mode === 'weak' && (
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    Узлы со статусом «требует внимания» — только при достаточном evidence
+                  </span>
+                )}
               </div>
             )}
             {state.kind === 'ready' && displayed && displayed.nodes.length > 0 && (
               <>
-                <div className="mb-3 flex flex-wrap items-center gap-3">
-                  <div
-                    role="group"
-                    aria-label="Режим Atlas"
-                    className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5 text-sm dark:border-slate-700 dark:bg-slate-900"
-                  >
-                    <button
-                      onClick={() => setMode('route')}
-                      aria-pressed={mode === 'route'}
-                      className={`rounded-md px-3.5 py-1.5 font-medium transition ${
-                        mode === 'route'
-                          ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900'
-                          : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
-                      }`}
-                    >
-                      Маршрут
-                    </button>
-                    <button
-                      onClick={() => setMode('all')}
-                      aria-pressed={mode === 'all'}
-                      className={`rounded-md px-3.5 py-1.5 font-medium transition ${
-                        mode === 'all'
-                          ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900'
-                          : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
-                      }`}
-                    >
-                      Весь атлас
-                    </button>
-                  </div>
-                  {mode === 'route' && (
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      MVP-маршрут и непосредственно связанные материалы
-                    </span>
-                  )}
-                </div>
                 <AtlasGraph
                   data={displayed}
                   mode={mode}
@@ -559,7 +641,24 @@ function NodePanel({
         {item?.title ?? node?.label ?? ''}
       </h3>
       {node && (
-        <code className="mt-1 block break-all font-mono text-[11px] text-slate-500">{node.id}</code>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <code className="block break-all font-mono text-[11px] text-slate-500">{node.id}</code>
+          {node.status && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+              style={{
+                background: `${stateColor(node.status)}22`,
+                color: stateColor(node.status),
+              }}
+            >
+              <span
+                className="inline-block h-1.5 w-1.5 rounded-full"
+                style={{ background: stateColor(node.status) }}
+              />
+              {STATE_META[node.status]?.label ?? node.status}
+            </span>
+          )}
+        </div>
       )}
 
       {isLesson && (

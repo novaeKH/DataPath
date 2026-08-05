@@ -3,7 +3,7 @@
 Локальная платформа для структурированного изучения Data Science: интерактивные
 уроки, атлас знаний, интервальное повторение и AI-наставник на базе RAG.
 
-**Статус: Фаза 3 — интерактивные уроки, сцены и лаборатории.**
+**Статус: Фаза 4 — модель знаний, прогресс пользователя, Today и кейсы.**
 
 > Решения по архитектуре и стеку зафиксированы в [`docs/decisions.md`](docs/decisions.md)
 > и [`docs/architecture.md`](docs/architecture.md). Правила работы агента — в [`.hermes.md`](.hermes.md).
@@ -27,13 +27,13 @@ ds-learning-rag/
 ├── docs/                 # Архитектура, решения, roadmap, контентная система
 ├── backend/              # FastAPI + SQLAlchemy + Alembic (Python 3.12, uv)
 │   ├── app/
-│   │   ├── api/          #   API-роутеры (health, system, content, atlas)
+│   │   ├── api/          #   API-роутеры (health, system, content, atlas, progress, today, cases)
 │   │   ├── cli/          #   CLI: python -m app.cli.content {sync|validate|status}
 │   │   ├── core/         #   Конфигурация (pydantic-settings), логирование
-│   │   ├── db/           #   engine/session, Base, модели каталога
-│   │   ├── services/     #   parser, validator, sync, catalog, atlas
+│   │   ├── db/           #   engine/session, Base, модели каталога и прогресса
+│   │   ├── services/     #   parser, validator, sync, catalog, atlas, knowledge_model, progress, cases
 │   │   └── main.py       #   FastAPI entry point
-│   ├── tests/            # pytest (75 тестов)
+│   ├── tests/            # pytest (126 тестов)
 │   ├── alembic/          # Миграции (content catalog — Фаза 2)
 │   └── pyproject.toml    # Зависимости и инструменты (uv)
 ├── frontend/             # React 18 + TypeScript + Vite + Tailwind v4 + React Router
@@ -105,7 +105,19 @@ PYTHONPATH= uv run python -m app.cli.content status    # состояние ка
 | `GET /api/content/items/{content_id}` | Metadata одного материала + связи + issues |
 | `GET /api/labs/{lab_id}` | Метаданные лаборатории: параметры, диапазоны, дефолты, initial result (Фаза 3) |
 | `POST /api/labs/{lab_id}/run` | Расчёт лаборатории по валидированным параметрам (Фаза 3) |
-| `GET /api/atlas` (и `GET /api/content/atlas`) | Готовые данные Atlas: nodes, edges, areas, routes, prerequisites, детерминированная раскладка |
+| `GET /api/atlas` (и `GET /api/content/atlas`) | Готовые данные Atlas: nodes, edges, areas, routes, prerequisites, детерминированная раскладка, состояния узлов (Фаза 4) |
+| `GET /api/progress/summary` | Сводка: начатые/завершённые уроки, лабы, кейсы, распределение навыков, последние события, рекомендация (Фаза 4) |
+| `GET /api/progress/skills` | Оценки навыков по осям, состояния, причины (Фаза 4) |
+| `GET /api/progress/skills/{skill_id}` | Детали навыка: оси, confidence, типичные ошибки, последние события (Фаза 4) |
+| `GET /api/progress/lessons/{lesson_id}` | Прогресс урока: текущая сцена, завершённые сцены (Фаза 4) |
+| `POST /api/progress/lessons/{lesson_id}/scenes/{scene_id}/complete` | Сохранение прохождения сцены и позиции (Фаза 4) |
+| `POST /api/progress/lessons/{lesson_id}/complete` | Завершение урока, слабое evidence по теории (Фаза 4) |
+| `POST /api/progress/labs/{lab_id}/record` | Идемпотентное сохранение результата лаборатории + evidence (Фаза 4) |
+| `GET /api/today` | Экран Today: продолжить урок, следующий урок, слабые темы, активность, рекомендуемый кейс (Фаза 4) |
+| `GET /api/cases` | Список кейсов (Фаза 4) |
+| `GET /api/cases/{case_id}` | Спецификация кейса по режиму (guided/standard/interview) (Фаза 4) |
+| `POST /api/cases/{case_id}/submit` | Проверка ответов, результат с разбором, evidence (Фаза 4) |
+| `GET /api/cases/{case_id}/attempts` | История попыток кейса (Фаза 4) |
 
 Ответы не содержат абсолютных путей файловой системы. Полный Markdown-текст
 через Atlas endpoint не отдаётся.
@@ -119,6 +131,25 @@ PYTHONPATH= uv run python -m app.cli.content status    # состояние ка
 - Лаборатории: `decision-tree-split-lab`, `tree-depth-overfitting-lab`,
   `ensemble-comparison-lab` (scikit-learn; CatBoost — при наличии CPU-пакета).
 - Atlas → Focus: кнопка «Открыть урок» для lesson-узлов, связанные уроки для concept.
+
+## Прогресс и модель знаний (Фаза 4)
+
+- **Модель знаний**: байесовская оценка навыков по 7 осям (`theory, reproduce,
+  apply, code, interpret, explain, interview`), консервативная при малом
+  evidence; состояния `not_started / exploring / developing / strong /
+  needs_attention`; слабые темы — только при достаточном evidence.
+  Детали — [`docs/progress-system.md`](docs/progress-system.md).
+- **Прогресс**: сохранение текущей сцены урока, завершение урока, идемпотентное
+  сохранение результатов лабораторий (повторная отправка не начисляет evidence
+  повторно).
+- **Today**: главная карточка действия (продолжить урок → следующий урок маршрута),
+  слабые темы, недавняя активность, рекомендуемый кейс, прогресс маршрута.
+- **Кейсы (Studio)**: мини-кейс «Выбор ансамбля для оттока» и итоговый кейс
+  «Churn end-to-end»; структурированные ответы (single/multiple/numeric/select/order),
+  режимы Guided/Standard/Interview, детерминированная оценка и разбор.
+  Детали — [`docs/case-system.md`](docs/case-system.md).
+- **Atlas**: состояния узлов вычисляются backend из skill assessments и прогресса
+  уроков; визуальные состояния и режим «Слабые темы».
 
 ## Локальный запуск
 
@@ -201,7 +232,7 @@ Compose запускает **только** backend и frontend. Ollama, ChromaD
 cd backend
 uv run ruff format .          # форматирование
 uv run ruff check .           # линт (Ruff)
-uv run pytest                 # тесты (75 шт.)
+uv run pytest                 # тесты (126 шт.)
 ```
 
 ### Frontend
@@ -211,7 +242,7 @@ cd frontend
 npm run lint                  # ESLint
 npx tsc -b                    # TypeScript check
 npm run format:check          # Prettier check
-npm run test                  # Vitest (40 шт.)
+npm run test                  # Vitest (53 шт.)
 npm run build                 # production build (tsc -b && vite build)
 ```
 
@@ -227,14 +258,15 @@ npm run build                 # production build (tsc -b && vite build)
 (курс + 5 модулей + 13 уроков + 7 кейсов). Atlas содержит 100 узлов,
 296 связей и 8 областей знаний.
 
-## Текущие ограничения (Фаза 3)
+## Текущие ограничения (Фаза 4)
 
 - **RAG не реализован**: нет embeddings, ChromaDB, Ollama, чанкинга, retrieval.
-- **Прогресс пользователя не реализован**: все узлы Atlas имеют backend-статус
-  `not_started`; состояния тем вычисляются только на backend (Фаза 4).
-- **Studio/Today** — заглушки; кейсы и план дня — Фаза 4+.
-- **Сцены retrieval/application/interview/reflection** из `datapath`-сценариев
-  не реализованы (нужны AI-оценка и прогресс — Фазы 4–6).
+- **Интервальное повторение не реализовано**: нет review_queue и алгоритма
+  SM-2 — Фаза 5.
+- **AI-оценка свободного текста не реализована**: кейсы используют только
+  структурированные правила; сцены retrieval/application/interview/reflection —
+  Фаза 6.
+- **Один локальный пользователь**: без авторизации и облачной синхронизации.
 - **Prerequisites** в vault не заданы полем frontmatter (VAULT_SPEC):
   явное поле поддерживается и валидируется, для уроков порядок внутри модуля
   даёт неявные рёбра `prerequisite` (детали — в docs/content-system.md).
@@ -247,7 +279,6 @@ npm run build                 # production build (tsc -b && vite build)
   не влияет на работу, обновится вместе со стеком.
 - `/api/atlas` и `/api/content/atlas` — два пути к одному обработчику
   (задание Фазы 2 требует `/api/atlas`, ранние документы — `/content/atlas`).
-- Визуальная проверка UI выполнялась в Chrome for Testing (headless);
-  полноценная ручная проверка интерактивов — в Фазе 3.
+- Frontend bundle ~800 kB (KaTeX + markdown-пайплайн) — код-сплит в Фазе 7.
 - `content/vault` монтируется в контейнер как есть (включая служебные `.obsidian/`,
   `_meta/`); фильтрация выполняется парсером контента.

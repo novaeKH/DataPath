@@ -64,7 +64,7 @@ export function Sidebar() {
 
       <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4 dark:border-slate-800">
         <span className="text-[11px] text-slate-500 dark:text-slate-600">
-          Фаза 2 · каталог и Atlas
+          Фаза 4 · знания и прогресс
         </span>
         <button
           onClick={toggleTheme}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { fetchLabSpec, runLab, type LabRunResult, type LabSpec } from '../../lib/api'
+import { fetchLabSpec, recordLab, runLab, type LabRunResult, type LabSpec } from '../../lib/api'
 import { LabFrame, type Params } from './LabFrame'
 import { DecisionTreeSplitLab } from './DecisionTreeSplitLab'
 import { TreeOverfittingLab } from './TreeOverfittingLab'
@@ -14,6 +14,10 @@ export function LabHost({ labId, title }: { labId: string; title: string | null 
   const [result, setResult] = useState<LabRunResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'dedup' | 'error'>(
+    'idle',
+  )
+  const [lastParams, setLastParams] = useState<Params | null>(null)
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -40,6 +44,7 @@ export function LabHost({ labId, title }: { labId: string; title: string | null 
     async (params: Params) => {
       setBusy(true)
       setError(null)
+      setLastParams(params)
       try {
         const next = await runLab(labId, params)
         setResult(next)
@@ -51,6 +56,22 @@ export function LabHost({ labId, title }: { labId: string; title: string | null 
     },
     [labId],
   )
+
+  const handleSave = useCallback(async () => {
+    setSaveState('saving')
+    try {
+      const spec = state.kind === 'ready' ? state.spec : null
+      const saved = await recordLab(labId, {
+        parameters: (lastParams ?? spec?.defaults ?? {}) as Record<string, unknown>,
+        result_summary: result ? (result as Record<string, unknown>) : undefined,
+        score: 1.0,
+      })
+      setSaveState(saved.deduplicated ? 'dedup' : 'saved')
+      window.setTimeout(() => setSaveState('idle'), 2200)
+    } catch {
+      setSaveState('error')
+    }
+  }, [labId, lastParams, result, state])
 
   if (state.kind === 'loading') {
     return (
@@ -78,6 +99,25 @@ export function LabHost({ labId, title }: { labId: string; title: string | null 
         busy={busy}
         error={error}
       />
+      <div className="mt-3 flex items-center gap-3">
+        <button
+          onClick={() => void handleSave()}
+          disabled={saveState === 'saving' || !result}
+          className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 transition enabled:hover:bg-emerald-100 disabled:opacity-40 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-300 dark:enabled:hover:bg-emerald-950/50"
+        >
+          {saveState === 'saving'
+            ? 'Сохраняем…'
+            : saveState === 'saved'
+              ? '✓ Результат сохранён'
+              : saveState === 'dedup'
+                ? '✓ Уже сохранено'
+                : 'Сохранить результат в прогресс'}
+        </button>
+        {saveState === 'error' && (
+          <span className="text-xs text-rose-500">Не удалось сохранить результат</span>
+        )}
+        <span className="text-xs text-slate-400">Повторная отправка не создаёт дубликатов.</span>
+      </div>
     </section>
   )
 }
