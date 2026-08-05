@@ -1,228 +1,188 @@
 ---
 title: Neural Networks and Backpropagation
+id: concept.dl.neural-networks-and-backpropagation
 type: concept
 area: dl
-status: active
-aliases:
-  - Нейронные сети и backpropagation
-  - Backprop
-  - Backpropagation
-tags:
-  - dl/foundations
-  - dl/optimization
-math_depth: 2
-id: concept.dl.neural-networks-and-backpropagation
 schema_version: 2
 language: ru
+status: active
 rag: include
 rag_collection: knowledge
 app: source
+visual: true
+aliases:
+- Нейронные сети и backpropagation
+- Backprop
+tags:
+- dl/foundations
+math_depth: 2
 ---
+
 # Neural Networks and Backpropagation
 
-## Идея за 30 секунд
+## Нейронная сеть с нуля
 
-Neural network чередует affine transformations и nonlinear activations. Forward pass вычисляет prediction и loss. Computational graph хранит зависимости операций, а backpropagation применяет chain rule от loss к каждому parameter. Optimizer использует gradients для update; backprop сам параметры не меняет.
-
-## Neuron и Linear layer
-
-Один neuron:
+Neural network — композиция differentiable transformations. Простой MLP:
 
 $$
-z=w^\top x+b,
+h=\phi(XW_1^\top+b_1),
 \qquad
-a=\phi(z).
+z=hW_2^\top+b_2.
 $$
 
-$w$ задаёт direction/sensitivity, $b$ — offset, $\phi$ — activation.
-
-Для batch:
-
-$$
-Z=XW^\top+b,
-$$
-
-где $X\in\mathbb{R}^{B\times d_{\text{in}}}$, $W\in\mathbb{R}^{d_{\text{out}}\times d_{\text{in}}}$, $Z\in\mathbb{R}^{B\times d_{\text{out}}}$.
-
-Linear layer в libraries фактически affine из-за bias.
-
-## Зачем activation
-
-Композиция только affine layers остаётся affine:
-
-$$
-W_2(W_1x+b_1)+b_2
-=\widetilde{W}x+\widetilde{b}.
-$$
-
-Nonlinearity увеличивает expressive power.
-
-### ReLU
-
-$$
-\operatorname{ReLU}(z)=\max(0,z).
-$$
-
-Дешёвая и помогает gradient flow для positive region. Negative region имеет zero derivative; neuron может «умереть», если постоянно остаётся там.
-
-### Sigmoid
-
-$$
-\sigma(z)=\frac{1}{1+e^{-z}}.
-$$
-
-Подходит для binary probability output, но в hidden layers saturates и даёт малые gradients.
-
-### Tanh
-
-$$
-\tanh(z)\in[-1,1].
-$$
-
-Zero-centered, но также saturates.
-
-Activation выбирают по роли layer; output activation согласуется с loss.
+$X$ — batch features, $h$ — hidden representation, $z$ — logits/output.
 
 ## Forward pass
 
-Для двух layers:
+Forward pass вычисляет prediction и loss на текущих parameters.
+
+```python
+logits = model(features)
+loss = criterion(logits, targets)
+```
+
+PyTorch одновременно строит computational graph: запоминает operations, нужные для derivatives.
+
+## Gradient
+
+Gradient показывает локальное изменение loss при малом изменении parameter:
 
 $$
-h=\phi(W_1x+b_1),
+\nabla_\theta L.
 $$
 
-$$
-z=W_2h+b_2,
-$$
-
-$$
-\widehat{y}=g(z),
-$$
-
-$$
-L=\ell(y,z).
-$$
-
-Stable implementations часто принимают logits $z$ и внутри объединяют activation с loss: `CrossEntropyLoss` не требует external softmax, `BCEWithLogitsLoss` — external sigmoid.
-
-## Loss
-
-Loss задаёт training signal и prediction semantics.
-
-Regression MSE:
-
-$$
-L=\frac{1}{B}\sum_i(y_i-\widehat{y}_i)^2.
-$$
-
-Binary cross-entropy from logits соответствует Bernoulli NLL.
-
-Multiclass cross-entropy:
-
-$$
-L_i
-=-\log
-\frac{\exp(z_{i,y_i})}
-{\sum_{c=1}^{C}\exp(z_{i,c})}.
-$$
-
-Softmax values сравнимы внутри одного object; subtract max logit используется для numerical stability.
-
-## Computational graph
-
-Graph состоит из:
-
-- tensors/values;
-- operations;
-- directed dependencies.
-
-Autograd записывает operations над tensors с `requires_grad`, затем при `backward()` проходит graph в reverse topological order.
-
-Intermediate values нужны для local derivatives, поэтому training хранит activations и потребляет больше memory, чем inference.
+Optimizer делает шаг примерно в направлении `-gradient`.
 
 ## Chain rule
 
-Если:
+Для композиции:
 
 $$
-L=f(h),
-\qquad
-h=g(z),
-\qquad
-z=q(w),
+L=f(g(h(x)))
 $$
 
-то:
+derivative является произведением local derivatives. Backpropagation эффективно проходит graph в обратном порядке и переиспользует intermediate results.
+
+## Маленький пример
+
+$$
+y=wx,\quad L=(y-t)^2.
+$$
 
 $$
 \frac{\partial L}{\partial w}
-=\frac{\partial L}{\partial h}
-\frac{\partial h}{\partial z}
-\frac{\partial z}{\partial w}.
+=2(wx-t)x.
 $$
 
-При нескольких paths gradient contributions суммируются.
+Если prediction выше target и $x>0$, gradient положительный, gradient descent уменьшит $w$.
 
-## Backpropagation по шагам
+## Training step
 
-1. Forward: вычислить activations, logits и loss.
-2. Инициализировать upstream gradient $\partial L/\partial L=1$.
-3. Для каждой operation в reverse order:
-   - взять incoming gradient;
-   - умножить на local derivative/Jacobian;
-   - накопить contributions к inputs/parameters.
-4. Получить `.grad` для trainable parameters.
-5. Optimizer выполняет update.
-6. Очистить gradients перед следующим batch.
+```python
+optimizer.zero_grad(set_to_none=True)
+logits = model(features)
+loss = criterion(logits, targets)
+loss.backward()
+optimizer.step()
+```
 
-Backprop — efficient algorithm derivatives, а не optimizer.
+Порядок важен:
 
-## Gradient для Linear layer
+1. очистить старые gradients;
+2. forward;
+3. loss;
+4. backward;
+5. update.
 
-Если:
+Gradients по умолчанию накапливаются, поэтому забытый `zero_grad` меняет optimization.
 
-$$
-Z=XW^\top+b
-$$
+## Epoch, batch, iteration
 
-и известен $G=\partial L/\partial Z$, то:
+- sample — один объект;
+- batch — группа объектов;
+- iteration/step — один update;
+- epoch — проход по training dataset.
 
-$$
-\frac{\partial L}{\partial W}=G^\top X,
-$$
+Batch size влияет на noise gradient, memory и normalization.
 
-$$
-\frac{\partial L}{\partial b}
-=\sum_{\text{batch}}G,
-$$
+## `train()` и `eval()`
 
-$$
-\frac{\partial L}{\partial X}=GW.
-$$
+```python
+model.train()
+model.eval()
+```
 
-Shapes служат проверкой вывода.
+Они переключают Dropout/BatchNorm behavior, но не отключают gradient graph.
+
+Для inference:
+
+```python
+model.eval()
+with torch.inference_mode():
+    logits = model(features)
+```
 
 ## Vanishing и exploding gradients
 
-Repeated Jacobian products могут:
+Deep composition может уменьшать/увеличивать gradient. Помогают:
 
-- уменьшаться к нулю;
-- расти до overflow;
-- иметь разные scales по directions.
+- initialization;
+- ReLU/GELU;
+- normalization;
+- residual connections;
+- gradient clipping;
+- подходящий learning rate;
+- gated recurrent units.
 
-Помогают initialization, normalization, residual connections, подходящие activations, gradient clipping и architecture design. Clipping лечит symptom large gradients, но не заменяет поиск причины.
+## Initialization
 
-## Что если assumptions нарушены
+Weights не должны быть одинаковыми: иначе neurons учат одно и то же. Xavier/He initialization учитывают fan-in/fan-out и activation.
 
-- Output/loss mismatch даёт неверную semantics или unstable math.
-- Hidden state, dtype и shape mismatch могут не падать сразу, но обучать не ту задачу.
-- Gradient accumulation без деления loss меняет effective step.
-- `model.eval()` меняет Dropout/BatchNorm behavior, но не отключает gradients; `no_grad()` отключает graph, но не переключает mode.
+## Autograd traps
+
+- `.detach()` разрывает graph;
+- `.item()` превращает scalar tensor в Python number;
+- in-place operation может уничтожить saved value;
+- NumPy conversion требует CPU и detach;
+- хранение loss tensors в list без `.item()` держит graphs и память.
+
+## Визуализация
+
+Компонент `backprop-computation-graph`:
+
+- nodes forward values;
+- local derivatives;
+- reverse gradient flow;
+- learning-rate step;
+- gradient accumulation toggle;
+- detach/in-place error examples.
+
+## Минимальный MLP
+
+```python
+model = torch.nn.Sequential(
+    torch.nn.Linear(20, 64),
+    torch.nn.ReLU(),
+    torch.nn.Linear(64, 1),
+)
+```
+
+Parameter count и shapes должны быть понятны до запуска.
+
+## Частые ошибки
+
+- забыть zero_grad;
+- validation в `train()`;
+- loss на probabilities вместо logits;
+- неправильный target dtype;
+- accidental detach;
+- вычислять metrics с активным graph;
+- сохранять не лучший checkpoint;
+- сравнивать models на разных splits.
 
 ## Связи
 
-- [[Gradients Chain Rule and Optimization]] — mathematical owner gradient, Jacobian и Hessian.
-- [[Likelihood MLE and MAP]] — cross-entropy как negative log-likelihood.
-- [[Optimization and Regularization in Deep Learning]] — update, initialization, normalization и dropout.
-- [[Embeddings and Attention]] — Linear projections создают Q/K/V.
-- [[Deep Learning — Interview]] — короткий формат.
+- [[Tensors Shapes and Linear Layers]]
+- [[Activation Functions and Losses]]
+- [[Optimization and Regularization in Deep Learning]]
+- [[Training Evaluation and Inference in PyTorch]]

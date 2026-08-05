@@ -22,6 +22,7 @@ export function LessonOutline({
   onSelect: (index: number) => void
 }) {
   const completed = new Set(completedScenes ?? [])
+  let checkpointNumber = 0
   return (
     <nav aria-label="Сцены урока" className="flex flex-col gap-1">
       {scenes.map((scene, index) => {
@@ -32,7 +33,7 @@ export function LessonOutline({
           scene.type === 'interactive_lab'
             ? (scene.lab_title ?? 'Лаборатория')
             : scene.type === 'checkpoint'
-              ? `Вопрос ${index + 1}`
+              ? `Проверка ${++checkpointNumber}`
               : (scene.display_title ?? scene.title ?? meta.label)
         return (
           <button

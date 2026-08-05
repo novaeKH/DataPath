@@ -32,51 +32,106 @@ cssclasses:
 
 # Logistic Regression и вероятности
 
-> [!summary] Результат урока
-> - объяснить logit и sigmoid
-> - отделить probability от решения по threshold
-> - прочитать знак и масштаб коэффициентов
+## Результат урока
 
-## Основной материал
-
-Canonical source: [[Logistic Regression]]. Приложение загружает содержание по `content_path`, поэтому здесь теория не копируется.
+- понять logit, sigmoid и probability
+- связать LogLoss с likelihood
+- выбрать threshold и проверить calibration
 
 ## Сценарий урока
 
 ```datapath
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "layout": "focus",
   "content_path": "10 Знания/ML/01 Classical ML/Logistic Regression.md",
   "scenes": [
     {
       "type": "hook",
-      "title": "Зачем это нужно в реальной задаче"
+      "title": "Зачем это нужно и какой результат получим"
     },
     {
       "type": "content",
-      "source_heading": "Идея за 30 секунд"
+      "source_heading": "Что предсказывает модель"
     },
     {
       "type": "content",
-      "source_heading": "Формальная модель"
+      "source_heading": "Odds и log-odds"
+    },
+    {
+      "type": "content",
+      "source_heading": "Пример"
     },
     {
       "type": "interactive",
-      "component": "logit-boundary-lab"
+      "component": "logistic-boundary-threshold-lab"
+    },
+    {
+      "type": "content",
+      "source_heading": "Обучение и LogLoss"
+    },
+    {
+      "type": "content",
+      "source_heading": "Decision boundary"
+    },
+    {
+      "type": "content",
+      "source_heading": "Визуализация"
+    },
+    {
+      "type": "content",
+      "source_heading": "Частые ошибки"
+    },
+    {
+      "type": "content",
+      "source_heading": "Сравнение с другими моделями"
     },
     {
       "type": "retrieval",
-      "mode": "free-recall",
-      "prompt": "Объясни главную идею своими словами без подсказки."
+      "mode": "single-choice-or-free-recall",
+      "prompt": "Чем logit отличается от probability и почему не нужен sigmoid перед BCEWithLogitsLoss?"
+    },
+    {
+      "type": "content",
+      "source_heading": "Probability и threshold"
+    },
+    {
+      "type": "content",
+      "source_heading": "Regularization"
+    },
+    {
+      "type": "content",
+      "source_heading": "Class imbalance"
+    },
+    {
+      "type": "content",
+      "source_heading": "Calibration"
+    },
+    {
+      "type": "content",
+      "source_heading": "Multiclass"
     },
     {
       "type": "application",
-      "mode": "micro-task"
+      "mode": "micro-task",
+      "prompt": "Предложи metric, class-weight policy и threshold для редкого positive class."
+    },
+    {
+      "type": "content",
+      "source_heading": "Preprocessing"
+    },
+    {
+      "type": "content",
+      "source_heading": "Интерпретация"
+    },
+    {
+      "type": "content",
+      "source_heading": "sklearn пример"
     },
     {
       "type": "interview",
-      "mode": "follow-up"
+      "mode": "follow-up",
+      "prompt": "Как работает Logistic Regression и как интерпретировать коэффициенты и probability?"
     },
     {
       "type": "reflection",
@@ -88,12 +143,12 @@ Canonical source: [[Logistic Regression]]. Приложение загружае
 
 ## Проверка понимания
 
-1. Сформулируй главную идею одним абзацем без терминов, которые не можешь объяснить.
-2. Назови один случай, когда метод или правило даст неверный вывод.
-3. Приведи небольшой пример из табличной ML-задачи.
+1. Чем logit отличается от probability и почему не нужен sigmoid перед BCEWithLogitsLoss?
+2. Предложи metric, class-weight policy и threshold для редкого positive class.
+3. Как работает Logistic Regression и как интерпретировать коэффициенты и probability?
 
 ## Связи
 
 - Курс: [[00 Курс — Классический ML]]
-- Модуль: [[02 Линейные модели]]
-- Источники: [[DataPath — проверенные источники]]
+- Модуль: определяется по `module_id` во frontmatter.
+- Теория: `content_path` во frontmatter является каноническим источником.

@@ -273,7 +273,7 @@ describe('AtlasView', () => {
     )
     expect(await screen.findByRole('button', { name: 'Orphan Concept' })).toBeInTheDocument()
     // статистика обновилась: 4 узла
-    expect(screen.getByText(/4 узлов/)).toBeInTheDocument()
+    expect(screen.getByText(/4 узл/)).toBeInTheDocument()
   })
 
   it('renders nodes and edges from backend data in route mode', async () => {
@@ -285,7 +285,7 @@ describe('AtlasView', () => {
     expect(screen.getByRole('button', { name: 'Классический ML' })).toBeInTheDocument()
     // подписи узлов отображаются в режиме маршрута (fit → k >= 0.45)
     expect(screen.getByText('Decision Trees')).toBeInTheDocument()
-    expect(await screen.findByText(/3 узлов/)).toBeInTheDocument()
+    expect(await screen.findByText(/3 узл/)).toBeInTheDocument()
   })
 
   it('fit-to-content applies a readable scale in route mode', async () => {
@@ -351,6 +351,57 @@ describe('AtlasView', () => {
     const openButton = await screen.findByRole('button', { name: /Открыть урок/ })
     await user.click(openButton)
     // заглушка /focus/:lessonId отрендерилась (переход произошёл)
+    expect(await screen.findByTestId('focus-route')).toBeInTheDocument()
+  })
+
+  it('zoom controls имеют доступные имена и работают', async () => {
+    const user = userEvent.setup()
+    stubFetch(makeAtlas())
+    renderAtlas()
+    await screen.findByRole('img', { name: /Атлас знаний/ })
+    const zoomIn = screen.getByRole('button', { name: 'Приблизить' })
+    const zoomOut = screen.getByRole('button', { name: 'Отдалить' })
+    const reset = screen.getByRole('button', { name: 'Сбросить вид' })
+    expect(zoomIn).toBeInTheDocument()
+    expect(zoomOut).toBeInTheDocument()
+    expect(reset).toBeInTheDocument()
+    const readScale = () => {
+      const g = document.querySelector('svg g')
+      const m = g?.getAttribute('transform')?.match(/scale\(([\d.]+)\)/)
+      return m ? Number(m[1]) : 0
+    }
+    const before = readScale()
+    await user.click(zoomIn)
+    await waitFor(() => {
+      expect(readScale()).toBeGreaterThan(before)
+    })
+    await user.click(reset)
+    await waitFor(() => {
+      expect(readScale()).toBeGreaterThanOrEqual(0.45)
+    })
+  })
+
+  it('клавиатура: Enter на узле открывает панель', async () => {
+    const user = userEvent.setup()
+    stubFetch(makeAtlas())
+    renderAtlas()
+    const node = await screen.findByRole('button', { name: 'Decision Tree' })
+    node.focus()
+    await user.keyboard('{Enter}')
+    expect(await screen.findByText(/Decision Tree без магии/)).toBeInTheDocument()
+  })
+
+  it('режим «Список» показывает маршрут и открывает урок', async () => {
+    const user = userEvent.setup()
+    stubFetch(makeAtlas())
+    renderAtlas()
+    await screen.findByRole('img', { name: /Атлас знаний/ })
+    await user.click(screen.getByRole('button', { name: 'Список' }))
+    expect(screen.getByRole('button', { name: 'Список' })).toHaveAttribute('aria-pressed', 'true')
+    // Модуль маршрута и связанные материалы видны списком.
+    expect(screen.getByText(/Связанные материалы/)).toBeInTheDocument()
+    const lesson = screen.getByRole('button', { name: 'Decision Tree' })
+    await user.click(lesson)
     expect(await screen.findByTestId('focus-route')).toBeInTheDocument()
   })
 })

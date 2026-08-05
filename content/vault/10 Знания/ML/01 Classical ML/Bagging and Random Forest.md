@@ -18,6 +18,7 @@ language: ru
 rag: include
 rag_collection: knowledge
 app: source
+visual: true
 ---
 # Bagging and Random Forest
 
@@ -134,6 +135,40 @@ Extremely Randomized Trees добавляют randomness thresholds/splits. Эт
 ## Ответ для собеседования
 
 Random Forest — ансамбль Decision Trees, где каждое дерево обучается на bootstrap-выборке строк и случайном подмножестве признаков на каждом split. Предсказание — усреднение (регрессия) или голосование (классификация). **Ключевая идея:** усреднение некоррелированных деревьев снижает variance. Одно дерево может сильно переобучиться; $M$ деревьев на разных выборках ошибаются по-разному, и при усреднении ошибки компенсируются. **Преимущества:** стабильнее одного дерева, OOB-оценка заменяет validation set для baseline, feature importance, параллельное обучение. **Ограничения:** не экстраполирует за пределы train-диапазона, хуже boosting на сложных зависимостях, требует кодирования категорий.
+
+## Визуализация
+
+Компонент `bootstrap-forest-lab`: число деревьев, bootstrap-сэмплы и доля признаков — видно, как декорреляция деревьев снижает variance без роста bias.
+
+## Сравнение с Gradient Boosting
+
+| | Random Forest | Gradient Boosting |
+|---|---|---|
+| Идея | параллельные деревья, усреднение | последовательные деревья на ошибках |
+| Bias | выше | ниже |
+| Variance | ниже | контролируется |
+| Переобучение | реже | чаще, нужен regularization |
+| Обучение | параллелится | последовательное |
+
+RF — стабильный baseline с меньшим числом параметров; GB — выше качество при аккуратной настройке.
+
+## Простой пример
+
+Bootstrap-выборки из 100 объектов: каждое дерево видит ~63 уникальных объекта; усреднение 100 деревьев снижает variance предсказаний по сравнению с одним деревом, почти не меняя bias.
+
+## Пример кода
+
+```python
+from sklearn.ensemble import RandomForestClassifier
+
+model = RandomForestClassifier(
+    n_estimators=300, max_depth=8, min_samples_leaf=5,
+    max_features="sqrt", random_state=42,
+)
+model.fit(X_train, y_train)
+print(model.score(X_val, y_val))
+print(model.feature_importances_)
+```
 
 ## Связи
 

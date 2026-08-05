@@ -1,166 +1,152 @@
 ---
 title: Support Vector Machines
+id: concept.ml.support-vector-machines
 type: concept
 area: ml
-status: active
-aliases:
-  - SVM
-  - Support Vector Machine
-  - Метод опорных векторов
-tags:
-  - ml/classical
-  - ml/margin
-math_depth: 2
-id: concept.ml.support-vector-machines
 schema_version: 2
 language: ru
+status: active
 rag: include
 rag_collection: knowledge
 app: source
+visual: true
+aliases:
+- SVM
+- Метод опорных векторов
+tags:
+- ml/classical
+- ml/margin
+math_depth: 2
 ---
+
 # Support Vector Machines
 
-## Идея за 30 секунд
+## Интуиция
 
-Linear SVM ищет separating hyperplane с большим margin. На objective влияют в основном support vectors — объекты около границы или нарушающие её. Parameter $C$ балансирует wide margin и training violations. Kernel позволяет linear separation в implicit feature space, но scaling и tuning $C/\gamma$ критичны.
+Для binary classification SVM ищет boundary с максимальным margin — расстоянием до ближайших train points разных классов. Эти ближайшие points называются support vectors и определяют решение.
 
-## Linear score и margin
+## Linear hard-margin SVM
 
-Для $y_i\in\{-1,+1\}$:
-
-$$
-f(x)=w^\top x+b.
-$$
-
-Signed functional margin:
+Для labels $y_i\in\{-1,+1\}$:
 
 $$
-y_i f(x_i).
+\min_{w,b}\frac12\lVert w\rVert^2
 $$
 
-Classification correct, если значение положительно. Геометрический margin нормируется на $\lVert w\rVert_2$.
-
-Hard-margin objective для linearly separable data:
-
-$$
-\min_{w,b}\frac{1}{2}\lVert w\rVert_2^2
-$$
-
-при constraints:
+при ограничениях:
 
 $$
 y_i(w^\top x_i+b)\ge1.
 $$
 
-Minimization norm эквивалентна maximization geometric margin.
+Margin обратно пропорционален $\lVert w\rVert$. Hard margin требует идеально separable data и чувствителен к outliers.
 
-## Soft margin и hinge loss
+## Soft margin
 
-Реальные данные не separable. Soft-margin SVM:
-
-$$
-\min_{w,b}
-\frac{1}{2}\lVert w\rVert_2^2
-+C\sum_{i=1}^{n}
-\max\left(0,1-y_if(x_i)\right).
-$$
-
-Hinge loss:
+Добавляются slack variables $\xi_i$:
 
 $$
-\ell_i=\max(0,1-y_if(x_i)).
+\min_{w,b,\xi}
+\frac12\lVert w\rVert^2+C\sum_i\xi_i,
 $$
 
-- $y_if(x_i)\ge1$: loss zero, объект за margin.
-- $0<y_if(x_i)<1$: class correct, но margin нарушен.
-- $y_if(x_i)\le0$: misclassification.
+$$
+y_i(w^\top x_i+b)\ge1-\xi_i,\quad \xi_i\ge0.
+$$
 
-$C$:
+Большое `C` сильнее штрафует ошибки и делает boundary гибче; малое `C` усиливает regularization и допускает violations.
 
-- large $C$ сильнее штрафует violations → более сложная/чувствительная boundary;
-- small $C$ допускает violations → wider margin и stronger regularization.
+## Hinge loss
 
-## Support vectors
+Equivalent unconstrained idea:
 
-Только objects с active constraints/near margin получают non-zero dual coefficients и определяют boundary. Удаление далёких правильно classified points часто не меняет solution.
+$$
+\max(0,1-yf(x)).
+$$
 
-Это делает model sparse по train objects в dual representation, но inference cost растёт с числом support vectors.
+Correct point outside margin имеет zero loss. Point внутри margin или ошибочный — positive loss.
 
 ## Kernel trick
 
-В dual objective observations входят через dot products. Kernel заменяет:
+Kernel вычисляет inner product в feature space:
 
 $$
-x_i^\top x_j
+K(x,z)=\langle\phi(x),\phi(z)\rangle.
 $$
 
-на:
+RBF:
 
 $$
-K(x_i,x_j)=\phi(x_i)^\top\phi(x_j)
+K(x,z)=\exp(-\gamma\lVert x-z\rVert^2).
 $$
 
-без явного вычисления high-dimensional $\phi(x)$.
+Большое $\gamma$ создаёт локальное влияние и сложную boundary; малое — smooth boundary.
 
-RBF kernel:
+## Scaling
 
-$$
-K(x,z)
-=\exp\left(
--\gamma\lVert x-z\rVert_2^2
-\right).
-$$
+SVM основан на distances/dot products, поэтому scaling критичен. `C` и `gamma` имеют смысл только относительно scale features.
 
-$\gamma$:
+## Probability
 
-- large → очень local influence, high variance;
-- small → smooth global influence, high bias.
-
-Tuning $C$ и $\gamma$ взаимосвязан.
-
-## Почему scaling необходим
-
-Margin, dot products и RBF distance зависят от units. Feature с большим численным scale доминирует и меняет effective $\gamma$.
-
-Scaler fit только внутри train/folds. Для sparse data нужен transformer, сохраняющий sparsity.
-
-## Probabilities и calibration
-
-SVM выдаёт signed decision score, а не probability. Probability estimate обычно получают отдельной calibration procedure, например Platt scaling или isotonic regression, обученной на held-out/CV predictions.
-
-Calibration на тех же predictions, что fit SVM, переобучается.
+Обычный SVM выдаёт decision score, не probability. `probability=True` добавляет calibration-like fit и увеличивает стоимость обучения. Часто лучше отдельно calibrate на held-out/OOF predictions.
 
 ## Multiclass
 
-Распространённые схемы:
+Используются One-vs-Rest или One-vs-One стратегии. Implementation определяет детали.
 
-- one-vs-rest;
-- one-vs-one.
+## Complexity
 
-Конкретная библиотека выбирает strategy и aggregation; interpretation `decision_function` зависит от неё.
+Kernel SVM может быть дорогим по memory/time на больших $n$, потому что работает с pairwise similarities. Linear SVM подходит для high-dimensional sparse features.
+
+## Визуализация
+
+Компонент `svm-margin-kernel-lab`:
+
+- points и support vectors;
+- margin lines;
+- sliders `C` и `gamma`;
+- linear/RBF toggle;
+- outlier toggle;
+- scaling toggle.
+
+## sklearn пример
+
+```python
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+
+pipeline = Pipeline([
+    ("scale", StandardScaler()),
+    ("model", SVC(C=1.0, kernel="rbf", gamma="scale")),
+])
+```
 
 ## Когда использовать
 
-- medium-size data;
-- high-dimensional sparse features;
-- чёткий margin;
-- nonlinear boundary при умеренном $n$ и подходящем kernel.
+- medium-size dataset;
+- high-dimensional sparse text с linear kernel;
+- сложная smooth boundary при не слишком большом n;
+- когда inference по support vectors приемлем.
 
-Kernel SVM плохо масштабируется на очень большой $n$; linear solvers или approximate feature maps практичнее.
+Для больших tabular datasets tree boosting часто проще и быстрее.
 
-## Failure modes
+## Ответ для собеседования
 
-- не масштабировать features;
-- tuning по test;
-- считать decision score probability;
-- использовать RBF default без проверки $\gamma$;
-- применять kernel SVM к огромному dataset без latency/memory оценки;
-- интерпретировать support vectors как «аномалии» автоматически.
+> SVM ищет разделяющую гиперплоскость с максимальным зазором (margin); для нелинейных границ используется kernel trick — признаки неявно проецируются в пространство большей размерности. Обучение — решение задачи квадратичного программирования (или dual), штраф за ошибки задаёт параметр C, форму границы — kernel и gamma. SVM хорошо работает на малых/средних данных, но не выдаёт вероятности без дополнительной калибровки.
+
+## Частые ошибки
+
+- не scaling;
+- путать `C` с regularization strength напрямую: большое C = слабее regularization;
+- считать score probability;
+- подбирать C/gamma на test;
+- использовать RBF на огромном dataset без оценки complexity;
+- интерпретировать все train points как одинаково важные.
 
 ## Связи
 
-- [[Linear Algebra for ML]] — dot product, norm и distance.
-- [[Regularization]] — margin objective содержит L2 и trade-off $C$.
-- [[K-Nearest Neighbors]] — оба зависят от geometry, но используют её по-разному.
-- [[ML Foundations]] — $C$ и $\gamma$ управляют bias–variance.
-- [[Validation Splits and Data Leakage]] — scaler, calibration и tuning внутри folds.
+- [[Regularization]]
+- [[K-Nearest Neighbors]]
+- [[Probability Calibration]]
+- [[Data Preprocessing and Feature Engineering]]

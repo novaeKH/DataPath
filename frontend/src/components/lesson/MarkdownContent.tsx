@@ -67,7 +67,7 @@ const CALLOUT_TYPES: Record<string, { label: string; classes: string }> = {
   note: {
     label: 'Заметка',
     classes:
-      'border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300',
+      'border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300',
   },
   example: {
     label: 'Пример',
@@ -78,6 +78,11 @@ const CALLOUT_TYPES: Record<string, { label: string; classes: string }> = {
     label: '',
     classes:
       'border-indigo-300 bg-indigo-50 text-indigo-900 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-100',
+  },
+  warning_dark: {
+    label: 'Ошибки',
+    classes:
+      'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-100',
   },
 }
 
@@ -111,7 +116,7 @@ function CalloutBlockquote(props: React.BlockquoteHTMLAttributes<HTMLQuoteElemen
 /** Безопасный рендер Markdown из vault: GFM, LaTeX, callouts, код, ссылки. */
 export function MarkdownContent({ markdown }: { markdown: string }) {
   return (
-    <div className="datapath-markdown text-[15px] leading-relaxed text-slate-800 dark:text-slate-200">
+    <div className="dp-content datapath-markdown">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[
@@ -121,10 +126,25 @@ export function MarkdownContent({ markdown }: { markdown: string }) {
         components={{
           a: SafeLink,
           blockquote: CalloutBlockquote,
+          h1: (props) => <h1 {...props} className="my-4 text-xl font-bold" />,
+          h2: (props) => <h2 {...props} className="mb-2 mt-6 text-lg font-bold" />,
+          h3: (props) => <h3 {...props} className="mb-2 mt-5 text-base font-semibold" />,
+          h4: (props) => <h4 {...props} className="mb-2 mt-4 text-sm font-semibold" />,
+          p: (props) => <p {...props} className="my-3 leading-relaxed" />,
+          strong: (props) => <strong {...props} className="font-semibold" />,
+          hr: (props) => <hr {...props} className="my-6" />,
+          img: (props) => (
+            <img {...props} className="my-3 max-w-full rounded-lg" alt={props.alt ?? ''} />
+          ),
           pre: (props) => (
             <pre
               {...props}
-              className="overflow-x-auto rounded-lg border border-slate-200 bg-slate-900 p-4 text-[13px] leading-relaxed text-slate-100 dark:border-slate-700"
+              className="overflow-x-auto rounded-lg p-4 text-[13px] leading-relaxed"
+              style={{
+                background: 'var(--dp-code-bg)',
+                border: '1px solid var(--dp-code-border)',
+                color: 'var(--dp-code-text)',
+              }}
             />
           ),
           code: (props) => {
@@ -138,10 +158,7 @@ export function MarkdownContent({ markdown }: { markdown: string }) {
               )
             }
             return (
-              <code
-                {...rest}
-                className="rounded bg-slate-200 px-1.5 py-0.5 font-mono text-[0.85em] text-slate-800 dark:bg-slate-800 dark:text-slate-200"
-              >
+              <code {...rest} className="rounded px-1.5 py-0.5 font-mono text-[0.85em]">
                 {children}
               </code>
             )
@@ -149,17 +166,17 @@ export function MarkdownContent({ markdown }: { markdown: string }) {
           // Tailwind v4 preflight сбрасывает list-style: none — маркеры
           // списков возвращаем явными классами.
           ul: (props) => (
-            <ul {...props} className="my-3 list-disc space-y-1 pl-6 marker:text-slate-400" />
+            <ul {...props} className="my-3 list-disc space-y-1 pl-6" />
           ),
           ol: (props) => (
-            <ol {...props} className="my-3 list-decimal space-y-1 pl-6 marker:text-slate-400" />
+            <ol {...props} className="my-3 list-decimal space-y-1 pl-6" />
           ),
           li: (props) => <li {...props} className="leading-relaxed" />,
           table: (props) => (
             <div className="overflow-x-auto">
               <table
                 {...props}
-                className="my-3 w-full border-collapse text-sm [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-100 [&_th]:px-3 [&_th]:py-1.5 [&_th]:font-semibold [&_td]:border [&_td]:border-slate-300 [&_td]:px-3 [&_td]:py-1.5 dark:[&_th]:border-slate-700 dark:[&_th]:bg-slate-800 dark:[&_td]:border-slate-700"
+                className="my-3 w-full border-collapse text-sm [&_th]:border [&_th]:px-3 [&_th]:py-1.5 [&_th]:font-semibold [&_td]:border [&_td]:px-3 [&_td]:py-1.5"
               />
             </div>
           ),

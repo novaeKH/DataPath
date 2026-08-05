@@ -12,6 +12,7 @@ language: ru
 rag: include
 rag_collection: knowledge
 app: source
+visual: true
 ---
 # Categorical Features
 
@@ -267,6 +268,11 @@ ID полезен для:
 - High-cardinality ID в OHE.
 - Уверенность, что native handling автоматически устраняет leakage в остальных признаках.
 - Неверная передача category как `float`.
+
+
+## Визуализация
+
+Компонент `categorical-encoding-lab` показывает одну маленькую таблицу `category/target` и позволяет переключать One-Hot, frequency, naive target encoding, out-of-fold и ordered statistics. Пользователь видит, когда собственный target попадает в encoding, как smoothing стабилизирует редкие категории и что происходит с unseen category.
 
 ## Связи
 

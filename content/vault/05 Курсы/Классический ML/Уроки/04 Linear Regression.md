@@ -31,51 +31,106 @@ cssclasses:
 
 # Linear Regression как модель и baseline
 
-> [!summary] Результат урока
-> - связать MSE и least squares
-> - интерпретировать коэффициенты с оговорками
-> - диагностировать основные нарушения
+## Результат урока
 
-## Основной материал
-
-Canonical source: [[Linear Regression]]. Приложение загружает содержание по `content_path`, поэтому здесь теория не копируется.
+- понять линейную формулу и коэффициенты
+- связать MSE с least squares
+- диагностировать residual pattern и multicollinearity
 
 ## Сценарий урока
 
 ```datapath
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "layout": "focus",
   "content_path": "10 Знания/ML/01 Classical ML/Linear Regression.md",
   "scenes": [
     {
       "type": "hook",
-      "title": "Зачем это нужно в реальной задаче"
+      "title": "Зачем это нужно и какой результат получим"
     },
     {
       "type": "content",
-      "source_heading": "Идея за 30 секунд"
+      "source_heading": "Задача с нуля"
     },
     {
       "type": "content",
-      "source_heading": "Зачем нужно"
+      "source_heading": "Простой пример"
+    },
+    {
+      "type": "content",
+      "source_heading": "Как обучается"
     },
     {
       "type": "interactive",
-      "component": "linear-fit-lab"
+      "component": "linear-fit-residual-lab"
+    },
+    {
+      "type": "content",
+      "source_heading": "Почему MSE"
+    },
+    {
+      "type": "content",
+      "source_heading": "Категориальные признаки"
+    },
+    {
+      "type": "content",
+      "source_heading": "Визуализация"
+    },
+    {
+      "type": "content",
+      "source_heading": "Частые ошибки"
+    },
+    {
+      "type": "content",
+      "source_heading": "Сравнение с другими моделями"
     },
     {
       "type": "retrieval",
-      "mode": "free-recall",
-      "prompt": "Объясни главную идею своими словами без подсказки."
+      "mode": "single-choice-or-free-recall",
+      "prompt": "Что означает коэффициент при признаке и почему его нельзя автоматически читать причинно?"
+    },
+    {
+      "type": "content",
+      "source_heading": "Scaling"
+    },
+    {
+      "type": "content",
+      "source_heading": "Multicollinearity"
+    },
+    {
+      "type": "content",
+      "source_heading": "Нелинейность"
+    },
+    {
+      "type": "content",
+      "source_heading": "Residual analysis"
+    },
+    {
+      "type": "content",
+      "source_heading": "Metrics"
     },
     {
       "type": "application",
-      "mode": "micro-task"
+      "mode": "micro-task",
+      "prompt": "По residual plot опиши, какой pattern модель не выучила и какой следующий шаг проверишь."
+    },
+    {
+      "type": "content",
+      "source_heading": "Regularization"
+    },
+    {
+      "type": "content",
+      "source_heading": "Предположения и интерпретация"
+    },
+    {
+      "type": "content",
+      "source_heading": "sklearn пример"
     },
     {
       "type": "interview",
-      "mode": "follow-up"
+      "mode": "follow-up",
+      "prompt": "Как обучается Linear Regression, зачем regularization и какие основные ограничения модели?"
     },
     {
       "type": "reflection",
@@ -87,12 +142,12 @@ Canonical source: [[Linear Regression]]. Приложение загружает
 
 ## Проверка понимания
 
-1. Сформулируй главную идею одним абзацем без терминов, которые не можешь объяснить.
-2. Назови один случай, когда метод или правило даст неверный вывод.
-3. Приведи небольшой пример из табличной ML-задачи.
+1. Что означает коэффициент при признаке и почему его нельзя автоматически читать причинно?
+2. По residual plot опиши, какой pattern модель не выучила и какой следующий шаг проверишь.
+3. Как обучается Linear Regression, зачем regularization и какие основные ограничения модели?
 
 ## Связи
 
 - Курс: [[00 Курс — Классический ML]]
-- Модуль: [[02 Линейные модели]]
-- Источники: [[DataPath — проверенные источники]]
+- Модуль: определяется по `module_id` во frontmatter.
+- Теория: `content_path` во frontmatter является каноническим источником.

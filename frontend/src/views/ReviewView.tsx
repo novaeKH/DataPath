@@ -12,6 +12,9 @@ import {
   type ReviewSubmitResult,
   type ReviewSummary,
 } from '../lib/api'
+import { ErrorState, LoadingBlock } from '../components/ui/PageState'
+import { Button } from '../components/ui/Button'
+import { formatCount } from '../lib/format'
 
 const DEFAULT_LIMIT = 10
 const RATINGS: { value: ReviewRating; label: string; hint: string }[] = [
@@ -67,20 +70,11 @@ export function ReviewView() {
     return () => controller.abort()
   }, [load])
 
-  if (screen.kind === 'loading') return <Centered>Загрузка повторений…</Centered>
+  if (screen.kind === 'loading') {
+    return <LoadingBlock label="Загрузка повторений…" rows={4} />
+  }
   if (screen.kind === 'error') {
-    return (
-      <Centered>
-        <div className="font-semibold text-rose-600 dark:text-rose-300">Не удалось загрузить</div>
-        <p className="mt-2 max-w-md text-sm text-rose-500">{screen.message}</p>
-        <button
-          onClick={() => void load()}
-          className="mt-4 rounded-lg bg-rose-500/15 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-500/25 dark:text-rose-200"
-        >
-          Попробовать снова
-        </button>
-      </Centered>
-    )
+    return <ErrorState message={screen.message} onRetry={() => void load()} />
   }
   if (screen.kind === 'summary') {
     return (
@@ -126,16 +120,16 @@ function SummaryScreen({
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
+        transition={{ duration: 0.25 }}
       >
         <header>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Повторение</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <h1 className="dp-page-title">Повторение</h1>
+          <p className="dp-page-subtitle mt-1">
             Интервальное повторение закрепляет материал маршрута.
           </p>
         </header>
 
-        <section className="mt-6 rounded-xl border border-slate-200 bg-white/70 p-5 dark:border-slate-800 dark:bg-slate-900/50">
+        <section className="mt-6 rounded-xl p-5 dp-surface">
           {empty ? (
             <EmptyState summary={summary} onReload={onReload} />
           ) : (
@@ -144,17 +138,17 @@ function SummaryScreen({
                 <Count
                   label="На сегодня"
                   value={summary.due_count}
-                  accent="text-slate-900 dark:text-slate-100"
+                  color="var(--dp-text-primary)"
                 />
                 <Count
                   label="Просрочено"
                   value={summary.overdue_count}
-                  accent="text-rose-600 dark:text-rose-300"
+                  color="var(--dp-error)"
                 />
                 <Count
                   label="Выполнено сегодня"
                   value={summary.completed_today}
-                  accent="text-emerald-600 dark:text-emerald-300"
+                  color="var(--dp-success)"
                 />
               </div>
               {items.length === 0 ? (
@@ -164,14 +158,12 @@ function SummaryScreen({
               ) : (
                 <>
                   <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-                    {summary.recommendation} В этой сессии: {items.length} элементов.
+                    {summary.recommendation} В этой сессии:{' '}
+                    {formatCount(items.length, 'элемент', 'элемента', 'элементов')}.
                   </p>
-                  <button
-                    onClick={onStart}
-                    className="mt-4 inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
-                  >
+                  <Button variant="primary" className="mt-4" onClick={onStart}>
                     Начать повторение →
-                  </button>
+                  </Button>
                 </>
               )}
             </>
@@ -225,11 +217,11 @@ function EmptyState({ summary, onReload }: { summary: ReviewSummary; onReload: (
   )
 }
 
-function Count({ label, value, accent }: { label: string; value: number; accent: string }) {
+function Count({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/60 p-4 text-center dark:border-slate-800 dark:bg-slate-900/40">
-      <div className={`text-3xl font-bold ${accent}`}>{value}</div>
-      <div className="mt-1 text-xs text-slate-500">{label}</div>
+    <div className="rounded-lg p-4 text-center dp-surface">
+      <div className="text-3xl font-bold" style={{color}}>{value}</div>
+      <div className="mt-1 text-xs" style={{ color: 'var(--dp-text-muted)' }}>{label}</div>
     </div>
   )
 }
@@ -299,6 +291,9 @@ function SessionScreen({
         }}
         onNext={handleNext}
       />
+      <p className="mt-2 text-right text-[11px] text-slate-400">
+        Клавиши: 1–4 — оценка · Enter — далее
+      </p>
     </div>
   )
 }
@@ -369,24 +364,56 @@ function QuestionCard({
     }
   }, [item.id])
 
-  const handleCheck = () => {
+  const handleCheck = useCallback(() => {
     if (result) return
     void submit('Good', true)
-  }
+  }, [result, submit])
 
-  const handleRating = (rating: ReviewRating) => {
-    if (!result) return
-    if (result.is_correct !== true && result.is_correct !== null) return
-    void submit(rating, false)
-  }
+  const handleRating = useCallback(
+    (rating: ReviewRating) => {
+      if (!result) return
+      if (result.is_correct !== true && result.is_correct !== null) return
+      void submit(rating, false)
+    },
+    [result, submit],
+  )
 
   const allowedRatings = useMemo(() => allowedRatingSet(result), [result])
   const reveal = item.question_type === 'reveal_and_rate'
+  const canRate = allowedRatings.length > 0
+
+  // Клавиатура: Enter — проверить/далее, 1–4 — оценка. Не перехватываем ввод текста.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName
+      const isTextEntry =
+        tag === 'TEXTAREA' ||
+        (tag === 'INPUT' &&
+          ['text', 'number', 'search', 'email', 'password', 'tel', 'url'].includes(
+            (target as HTMLInputElement).type,
+          ))
+      if (isTextEntry) return
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        if (result) onNext()
+        else if (!reveal) handleCheck()
+        return
+      }
+      const keyIndex = ['1', '2', '3', '4'].indexOf(event.key)
+      if (keyIndex >= 0 && canRate) {
+        const rating = allowedRatings[keyIndex]
+        if (rating) handleRating(rating)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [result, canRate, allowedRatings, reveal, handleCheck, handleRating, onNext])
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white/70 p-6 dark:border-slate-800 dark:bg-slate-900/50">
+    <div className="rounded-xl p-6 dp-surface-elevated">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="dp-section-title">
           {item.title}
         </div>
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
@@ -409,26 +436,18 @@ function QuestionCard({
       {!result && !reveal && (
         <div className="mt-5 flex items-center justify-between">
           <span className="text-xs text-slate-400">Объективная проверка без LLM</span>
-          <button
-            onClick={handleCheck}
-            disabled={submitting}
-            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition enabled:hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900"
-          >
+          <Button variant="secondary" disabled={submitting} onClick={handleCheck}>
             {submitting ? 'Проверяем…' : 'Проверить'}
-          </button>
+          </Button>
         </div>
       )}
 
       {!result && reveal && (
         <div className="mt-5 flex items-center justify-between">
           <span className="text-xs text-slate-400">Самооценка — слабый сигнал</span>
-          <button
-            onClick={handleCheck}
-            disabled={submitting}
-            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition enabled:hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900"
-          >
+          <Button variant="secondary" disabled={submitting} onClick={handleCheck}>
             {submitting ? 'Сохраняем…' : 'Показать разбор'}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -508,19 +527,13 @@ function Feedback({
         </div>
       )}
       <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          onClick={onNext}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
-        >
+        <Button variant="primary" onClick={onNext}>
           Далее →
-        </button>
+        </Button>
         {result.is_correct === false && (
-          <button
-            onClick={onRetry}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-          >
+          <Button variant="outline" onClick={onRetry}>
             Ответить ещё раз
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -714,17 +727,17 @@ function DoneScreen({
             <Count
               label="Выполнено"
               value={stats.completed}
-              accent="text-slate-900 dark:text-slate-100"
+              color="var(--dp-text-primary)"
             />
             <Count
               label="Верно"
               value={stats.correct}
-              accent="text-emerald-600 dark:text-emerald-300"
+              color="var(--dp-success)"
             />
             <Count
               label="Требуют внимания"
               value={stats.needsAttention}
-              accent="text-amber-600 dark:text-amber-300"
+              color="var(--dp-warning)"
             />
           </div>
           {nextReviewAt && (
@@ -812,10 +825,4 @@ function formatDate(iso: string): string {
     month: '2-digit',
     year: 'numeric',
   })
-}
-
-function Centered({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex h-[60vh] flex-col items-center justify-center text-center">{children}</div>
-  )
 }

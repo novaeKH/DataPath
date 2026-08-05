@@ -12,8 +12,19 @@
 - Phase 6A.1 — canonical MVP content integration.
 
 ### Next execution step
-**Phase 7 — Non-AI MVP Completion and Visual Polish** (довести приложение до
-сильного самостоятельного продукта без AI-зависимости).
+**Phase 7 — Product Redesign + Lesson V2 + Interactive Learning** — implementation
+complete (2026-08-05), **pending manual visual acceptance**.
+Scope delivered: visual system (semantic tokens, surface hierarchy, typography,
+interaction states), course route redesign (vertical continuity, progress markers),
+Lesson V2 (semantic scenes, reading rhythm, workspace layout), real checkpoints
+(single-choice with keyboard, feedback, explanation), 3 interactive visual
+demonstrations (train/val/test split, bias/variance, decision tree), code/data
+scene support, laboratory animation stability fixes, Today/Focus/Review/Studio/
+Atlas route alignment, mobile responsive coherence.
+
+Документация: `docs/ui-system.md`, `docs/lesson-system.md`.
+
+После принятия следующая фаза — Phase 6B.
 
 ### After Phase 7
 **Phase 6B — Local RAG and AI Mentor.** Сохраняет свой номер и смысл, хотя
@@ -306,7 +317,9 @@ SQLite), REST API, базовый Atlas, роутинг, темы light/dark. З
 
 ---
 
-## Phase 7: Non-AI MVP Completion and Visual Polish (NEXT)
+## Phase 7: Non-AI MVP Completion and Visual Polish
+
+**Статус: implementation complete — pending manual visual acceptance.**
 
 Довести приложение до сильного самостоятельного обучающего продукта **без
 зависимости от AI-агента**. AI остаётся enhancement, а не dependency.
@@ -462,7 +475,7 @@ AI mentor, RAG chat.
 | 5 | Повторение | ✓ сделано |
 | 6A | Парсинг сцен и аудит контента | ✓ сделано |
 | 6A.1 | Канонический MVP-контент | ✓ сделано |
-| 7 | Non-AI MVP Completion и Visual Polish | **следующий** |
+| 7 | Non-AI MVP Completion и Visual Polish | ✅ реализован, ждёт ручного принятия |
 | 6B | Local RAG and AI Mentor | после Phase 7 |
 | 8 | Python-трек (8A–8D) | после Phase 6B |
 | 9 | Curriculum Expansion (9A–9F) | после Phase 8 |

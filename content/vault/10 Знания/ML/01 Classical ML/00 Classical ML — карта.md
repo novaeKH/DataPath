@@ -4,58 +4,66 @@ type: moc
 area: ml
 status: active
 tags:
-  - ml/classical
-  - ml/navigation
+- ml/classical
+- ml/navigation
 rag: exclude
 id: moc.ml.classical-ml-karta
 schema_version: 2
 language: ru
 app: exclude
 ---
+
 # Classical ML — карта
 
-[[ML — карта знаний|← ML]] · [[00 Математика — карта|Математика]]
+## 1. Постановка и оценка
 
-## Learn — основы
+1. [[ML Foundations]]
+2. [[Validation Splits and Data Leakage]]
+3. [[ML Metrics and Threshold Selection]]
+4. [[Data Preprocessing and Feature Engineering]]
+5. [[Model Selection and Hyperparameter Tuning]]
 
-1. [[ML Foundations]] — постановка задачи, baseline, bias/variance, overfitting и underfitting.
-2. [[Linear Regression]] — Gaussian noise → likelihood → MLE → MSE/OLS; отдельная связь с Gauss–Markov.
-3. [[Logistic Regression]] — Bernoulli → likelihood → MLE → LogLoss.
-4. [[Regularization]] — L2/Gaussian prior/MAP и L1/Laplace prior/MAP.
+## 2. Линейные и вероятностные модели
 
-## Learn — geometry и unsupervised
+1. [[Linear Regression]]
+2. [[Logistic Regression]]
+3. [[Regularization]]
+4. [[Naive Bayes]]
+5. [[Probability Calibration]]
+6. [[Class Imbalance and Resampling]]
 
-1. [[K-Nearest Neighbors]] — distance, scaling, выбор $k$ и curse of dimensionality.
-2. [[Support Vector Machines]] — margin, hinge loss, $C$, kernels и calibration.
-3. [[Principal Component Analysis]] — centering, covariance, eigenvectors, projection, explained variance, SVD и scaling.
-4. [[K-Means]] — squared-distance objective, assignment/update, initialization и geometry clusters.
+## 3. Distance, margin и representation
 
-## Learn — probabilistic classifiers
+1. [[K-Nearest Neighbors]]
+2. [[Support Vector Machines]]
+3. [[Principal Component Analysis]]
 
-- [[Naive Bayes]] — Bayes theorem, class priors, conditional independence и likelihood variants.
+## 4. Trees и ensembles
 
-## Learn — trees и ensembles
+1. [[Decision Trees]]
+2. [[Bagging and Random Forest]]
+3. [[Gradient Boosting]]
+4. [[XGBoost LightGBM and CatBoost]]
+5. [[Ensemble Comparison]]
 
-1. [[Decision Trees]] — split gain, impurity, pruning и failure modes.
-2. [[Bagging and Random Forest]] — bootstrap, decorrelation, averaging и OOB.
-3. [[Gradient Boosting]] — loss, gradient, pseudo-residual и sequential correction.
-4. [[XGBoost LightGBM and CatBoost]] — second-order objective, histograms, ordered categories и systems trade-offs.
+## 5. Unsupervised ML
 
-## Validation и metrics
+1. [[K-Means]]
+2. [[DBSCAN and Hierarchical Clustering]]
+3. [[Anomaly Detection]]
 
-- [[Validation Splits and Data Leakage]] — split выбирается по data-generating process.
-- [[ML Metrics and Threshold Selection]] — metric связывается с prediction semantics и business decision.
-- [[Categorical Features]] — category representation и target leakage.
+## 6. Features и интерпретация
 
-## Practice
+1. [[Categorical Features]]
+2. [[Feature Importance and Model Interpretation]]
+3. [[From EDA to ML Pipeline]]
 
-- [[Универсальная схема бинарной классификации]] — end-to-end tabular workflow.
-- [[Universal_Regression_Pipeline|Универсальный пайплайн регрессии]].
-- [[Tabular_ML_Preprocessing|Подготовка tabular features]].
+## Практика
 
-## Interview
+- [[Универсальная схема бинарной классификации]]
+- [[Universal_Regression_Pipeline|Универсальный pipeline регрессии]]
+- [[sklearn End-to-End Classification — Practice]]
 
-- [[ML Basics and Linear Models — Interview]]
-- [[Trees and Random Forest — Interview]]
-- [[Gradient Boosting — Interview]]
-- [[Validation and Metrics — Interview]]
+## Курс
+
+- [[00 Курс — Классический ML]] — активный MVP и подготовленное расширение до полного Classic ML.

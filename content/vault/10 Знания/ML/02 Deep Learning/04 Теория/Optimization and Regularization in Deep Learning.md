@@ -1,212 +1,124 @@
 ---
 title: Optimization and Regularization in Deep Learning
+id: concept.dl.optimization-and-regularization-in-deep-learning
 type: concept
 area: dl
-status: active
-aliases:
-  - Оптимизация и регуляризация нейросетей
-  - SGD Momentum Adam AdamW
-tags:
-  - dl/optimization
-  - dl/training
-math_depth: 2
-id: concept.dl.optimization-and-regularization-in-deep-learning
 schema_version: 2
 language: ru
+status: active
 rag: include
 rag_collection: knowledge
 app: source
+visual: true
+aliases:
+- Оптимизация и регуляризация DL
+tags:
+- dl/optimization
+- dl/regularization
+math_depth: 2
 ---
+
 # Optimization and Regularization in Deep Learning
 
-## Идея за 30 секунд
-
-Backprop вычисляет gradients; optimizer решает, как ими обновлять parameters. SGD следует noisy gradient, Momentum сглаживает направление, Adam нормирует updates по running moments, AdamW отдельно применяет weight decay. Initialization, normalization, residual paths, dropout и early stopping управляют gradient flow и generalization.
-
-## SGD
-
-Для mini-batch gradient $g_t$:
-
-$$
-\theta_{t+1}
-=\theta_t-\eta g_t.
-$$
-
-$\eta$ — learning rate. Mini-batch noise делает update дешёвым и stochastic.
-
-- слишком большой $\eta$ → divergence/oscillation;
-- слишком маленький → slow training/plateau;
-- schedule меняет optimization phase, поэтому best learning rate не отделим от batch size и duration.
-
-## Momentum
-
-$$
-v_t=\mu v_{t-1}+g_t,
-$$
-
-$$
-\theta_{t+1}
-=\theta_t-\eta v_t.
-$$
-
-Momentum накапливает consistent direction и сглаживает batch noise. В narrow curved valley он уменьшает zig-zag, но может overshoot при плохом learning rate.
-
-## Adam
-
-First and second raw moments:
-
-$$
-m_t=\beta_1m_{t-1}+(1-\beta_1)g_t,
-$$
-
-$$
-v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2.
-$$
-
-После bias correction:
-
-$$
-\widehat{m}_t=\frac{m_t}{1-\beta_1^t},
-\qquad
-\widehat{v}_t=\frac{v_t}{1-\beta_2^t}.
-$$
+## Gradient descent
 
 Update:
 
 $$
-\theta_{t+1}
-=\theta_t
--\eta
-\frac{\widehat{m}_t}
-{\sqrt{\widehat{v}_t}+\varepsilon}.
+\theta_{t+1}=\theta_t-\eta\nabla_\theta L.
 $$
 
-Adam адаптирует scale update по coordinates. Это помогает sparse/noisy gradients, но не устраняет необходимость schedule, validation и weight-decay policy.
+Learning rate $\eta$ слишком мал — training медленный; слишком велик — loss oscillates/diverges.
 
-## AdamW и weight decay
+## Mini-batch SGD
 
-Naive L2 добавляет $\lambda\theta$ к gradient loss. В adaptive optimizer это не эквивалентно одинаковому multiplicative shrinkage parameters.
+Gradient по batch является noisy estimate full gradient. Noise может помогать exploration, но делает curves неровными.
 
-AdamW decouples:
-
-$$
-\theta
-\leftarrow
-(1-\eta\lambda)\theta
--\eta\cdot\operatorname{AdamUpdate}.
-$$
-
-Bias и normalization scale часто исключают из weight decay; policy должна быть явной.
-
-## Initialization
-
-Цель — сохранить reasonable variance activations/gradients по depth.
-
-### Xavier/Glorot
-
-Для symmetric activations:
+## Momentum
 
 $$
-\operatorname{Var}(W)
-\approx
-\frac{2}{d_{\text{in}}+d_{\text{out}}}.
-$$
-
-### He/Kaiming
-
-Для ReLU-like:
-
-$$
-\operatorname{Var}(W)
-\approx
-\frac{2}{d_{\text{in}}}.
-$$
-
-Это variance heuristics при assumptions про independent activations/weights. Residual, normalization и modern architectures меняют точную dynamics.
-
-## Normalization
-
-### Batch Normalization
-
-Нормирует по batch statistics для channel/feature:
-
-$$
-\widehat{x}
-=\frac{x-\mu_B}
-{\sqrt{\sigma_B^2+\varepsilon}},
+v_t=\beta v_{t-1}+g_t,
 \qquad
-y=\gamma\widehat{x}+\beta.
+\theta_{t+1}=\theta_t-\eta v_t.
 $$
 
-Training использует batch stats и обновляет running stats; eval — running stats. Small/non-iid batches могут быть проблемой.
+Momentum сглаживает direction и ускоряет движение по устойчивому gradient.
 
-### Layer Normalization
+## Adam и AdamW
 
-Нормирует features внутри одного token/object. Не зависит от других samples batch и стандартна в Transformers.
+Adam хранит exponential averages first/second moments и адаптирует шаг по parameters. AdamW отделяет weight decay от gradient update, поэтому чаще является правильным default для Transformers.
 
-Normalization не просто «борется с covariate shift»: она меняет parameterization, scale gradients и optimization geometry.
+Adam не гарантирует лучшую generalization и не устраняет необходимость tuning learning rate.
+
+## Learning-rate schedules
+
+- step/exponential decay;
+- cosine decay;
+- warmup;
+- ReduceLROnPlateau;
+- one-cycle.
+
+Warmup уменьшает риск нестабильных первых steps. Scheduler step должен вызываться в правильной частоте: per batch или per epoch согласно implementation.
+
+## Weight decay
+
+Штрафует большие weights, но не все parameters одинаково. Bias и normalization parameters часто исключают из decay в Transformer setups.
 
 ## Dropout
 
-Training:
+Во время train случайно зануляет activations и масштабирует оставшиеся. В eval отключается. Dropout не должен работать при validation/inference.
 
-$$
-\widetilde{h}
-=\frac{m\odot h}{1-p},
-\qquad
-m_j\sim\operatorname{Bernoulli}(1-p).
-$$
+## Normalization
 
-Inverted scaling сохраняет expectation activations. В eval dropout выключен.
-
-Dropout добавляет noise/regularization, но:
-
-- не всегда полезен вместе с сильной normalization/data augmentation;
-- слишком большой $p$ создаёт underfit;
-- stochastic predictions в eval часто означают забытый `model.eval()`.
+BatchNorm использует batch statistics и running estimates; зависит от batch size и режима. LayerNorm нормализует features внутри sample/token и не зависит от batch statistics.
 
 ## Early stopping
 
-Выбирает checkpoint по validation metric. Это regularization через ограничение optimization trajectory.
-
-Правила:
-
-- monitor metric согласована с task;
-- best weights сохраняются;
-- patience учитывает noise;
-- final test не участвует;
-- после изменения split/metric best iteration оценивается заново.
+Сохраняйте checkpoint с лучшей validation metric, а не последнюю epoch. Patience задаёт число epochs без улучшения.
 
 ## Gradient clipping
 
-Global norm clipping:
+```python
+torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+```
 
-$$
-g
-\leftarrow
-g\cdot
-\min\left(1,\frac{c}{\lVert g\rVert_2}\right).
-$$
+Полезен при exploding gradients, особенно RNN. Он лечит symptom, поэтому всё равно проверяйте learning rate/data.
 
-Полезно для rare spikes/RNN, но постоянно active clipping может скрывать слишком высокий learning rate, unstable loss или bad data.
+## Data augmentation
 
-## Диагностика
+Для images: crops, flips, color transforms с сохранением label. Для text/табличных данных augmentation сложнее и легко меняет смысл.
 
-Смотреть:
+## Диагностика curves
 
-- train/validation loss curves;
-- gradient norms;
-- activation/weight statistics;
-- learning rate;
-- fraction zero/saturated activations;
-- best checkpoint, not last;
-- per-segment metrics;
-- NaN/Inf location.
+- train loss не падает → bug, lr, capacity, data;
+- train падает, val нет → overfit/shift;
+- обе oscillate → lr/batch/normalization;
+- sudden NaN → overflow, invalid input, exploding gradients;
+- val лучше train → active dropout/augmentation или difference modes.
+
+## Визуализация
+
+Компонент `optimizer-landscape-lab`:
+
+- 2D loss landscape;
+- SGD/momentum/Adam paths;
+- learning-rate slider;
+- weight decay;
+- train/val curves;
+- scheduler timeline.
+
+## Частые ошибки
+
+- AdamW weight_decay как обычный L2 в коде без понимания;
+- scheduler вызван не там;
+- no warmup при unstable large model;
+- BatchNorm in eval forgotten;
+- early stopping по test;
+- clipping до unscale в AMP;
+- regularization вместо исправления leakage.
 
 ## Связи
 
-- [[Neural Networks and Backpropagation]] — откуда берутся gradients.
-- [[Gradients Chain Rule and Optimization]] — conditioning, curvature и stochastic gradients.
-- [[Regularization]] — priors, shrinkage и bias–variance.
-- [[Transformer and Language Modeling]] — LayerNorm, residuals и AdamW.
-- [[Deep Learning — Interview]] — короткие ответы.
+- [[Neural Networks and Backpropagation]]
+- [[Training Evaluation and Inference in PyTorch]]
+- [[DL Debugging and Experiment Design]]

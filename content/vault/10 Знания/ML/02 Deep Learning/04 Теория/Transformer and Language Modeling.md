@@ -1,195 +1,153 @@
 ---
 title: Transformer and Language Modeling
+id: concept.dl.transformer-and-language-modeling
 type: concept
 area: dl
-status: active
-aliases:
-  - Transformer
-  - Трансформер и языковое моделирование
-  - Causal Language Model
-tags:
-  - dl/transformers
-  - nlp/language-modeling
-math_depth: 2
-id: concept.dl.transformer-and-language-modeling
 schema_version: 2
 language: ru
+status: active
 rag: include
 rag_collection: knowledge
 app: source
+visual: true
+aliases:
+- Transformer
+- Трансформер и языковое моделирование
+- Causal Language Model
+tags:
+- dl/transformers
+- nlp/language-modeling
+math_depth: 2
 ---
+
 # Transformer and Language Modeling
 
-## Идея за 30 секунд
+## Общая схема
 
-Transformer block смешивает information между positions через attention, затем независимо преобразует каждую position через FFN. Residual connections и LayerNorm стабилизируют deep optimization. Поскольку attention без positions permutation-equivariant, добавляют positional information. Causal language model использует mask и учится предсказывать следующий token через cross-entropy.
+Transformer block состоит из:
+
+1. attention — обмен information между positions;
+2. feed-forward network — преобразование features каждой position;
+3. residual connections;
+4. normalization.
+
+Decoder-only causal Transformer предсказывает следующий token.
+
+## Tokenization
+
+Tokenizer преобразует text в token IDs. Token может быть словом, частью слова, символом или byte fragment. Vocabulary и tokenization определяют sequence length и meaning perplexity.
+
+Special tokens: BOS, EOS, PAD, UNK — зависят от model.
 
 ## Input representation
 
-Для token $t_i$:
-
 $$
-x_i=e(t_i)+p_i,
+x_i=e(t_i)+p_i.
 $$
 
-где $e(t_i)$ — token embedding, $p_i$ — positional representation.
+Position information может быть absolute, relative, RoPE или bias. Attention без position не различает order.
 
-Варианты:
-
-- learned absolute embeddings;
-- sinusoidal encodings;
-- relative position bias;
-- rotary positional embeddings.
-
-Они кодируют order по-разному и имеют разные extrapolation properties.
-
-## Transformer block
-
-Pre-Norm decoder-style block:
+## Pre-Norm block
 
 $$
-h'
-=h+\operatorname{MHA}(\operatorname{LN}(h)),
+h'=h+\operatorname{MHA}(\operatorname{LN}(h)),
 $$
 
 $$
-h_{\text{out}}
-=h'
-+\operatorname{FFN}(\operatorname{LN}(h')).
+h_{out}=h'+\operatorname{FFN}(\operatorname{LN}(h')).
 $$
 
-Residual path даёт short gradient route и позволяет layer учить correction. LayerNorm стабилизирует scale внутри token features.
+Residual даёт короткий gradient path. LayerNorm стабилизирует feature scale.
 
-Post-Norm переставляет normalization и имеет другую optimization dynamics; нельзя смешивать formulas и code этих variants.
-
-## Feed-Forward Network
-
-Применяется независимо к каждой position:
+## Feed-forward network
 
 $$
-\operatorname{FFN}(x)
-=W_2\phi(W_1x+b_1)+b_2.
+\operatorname{FFN}(x)=W_2\phi(W_1x+b_1)+b_2.
 $$
 
-Обычно hidden dimension больше $d_{\text{model}}$. Attention смешивает positions, FFN преобразует channels/features внутри position.
+Attention смешивает positions, FFN — channels внутри каждой position.
 
-## Encoder и decoder
+## Causal language modeling
 
-- Encoder использует bidirectional self-attention и строит contextual representations.
-- Decoder causal self-attention не видит future.
-- Encoder–decoder добавляет cross-attention decoder queries к encoder keys/values.
-
-Architecture выбирают по task: classification/encoding, autoregressive generation или sequence-to-sequence.
-
-## Causal mask
-
-Для position $i$ разрешены keys $j\le i$:
+Probability sequence:
 
 $$
-M_{ij}
-=
-\begin{cases}
-0, & j\le i,\\
--\infty, & j>i.
-\end{cases}
+p(t_1,\dots,t_T)=\prod_{i=1}^{T}p(t_i\mid t_{<i}).
 $$
 
-Без mask training token может увидеть answer справа и loss станет искусственно малым.
-
-## Language modeling objective
-
-Для sequence $t_1,\ldots,t_T$:
-
-$$
-p(t_1,\ldots,t_T)
-=
-\prod_{i=1}^{T}
-p(t_i\mid t_{<i}).
-$$
-
-Training pairs строятся shift:
+Training shift:
 
 ```text
 input:  [BOS, t1, t2, ..., t(T-1)]
 target: [t1,  t2, t3, ..., tT]
 ```
 
-Cross-entropy:
-
-$$
-\mathcal{L}
-=-\frac{1}{T}
-\sum_{i=1}^{T}
-\log p_\theta(t_i\mid t_{<i}).
-$$
-
-Это categorical negative log-likelihood / MLE.
-
-Padding tokens исключаются из loss mask; иначе model учится предсказывать padding и metric зависит от batch padding.
+Cross-entropy усредняется по valid target tokens. Padding исключается mask.
 
 ## Perplexity
 
-При average NLL на token:
-
 $$
-\operatorname{PPL}
-=\exp(\mathcal{L}).
+PPL=\exp(\text{average token NLL}).
 $$
 
-Lower лучше при одинаковых tokenizer, vocabulary и evaluation protocol. Perplexity разных tokenizations напрямую не сравнивается.
+Сравнивать PPL корректно только при одинаковых tokenizer, data и evaluation protocol.
 
 ## Generation
 
-На каждом step model выдаёт logits next token. Decoding:
+На каждом step model выдаёт logits. Strategies:
 
 - greedy;
-- beam search для некоторых structured tasks;
-- temperature scaling;
-- top-$k$;
-- nucleus/top-$p$.
+- temperature;
+- top-k;
+- top-p;
+- beam search в подходящих tasks.
 
-Temperature:
-
-$$
-p_i
-=
-\operatorname{softmax}
-\left(
-\frac{z_i}{\tau}
-\right).
-$$
-
-$\tau<1$ делает distribution sharper, $\tau>1$ — flatter. Sampling policy не меняет trained likelihood, но сильно меняет output behavior.
+Lower temperature делает distribution sharper. Sampling не улучшает knowledge model, а меняет выбор tokens.
 
 ## KV cache
 
-При autoregressive generation past keys/values можно хранить и не пересчитывать. KV cache уменьшает repeated compute, но memory растёт с sequence length, layers, heads и batch.
+При generation past Keys/Values сохраняются. Это уменьшает repeated compute, но memory растёт с layers, sequence, heads и batch.
 
-Training обычно обрабатывает sequence параллельно под causal mask; generation последовательно добавляет tokens.
+## Encoder, decoder, encoder-decoder
 
-## Training и fine-tuning
+- encoder: bidirectional context, classification/representation;
+- decoder: causal generation;
+- encoder-decoder: input sequence → output sequence через cross-attention.
 
-- Pretraining: next-token objective на большом corpus.
-- SFT: тот же token-level objective на instruction/response pairs, но loss mask может учитывать только response tokens.
-- LoRA: low-rank trainable updates к frozen weights.
-- QLoRA: quantized base plus LoRA adapters.
+## Training stages
 
-Fine-tuning data format и loss mask определяют, чему model учится; неверная граница prompt/answer создаёт target leakage или обучение копировать prompt.
+- pretraining;
+- supervised fine-tuning;
+- preference/alignment stages;
+- domain adaptation;
+- PEFT/LoRA.
 
-## Что если assumptions нарушены
+Loss mask определяет, обучается ли model на prompt tokens или только response.
 
-- Missing causal mask → future leakage.
-- Position scheme outside trained range → degradation.
-- Incorrect padding/loss mask → biased loss.
-- Tokenizer mismatch → invalid IDs/metrics.
-- `train()` during evaluation → active dropout.
-- Generation without stop rules → runaway sequence.
-- Good perplexity не гарантирует factuality, alignment или task utility.
+## Визуализация
+
+Компонент `transformer-block-lab`:
+
+- tokens and positions;
+- causal attention mask;
+- residual stream;
+- attention + FFN;
+- shifted targets;
+- step-by-step generation and KV cache.
+
+## Частые ошибки
+
+- future leakage без causal mask;
+- tokenizer mismatch;
+- loss по padding;
+- train/eval mode confusion;
+- generation без EOS/limit;
+- сравнивать PPL разных tokenizers;
+- считать low loss guarantee factuality;
+- fine-tune с неверной prompt/answer mask.
 
 ## Связи
 
-- [[Embeddings and Attention]] — Q/K/V, scaling, masks и multi-head.
-- [[Neural Networks and Backpropagation]] — Linear/activation/loss/computational graph.
-- [[Optimization and Regularization in Deep Learning]] — AdamW, LayerNorm, dropout и stability.
-- [[Likelihood MLE and MAP]] — cross-entropy как MLE.
-- [[NLP and Transformers — Interview]] — короткие ответы.
+- [[Embeddings and Attention]]
+- [[Fine-Tuning Transfer Learning and PEFT]]
+- [[Training Evaluation and Inference in PyTorch]]

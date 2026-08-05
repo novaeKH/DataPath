@@ -31,26 +31,23 @@ cssclasses:
 
 # Bagging и Random Forest
 
-> [!summary] Результат урока
-> - объяснить bootstrap и feature subsampling
-> - связать усреднение со снижением variance
-> - использовать OOB как дополнительную оценку
+## Результат урока
 
-## Основной материал
-
-Canonical source: [[Bagging and Random Forest]]. Приложение загружает содержание по `content_path`, поэтому здесь теория не копируется.
+- понять bootstrap, bagging и feature subsampling
+- объяснить снижение variance
+- использовать OOB и ограничения importance
 
 ## Сценарий урока
 
 ```datapath
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "layout": "focus",
   "content_path": "10 Знания/ML/01 Classical ML/Bagging and Random Forest.md",
   "scenes": [
     {
       "type": "hook",
-      "title": "Зачем это нужно в реальной задаче"
+      "title": "Зачем это нужно и какой результат получим"
     },
     {
       "type": "content",
@@ -61,21 +58,79 @@ Canonical source: [[Bagging and Random Forest]]. Приложение загру
       "source_heading": "Bootstrap"
     },
     {
+      "type": "content",
+      "source_heading": "Bagging prediction"
+    },
+    {
       "type": "interactive",
       "component": "bootstrap-forest-lab"
     },
     {
+      "type": "content",
+      "source_heading": "Random Forest"
+    },
+    {
+      "type": "content",
+      "source_heading": "Bias и variance"
+    },
+    {
+      "type": "content",
+      "source_heading": "Визуализация"
+    },
+    {
+      "type": "content",
+      "source_heading": "Сравнение с Gradient Boosting"
+    },
+    {
+      "type": "content",
+      "source_heading": "Простой пример"
+    },
+    {
+      "type": "content",
+      "source_heading": "Пример кода"
+    },
+    {
       "type": "retrieval",
-      "mode": "free-recall",
-      "prompt": "Объясни главную идею своими словами без подсказки."
+      "mode": "single-choice-or-free-recall",
+      "prompt": "Почему усреднение одинаково коррелированных trees почти не снижает variance?"
+    },
+    {
+      "type": "content",
+      "source_heading": "Out-of-bag estimate"
+    },
+    {
+      "type": "content",
+      "source_heading": "Probability quality"
+    },
+    {
+      "type": "content",
+      "source_heading": "Feature importance и uncertainty"
+    },
+    {
+      "type": "content",
+      "source_heading": "Extra Trees"
     },
     {
       "type": "application",
-      "mode": "micro-task"
+      "mode": "micro-task",
+      "prompt": "Выбери max_features, depth и число trees для noisy tabular baseline и объясни порядок tuning."
+    },
+    {
+      "type": "content",
+      "source_heading": "Когда использовать"
+    },
+    {
+      "type": "content",
+      "source_heading": "Failure modes"
+    },
+    {
+      "type": "content",
+      "source_heading": "Ответ для собеседования"
     },
     {
       "type": "interview",
-      "mode": "follow-up"
+      "mode": "follow-up",
+      "prompt": "Чем Random Forest отличается от одного дерева и boosting?"
     },
     {
       "type": "reflection",
@@ -87,12 +142,12 @@ Canonical source: [[Bagging and Random Forest]]. Приложение загру
 
 ## Проверка понимания
 
-1. Сформулируй главную идею одним абзацем без терминов, которые не можешь объяснить.
-2. Назови один случай, когда метод или правило даст неверный вывод.
-3. Приведи небольшой пример из табличной ML-задачи.
+1. Почему усреднение одинаково коррелированных trees почти не снижает variance?
+2. Выбери max_features, depth и число trees для noisy tabular baseline и объясни порядок tuning.
+3. Чем Random Forest отличается от одного дерева и boosting?
 
 ## Связи
 
 - Курс: [[00 Курс — Классический ML]]
-- Модуль: [[03 Деревья и ансамбли]]
-- Источники: [[DataPath — проверенные источники]]
+- Модуль: определяется по `module_id` во frontmatter.
+- Теория: `content_path` во frontmatter является каноническим источником.

@@ -1,151 +1,157 @@
 ---
 title: K-Nearest Neighbors
+id: concept.ml.k-nearest-neighbors
 type: concept
 area: ml
-status: active
-aliases:
-  - KNN
-  - Метод k ближайших соседей
-tags:
-  - ml/classical
-  - ml/distance-based
-math_depth: 2
-id: concept.ml.k-nearest-neighbors
 schema_version: 2
 language: ru
+status: active
 rag: include
 rag_collection: knowledge
 app: source
+visual: true
+aliases:
+- KNN
+- Метод ближайших соседей
+tags:
+- ml/classical
+- ml/distance
+math_depth: 1
 ---
+
 # K-Nearest Neighbors
 
-## Идея за 30 секунд
+## Интуиция
 
-KNN не строит явную parametric function: для нового объекта он находит $k$ ближайших train points и агрегирует их targets. Малый $k$ даёт гибкую, но шумную boundary; большой $k$ сильнее сглаживает. Метод полностью зависит от distance, поэтому scaling, irrelevant features и curse of dimensionality критичны.
+Чтобы предсказать ответ для нового объекта, найдём $K$ наиболее похожих train-объектов. Для classification используем голосование, для regression — среднее или weighted mean.
 
-## Как работает
+KNN почти не строит параметрическую модель во время fit: основная работа происходит при prediction.
 
-Для query $x$:
+## Алгоритм
 
-1. вычислить distance до train objects;
-2. выбрать set $N_k(x)$ из $k$ ближайших;
-3. классификация — majority/weighted vote;
-4. регрессия — mean/weighted mean targets.
+Для объекта $x$:
 
-Classification estimate:
+1. вычислить distance до train points;
+2. выбрать $K$ smallest distances;
+3. агрегировать их targets.
+
+Classification:
 
 $$
-\widehat{P}(Y=c\mid x)
-=\frac{1}{k}
-\sum_{i\in N_k(x)}
-\mathbb{1}[y_i=c].
+\widehat y=\operatorname{mode}\{y_i:i\in N_K(x)\}.
 $$
 
 Regression:
 
 $$
-\widehat{y}(x)
-=\frac{1}{k}
-\sum_{i\in N_k(x)}y_i.
+\widehat y=\frac{1}{K}\sum_{i\in N_K(x)}y_i.
 $$
 
-Distance weighting:
-
-$$
-w_i=\frac{1}{(d(x,x_i)+\varepsilon)^p},
-\qquad
-\widehat{y}(x)
-=\frac{\sum_{i\in N_k(x)}w_i y_i}
-{\sum_{i\in N_k(x)}w_i}.
-$$
-
-$\varepsilon$ предотвращает division by zero; $p$ управляет локальностью.
+Weighted variant даёт больший вес близким neighbors.
 
 ## Distance
 
 Euclidean:
 
 $$
-d_2(x,z)=
-\sqrt{\sum_{j=1}^{d}(x_j-z_j)^2}.
+d(x,z)=\sqrt{\sum_j(x_j-z_j)^2}.
 $$
 
 Manhattan:
 
 $$
-d_1(x,z)=
-\sum_{j=1}^{d}|x_j-z_j|.
+d_1(x,z)=\sum_j|x_j-z_j|.
 $$
 
-Cosine distance фокусируется на направлении и полезна для некоторых sparse/embedding representations. Metric должна соответствовать geometry задачи, а не выбираться только по default.
+Выбор distance определяет понятие сходства. Для text cosine часто полезнее Euclidean raw counts. Для mixed data нужна осознанная representation.
 
-## Почему scaling обязателен
+## Почему scaling критичен
 
-Если `income` измерен десятками тысяч, а binary feature принимает $0/1$, Euclidean distance почти полностью определяется income.
+Если income измеряется тысячами, а age десятками, income доминирует distance. StandardScaler/RobustScaler fit только на train.
 
-Standardization:
+Scaling не решает проблему бессмысленного feature: шумовая колонка всё равно портит соседство.
 
-$$
-x_j^{(s)}
-=\frac{x_j-\mu_j}{\sigma_j}
-$$
+## Выбор K
 
-fit только на train. Scaling не делает features одинаково полезными; irrelevant standardized dimensions по-прежнему добавляют noise к distance.
-
-## Выбор k и bias–variance
-
-- $k=1$: минимальный local bias, высокий variance, чувствительность к noise.
-- Большой $k$: smoother boundary, меньше variance, больше bias.
-- Слишком большой $k$ приближает prediction к global average/majority.
-
-$k$ выбирают внутри CV с тем же pipeline scaling. При class imbalance majority vote может игнорировать minority; нужны suitable metric, class-aware weighting или другой method.
+- малое $K$ → гибкая boundary, low bias, high variance;
+- большое $K$ → smoother prediction, выше bias;
+- $K$ выбирают по CV;
+- odd $K$ может уменьшить ties в binary classification, но не является обязательным правилом.
 
 ## Curse of dimensionality
 
-В high dimension:
+С ростом dimensions distances становятся похожими: ближайший и дальний объект различаются меньше. Data становится sparse, нужно экспоненциально больше observations.
 
-- volume сосредоточен далеко от центра;
-- для fixed neighborhood требуется очень много data;
-- nearest и farthest distances становятся относительно похожими;
-- irrelevant coordinates накапливают noise.
-
-Качественная «локальность» исчезает. Помогают:
+Помогают:
 
 - feature selection;
+- PCA/embedding;
 - domain metric;
-- PCA/embeddings;
-- metric learning;
 - больше данных;
 - другая model family.
 
-PCA не нужно применять автоматически: supervised signal может жить в low-variance direction.
+## Categorical и missing values
+
+Raw KNN не понимает категории. OHE увеличивает dimension; ordinal integer encoding создаёт ложный порядок. Missing values требуют imputation или distance, умеющей их учитывать.
+
+## Classification probabilities
+
+Доля positive among neighbours может использоваться как score, но имеет discrete steps и не обязательно calibrated. Weighting и K влияют на smoothness.
 
 ## Complexity
 
-Наивное обучение почти отсутствует: сохраняется train set. Наивный inference:
+Naive prediction:
 
-$$
-O(nd)
-$$
+- memory $O(nd)$;
+- time на один query $O(nd)$.
 
-на query для $n$ объектов и $d$ features, плюс selection neighbors.
+KD-tree/ball-tree помогают в low/moderate dimensions, но теряют преимущество в high-dimensional data. Approximate nearest neighbours используют для больших embedding collections.
 
-KD-tree/Ball-tree ускоряют низкую dimension, но деградируют в high-dimensional spaces. Approximate nearest neighbor indexes меняют exactness на latency/memory.
+## Когда использовать
 
-## Failure modes
+- маленький датасет, где нужен простой interpretable baseline;
+- граница классов сложная, но данных достаточно для покрытия пространства;
+- задачи recommendation/похожесть объектов (nearest neighbors как сервис);
+- НЕ использовать при многих признаках (curse of dimensionality), при чувствительности к масштабу без preprocessing и когда важна скорость предсказания на большом объёме.
 
-- scaling fit до split;
-- ID-like и high-cardinality encoded features в distance;
-- duplicates с конфликтующими labels;
-- data drift: сохранённые neighbors больше не локальны;
-- leakage через post-event features;
-- интерпретация neighbor labels как calibrated probability без проверки;
-- медленный inference на большом train set.
+## Визуализация
+
+Компонент `knn-neighbourhood-lab`:
+
+- draggable query point;
+- slider $K$;
+- Euclidean/Manhattan;
+- scaling toggle;
+- highlighted neighbours;
+- decision background;
+- noisy feature toggle.
+
+## sklearn pipeline
+
+```python
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+
+model = Pipeline([
+    ("scale", StandardScaler()),
+    ("knn", KNeighborsClassifier(n_neighbors=7, weights="distance")),
+])
+```
+
+## Частые ошибки
+
+- не scaling;
+- выбирать K на test;
+- добавлять десятки irrelevant features;
+- использовать integer category codes;
+- считать KNN «обучением без параметров» и забывать про preprocessing;
+- ожидать быстрый inference на миллионах объектов;
+- интерпретировать neighbors без проверки distance semantics.
 
 ## Связи
 
-- [[Linear Algebra for ML]] — norms, distances и cosine similarity.
-- [[ML Foundations]] — $k$ управляет bias–variance.
-- [[Principal Component Analysis]] — возможное preprocessing для distance, но только внутри CV.
-- [[Validation Splits and Data Leakage]] — scaler и выбор $k$ fit внутри folds.
-- [[ML Metrics and Threshold Selection]] — imbalance и threshold меняют оценку classifier.
+- [[NumPy Indexing Broadcasting and Vectorization]]
+- [[Principal Component Analysis]]
+- [[Data Preprocessing and Feature Engineering]]
+- [[Validation Splits and Data Leakage]]

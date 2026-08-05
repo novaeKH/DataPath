@@ -1,161 +1,193 @@
 ---
 title: Logistic Regression
+id: concept.ml.logistic-regression
 type: concept
 area: ml
-status: active
-aliases:
-  - Логистическая регрессия
-  - Logit model
-tags:
-  - ml/classical
-  - ml/linear-models
-  - ml/classification
-math_depth: 2
-id: concept.ml.logistic-regression
 schema_version: 2
 language: ru
+status: active
 rag: include
 rag_collection: knowledge
 app: source
+visual: true
+aliases:
+- Логистическая регрессия
+tags:
+- ml/classical
+- ml/linear-models
+math_depth: 2
 ---
+
 # Logistic Regression
 
-## Идея за 30 секунд
+## Что предсказывает модель
 
-Logistic Regression задаёт linear model для log-odds положительного класса. Sigmoid переводит score в число от $0$ до $1$. При Bernoulli target maximum likelihood приводит ровно к Binary Cross-Entropy / LogLoss. Threshold не обучается внутри этой likelihood-модели: его выбирают отдельно по costs и validation data.
-
-## Формальная модель
-
-Linear score:
+Для binary classification Logistic Regression оценивает probability положительного класса. Сначала строится linear score:
 
 $$
-z_i=w^\top x_i+b.
+z=\beta_0+x^\top\beta.
 $$
 
-Sigmoid:
+Затем sigmoid переводит его в интервал $(0,1)$:
 
 $$
-p_i
-=P(Y_i=1\mid x_i)
-=\sigma(z_i)
-=\frac{1}{1+e^{-z_i}}.
+p(y=1\mid x)=\sigma(z)=\frac{1}{1+e^{-z}}.
 $$
 
-Log-odds:
+Название «regression» связано с моделированием log-odds, хотя задача является classification.
+
+## Odds и log-odds
 
 $$
-\log\frac{p_i}{1-p_i}=w^\top x_i+b.
+\operatorname{odds}=\frac{p}{1-p},
+\qquad
+\log\frac{p}{1-p}=\beta_0+x^\top\beta.
 $$
 
-Поэтому boundary $p=0.5$ эквивалентна $w^\top x+b=0$ и линейна в исходном feature space.
+Увеличение $x_j$ на единицу умножает odds на $e^{\beta_j}$ при фиксированных остальных features. Это не означает, что probability увеличивается на постоянную величину: изменение зависит от текущего $p$.
 
-## Почему Bernoulli приводит к LogLoss
+## Пример
 
-Для $y_i\in\{0,1\}$:
+Если $\beta_{income}=0.2$, то увеличение standardized income на единицу умножает odds positive class на $e^{0.2}\approx1.22$. При $p=0.5$ effect на probability больше, чем около $p=0.99$ из-за saturation sigmoid.
 
-$$
-P(Y_i=y_i\mid x_i)
-=p_i^{y_i}(1-p_i)^{1-y_i}.
-$$
+## Обучение и LogLoss
 
-При условной независимости observations:
+Binary cross-entropy:
 
 $$
-\mathcal{L}(w,b)
-=\prod_{i=1}^{n}
-p_i^{y_i}(1-p_i)^{1-y_i}.
+\mathcal{L}
+=-\frac{1}{n}\sum_i
+\left[y_i\log p_i+(1-y_i)\log(1-p_i)\right].
 $$
 
-Log-likelihood:
+Это negative log-likelihood Bernoulli model. Уверенная неправильная probability штрафуется сильно.
+
+В отличие от linear regression, closed-form solution обычно нет; параметры находят optimization.
+
+## Decision boundary
+
+При threshold $0.5$:
 
 $$
-\ell(w,b)
-=\sum_{i=1}^{n}
-\left[
-y_i\log p_i+(1-y_i)\log(1-p_i)
-\right].
+\beta_0+x^\top\beta=0
 $$
 
-MLE максимизирует $\ell$; эквивалентно minimization:
+задаёт linear boundary. С polynomial/interactions boundary может стать nonlinear в original features, но остаётся linear по созданным features.
+
+## Probability и threshold
+
+Модель выдаёт probability/score, а class decision требует threshold:
 
 $$
-\operatorname{LogLoss}
-=-\frac{1}{n}\sum_{i=1}^{n}
-\left[
-y_i\log p_i+(1-y_i)\log(1-p_i)
-\right].
+\widehat y=\mathbb{1}[p\ge t].
 $$
 
-Так появляется BCE: Bernoulli distribution → likelihood → MLE → log-likelihood → negative average → LogLoss.
+$t=0.5$ не универсален. Его выбирают по costs, recall/precision constraint или capacity на validation.
 
-## Почему sigmoid удобна
+## Regularization
 
-Производная loss по logit особенно проста:
-
-$$
-\frac{\partial \ell_i^{\text{BCE}}}{\partial z_i}
-=p_i-y_i.
-$$
-
-Prediction выше label толкает score вниз, ниже label — вверх. С fused implementation вроде `BCEWithLogitsLoss` вычисления делают через stable log-sum-exp, не через отдельный sigmoid и `log`.
-
-## Interpretation coefficients
-
-При фиксированных остальных features:
+По умолчанию практические implementations используют penalty:
 
 $$
-e^{w_j}
+\min_\beta \mathcal L(\beta)+\lambda\lVert\beta\rVert_2^2.
 $$
 
-— multiplicative change odds при увеличении $x_j$ на единицу. Это зависит от units, specification и correlations; causal interpretation требует отдельного identification.
+Ridge стабилизирует correlated features. L1 может занулять coefficients. Scaling особенно важен, потому что penalty применяется к величине coefficients.
 
-Scaling не обязателен для самой sigmoid, но важен для:
+## Class imbalance
 
-- optimization conditioning;
-- сопоставимого regularization;
-- интерпретации magnitude coefficients.
+Imbalance не делает Logistic Regression непригодной. Возможны:
 
-## Threshold и costs
+- class weights;
+- resampling только внутри train folds;
+- threshold selection;
+- PR-AUC/recall/precision;
+- calibration check.
 
-Probability model и decision rule — разные уровни:
+После class weighting raw probabilities могут не соответствовать production prevalence и требуют calibration/correction.
+
+## Calibration
+
+Logistic Regression часто даёт разумные probabilities при корректной specification, но не гарантирует calibration. Проверяйте reliability curve, Brier score и LogLoss на held-out data.
+
+## Multiclass
+
+Multinomial Logistic Regression использует softmax:
 
 $$
-\widehat{y}
-=\mathbb{1}[p\ge t].
+p(y=k\mid x)=\frac{e^{z_k}}{\sum_j e^{z_j}}.
 $$
 
-Threshold $t$ выбирают на validation:
+One-vs-Rest обучает отдельные binary models. Multinomial обычно моделирует конкуренцию классов напрямую.
 
-- по business cost false positive/false negative;
-- под constraint precision или recall;
-- по expected utility;
-- с учётом capacity downstream process.
+## Preprocessing
 
-Threshold $0.5$ оптимален только при конкретных symmetric costs и корректно calibrated probabilities.
+- numerical: imputation, часто scaling;
+- categorical: OHE или leakage-safe encoding;
+- missing indicators при необходимости;
+- interactions/polynomial только по CV;
+- preprocessing внутри Pipeline.
 
-## Assumptions и failure modes
+## Интерпретация
 
-- Log-odds должен быть примерно linear в выбранных features; nonlinear effects требуют transformations/splines/interactions.
-- Perfect separation уводит unregularized coefficients к бесконечности.
-- Multicollinearity делает coefficients unstable.
-- Class weights/resampling меняют effective training distribution; raw score может потребовать calibration.
-- Dataset shift меняет calibration и optimal threshold.
-- Independent-row likelihood неверно отражает uncertainty при grouped/temporal dependence.
+Coefficient показывает conditional association при фиксированных остальных features. Correlated predictors, selection bias, regularization и transformations усложняют интерпретацию. Это не causal effect.
 
-## Когда модель сильна
+## Когда использовать
 
-- небольшой или средний dataset;
-- sparse text/OHE;
-- нужен быстрый baseline;
-- важны latency и explainability;
-- relationship близка к linear in log-odds;
-- сложная model даёт малый incremental gain.
+- нужна вероятность класса, а не только метка (credit scoring, churn, threshold);
+- baseline для бинарной/мультиклассовой классификации;
+- данные табличные, признаков умеренно много;
+- НЕ использовать, если зависимости сильно нелинейные и данных много — деревья/boosting дадут лучшее качество; если нужна максимальная калибровка на сложных данных — post-hoc calibration.
+
+## Визуализация
+
+Компонент `logistic-boundary-threshold-lab`:
+
+- points двух классов;
+- decision boundary;
+- sigmoid и текущий score;
+- slider threshold;
+- confusion matrix, precision, recall;
+- class imbalance toggle;
+- regularization slider.
+
+## sklearn пример
+
+```python
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+
+pipeline = Pipeline([
+    ("preprocess", preprocessor),
+    ("model", LogisticRegression(max_iter=1000, C=1.0)),
+])
+```
+
+`C` — inverse regularization strength: меньше `C` означает сильнее regularization.
+
+## Ответ для собеседования
+
+> Логистическая регрессия моделирует $\log\frac{p}{1-p}$ как линейную комбинацию признаков и обучается минимизацией LogLoss (cross-entropy). Результат — калиброванная вероятность. От линейной регрессии её отличает сигмоида и loss для вероятностей; threshold выбирается отдельно по бизнес-стоимости ошибок.
+
+## Частые ошибки
+
+- считать output до sigmoid probability;
+- выбирать threshold на test;
+- интерпретировать coefficient как прирост probability;
+- применять scaling до split;
+- использовать accuracy при rare positive;
+- использовать class weight и считать probabilities calibrated автоматически;
+- забыть regularization и convergence warning.
+
+## Сравнение с другими моделями
+
+- **Logistic vs Linear Regression**: разный target (класс vs число) и разный loss (LogLoss vs MSE); у логистической — сигмоида и вероятность;
+- **Logistic vs деревья**: логистическая — проще, быстрее, интерпретируемее, хуже на сложных нелинейных границах;
+- **Logistic vs SVM**: обе линейные по умолчанию; логистическая даёт калиброванные вероятности, SVM — зазор и kernel.
 
 ## Связи
 
-- [[Random Variables and Distributions]] — Bernoulli observation model.
-- [[Likelihood MLE and MAP]] — полный вывод BCE и regularized MAP.
-- [[Gradients Chain Rule and Optimization]] — gradient по logit и optimization.
-- [[Regularization]] — L1/L2 стабилизируют coefficients.
-- [[ML Metrics and Threshold Selection]] — ranking, calibration и threshold metrics.
-- [[ML Basics and Linear Models — Interview]] — короткие вопросы и ответы.
+- [[ML Metrics and Threshold Selection]]
+- [[Probability Calibration]]
+- [[Class Imbalance and Resampling]]
+- [[Likelihood MLE and MAP]]

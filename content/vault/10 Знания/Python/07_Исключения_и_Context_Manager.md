@@ -1,57 +1,123 @@
 ---
-title: "07. Исключения и context manager"
-type: "concept"
-area: "python"
-status: "active"
-source: "Python_Interview_Preparation"
-integrated: "2026-07-31"
-tags: ["python/core", "interview/python"]
+title: 07. Исключения и context manager
 id: concept.python.07-iskliucheniia-i-context-manager
+type: concept
+area: python
 schema_version: 2
 language: ru
+status: active
 rag: include
 rag_collection: knowledge
 app: source
+source: Python_Interview_Preparation
+tags:
+- python/core
+- interview/python
 ---
+
 # 07. Исключения и context manager
 
-[[06_OOP_и_магические_методы|← Предыдущий]] · [[08_Декораторы_и_замыкания|Следующий →]]
+## Зачем это нужно
 
-## Полная конструкция
+Ошибки во время выполнения неизбежны: файл может отсутствовать, число — иметь неверный формат, API — не ответить. Исключения позволяют отделить нормальный сценарий от обработки ошибки. Context manager гарантирует освобождение ресурса даже при сбое.
+
+## Что такое исключение
+
+Исключение — объект, который прерывает обычный поток выполнения. Python поднимает его в месте ошибки и ищет подходящий `except` выше по стеку вызовов.
+
+```python
+def parse_age(text: str) -> int:
+    return int(text)
+
+parse_age("abc")  # ValueError
+```
+
+Traceback показывает цепочку вызовов. Читать его лучше снизу вверх: последняя строка содержит тип и сообщение ошибки, строки выше — путь до неё.
+
+## `try`, `except`, `else`, `finally`
 
 ```python
 def parse_positive(text: str) -> int:
     try:
         value = int(text)
     except ValueError as error:
-        raise ValueError(f"not an integer: {text!r}") from error
+        raise ValueError(f"Ожидалось целое число: {text!r}") from error
     else:
         if value <= 0:
-            raise ValueError("value must be positive")
+            raise ValueError("Число должно быть положительным")
         return value
     finally:
-        pass  # выполняется при успехе, ошибке и return
+        pass
 ```
 
-- `except` обрабатывает выбранные ошибки из `try`;
-- `else` выполняется, если в `try` не было исключения;
-- `finally` выполняется почти всегда и нужен для освобождения ресурса;
-- `raise ... from error` сохраняет причинную цепочку.
+- `try` содержит минимальный код, который может породить ожидаемую ошибку;
+- `except` обрабатывает конкретный тип;
+- `else` выполняется, если исключения не было;
+- `finally` выполняется почти всегда и подходит для очистки.
 
-Не используйте голый `except:`: он ловит даже `KeyboardInterrupt` и `SystemExit`. Ловите самое узкое ожидаемое исключение. Не оборачивайте слишком большой блок `try`.
+Не помещайте половину программы в один `try`: иначе невозможно понять, какая операция сломалась.
 
-## Собственное исключение
+## Ловить узкое исключение
+
+Плохо:
 
 ```python
-class InvalidDatasetError(ValueError):
+try:
+    value = load_and_transform(path)
+except Exception:
+    return None
+```
+
+Так код скрывает ошибки программирования и возвращает правдоподобный `None`.
+
+Лучше:
+
+```python
+try:
+    text = path.read_text(encoding="utf-8")
+except FileNotFoundError:
+    raise DatasetNotFoundError(path)
+```
+
+Голый `except:` ловит также `KeyboardInterrupt` и `SystemExit`; почти всегда он неуместен.
+
+## Создание собственных исключений
+
+```python
+class DatasetError(Exception):
+    """Базовая ошибка слоя данных."""
+
+class InvalidDatasetError(DatasetError, ValueError):
     """Датасет нарушает проверяемый контракт."""
 ```
 
-Пользовательское исключение полезно, если вызывающий код должен отличить доменную ошибку от технической.
+Собственный тип полезен, когда вызывающий код должен отличить доменную ошибку от технической. Сообщение должно объяснять, что нарушено и где искать причину.
 
-## `with` и context manager
+## Повторное возбуждение и chaining
 
-Context manager гарантирует парный вход/выход:
+```python
+try:
+    value = int(raw_value)
+except ValueError as error:
+    raise InvalidDatasetError(
+        f"Колонка age содержит неверное значение {raw_value!r}"
+    ) from error
+```
+
+`from error` сохраняет исходную причину. `raise` без аргументов внутри `except` повторно поднимает текущее исключение.
+
+## Когда не нужно исключение
+
+Ожидаемая ветка бизнес-логики часто лучше выражается обычным условием:
+
+```python
+if user_id not in users:
+    return None
+```
+
+Исключение уместно, когда контракт нарушен или продолжать выполнение небезопасно.
+
+## Context manager и `with`
 
 ```python
 from pathlib import Path
@@ -61,7 +127,9 @@ def first_line(path: Path) -> str:
         return stream.readline().rstrip("\n")
 ```
 
-Даже при исключении вызывается `stream.__exit__`.
+`with` вызывает `__enter__`, затем гарантированно вызывает `__exit__`. Файл закроется и при `return`, и при исключении.
+
+## Собственный context manager
 
 ```python
 class ManagedResource:
@@ -69,14 +137,14 @@ class ManagedResource:
         self.opened = True
         return self
 
-    def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
+    def __exit__(self, exc_type, exc, traceback) -> bool:
         self.opened = False
         return False
 ```
 
-`True` из `__exit__` подавляет исключение — используйте это только осознанно.
+Возврат `False` означает: не подавлять исключение. Возврат `True` скрывает его, поэтому применять это следует осознанно.
 
-### Функциональный вариант
+Функциональный вариант:
 
 ```python
 from collections.abc import Iterator
@@ -84,26 +152,41 @@ from contextlib import contextmanager
 
 @contextmanager
 def temporary_mode(config: dict[str, bool]) -> Iterator[None]:
-    old = config.get("training", False)
+    previous = config.get("training", False)
     config["training"] = True
     try:
         yield
     finally:
-        config["training"] = old
+        config["training"] = previous
 ```
 
-## В ML-пайплайне
+## Практика в Data Science
 
-Context manager подходит для файлов, транзакций, временных каталогов, lock, режима логирования. Исключение не должно молча превращать повреждённые данные в правдоподобный результат.
+Context manager полезен для:
 
-## Мини-контрольная
+- файлов и временных директорий;
+- соединений и транзакций;
+- блокировок;
+- временного изменения конфигурации;
+- измерения времени;
+- управления режимом эксперимента.
 
-1. Когда выполняется `else`?
-2. Для чего `finally`?
-3. Почему `except Exception` лучше голого `except`, но всё ещё часто слишком широк?
-4. Что означает `False` из `__exit__`?
-5. Зачем `raise ... from ...`?
+Исключение не должно незаметно превращать повреждённые данные в пустой DataFrame. Лучше остановиться с понятной ошибкой, чем обучить модель на неверной выборке.
 
-<details><summary>Ответы</summary>
-1. Если `try` завершился без исключения. 2. Гарантированная очистка. 3. Ловит много неожиданных программных ошибок. 4. Не подавлять исключение. 5. Сохранить причину.
-</details>
+## Частые ошибки
+
+- `except Exception: pass`;
+- логировать ошибку и продолжать с некорректным состоянием;
+- использовать `finally` для логики, которая может сама скрыть исходную ошибку;
+- возвращать из `finally`;
+- подавлять исключение в `__exit__` без причины;
+- создавать десятки классов исключений без различимого поведения.
+
+## Ответ интервьюеру
+
+Исключение отделяет нормальный путь от аварийного и передаётся вверх по стеку, пока не встретится подходящий обработчик. Я ловлю самый узкий ожидаемый тип, добавляю контекст через `raise ... from ...` и не скрываю неожиданные ошибки. `with` использует context manager и гарантирует парный вход и выход, поэтому подходит для файлов, транзакций и временных ресурсов.
+
+## Связи
+
+- [[12_Модули_файлы_pathlib_и_окружения]] — работа с файлами и путями.
+- [[11_Typing_Testing_Code_Quality]] — тестирование ошибок и контрактов.

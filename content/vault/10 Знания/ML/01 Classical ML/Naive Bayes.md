@@ -1,159 +1,153 @@
 ---
 title: Naive Bayes
+id: concept.ml.naive-bayes
 type: concept
 area: ml
-status: active
-aliases:
-  - Наивный Байес
-  - NB classifier
-tags:
-  - ml/classical
-  - ml/probabilistic
-math_depth: 2
-id: concept.ml.naive-bayes
 schema_version: 2
 language: ru
+status: active
 rag: include
 rag_collection: knowledge
 app: source
+visual: true
+aliases:
+- Наивный Байес
+tags:
+- ml/classical
+- ml/probabilistic
+math_depth: 2
 ---
+
 # Naive Bayes
 
-## Идея за 30 секунд
+## Идея
 
-Naive Bayes применяет Bayes theorem и предполагает conditional independence признаков внутри класса. Тогда сложный joint likelihood раскладывается в произведение простых feature likelihoods. Предположение почти всегда неточно, но classifier часто силён на sparse text и малых данных; probabilities могут быть переуверенными.
-
-## Bayes classifier
-
-Для класса $C_k$ и features $x$:
+Naive Bayes сравнивает вероятности классов после наблюдения признаков:
 
 $$
 P(C_k\mid x)
-=\frac{p(x\mid C_k)P(C_k)}
-{p(x)}.
+\propto
+P(C_k)P(x\mid C_k).
 $$
 
-Для сравнения классов denominator общий:
+«Naive» assumption: признаки условно независимы при известном классе:
 
 $$
-\widehat{C}(x)
-=\arg\max_k
-p(x\mid C_k)P(C_k).
+P(x\mid C_k)=\prod_jP(x_j\mid C_k).
 $$
 
-$P(C_k)$ — class prior, $p(x\mid C_k)$ — class-conditional likelihood.
+Это редко буквально верно, но сильно упрощает оценку и часто хорошо работает на sparse text.
 
-## Naive conditional independence
+## Пошаговый пример
 
-Предположение:
-
-$$
-p(x_1,\ldots,x_d\mid C_k)
-=\prod_{j=1}^{d}
-p(x_j\mid C_k).
-$$
-
-Отсюда:
+Пусть нужно определить spam. Prior:
 
 $$
-\widehat{C}(x)
-=\arg\max_k
-P(C_k)
-\prod_{j=1}^{d}
-p(x_j\mid C_k).
+P(spam)=0.2,\quad P(not)=0.8.
 $$
 
-Это цепочка:
+Слова `free` и `meeting` имеют разные conditional probabilities. Для письма модель складывает log-probabilities каждого слова с log prior и выбирает больший score.
 
-```text
-Bayes theorem
-→ class prior × class-conditional likelihood
-→ conditional independence
-→ product of feature likelihoods
-→ classifier
-```
-
-## Почему считают в log-space
-
-Произведение многих probabilities underflow:
+Вычисления ведут в log-space:
 
 $$
-\log P(C_k\mid x)
-=\text{const}
-+\log P(C_k)
-+\sum_{j=1}^{d}
-\log p(x_j\mid C_k).
+\log P(C_k\mid x)=const+\log P(C_k)+\sum_j\log P(x_j\mid C_k).
 $$
 
-Classifier сравнивает log-scores; normalization через softmax/log-sum-exp нужна, только если требуются posterior probabilities.
+Это предотвращает underflow произведения множества малых чисел.
 
-## Основные варианты
+## Варианты
 
-### Gaussian Naive Bayes
+### Gaussian NB
 
 Для continuous feature:
 
 $$
-x_j\mid C_k
-\sim
-\mathcal{N}(\mu_{kj},\sigma_{kj}^2).
+x_j\mid C_k\sim\mathcal N(\mu_{kj},\sigma_{kj}^2).
 $$
 
-Оцениваются mean/variance каждого feature внутри класса. Сильные correlations нарушают independence.
+Оцениваются mean/variance каждого feature внутри класса.
 
-### Multinomial Naive Bayes
+### Multinomial NB
 
-Подходит для non-negative counts, особенно bag-of-words. Class likelihood задаётся probabilities tokens/features.
+Для non-negative counts: token counts, частоты событий. Feature value влияет как число повторений.
 
-### Bernoulli Naive Bayes
+### Bernoulli NB
 
-Работает с binary feature presence/absence. В отличие от Multinomial, отсутствие слова тоже несёт явный вклад.
+Для binary presence/absence. Отсутствие feature тоже входит в likelihood.
 
-Выбор варианта определяется data representation, а не только task label.
+Выбор варианта зависит от representation.
 
 ## Smoothing
 
-Без smoothing невстречавшийся token даёт zero likelihood и обнуляет весь product. Additive smoothing:
+Невстречавшийся token без smoothing даёт zero likelihood. Additive smoothing:
 
 $$
-\widehat{P}(w_j\mid C_k)
-=\frac{N_{kj}+\alpha}
-{N_k+\alpha V},
+\widehat P(w_j\mid C_k)=\frac{N_{kj}+\alpha}{N_k+\alpha V}.
 $$
 
-где $N_{kj}$ — count feature/token в классе, $N_k$ — total count, $V$ — vocabulary size, $\alpha>0$ — smoothing strength.
+$\alpha$ выбирается по validation. Большое значение сглаживает distributions сильнее.
 
-## Почему метод работает при неверной independence
+## Почему работает
 
-Для classification важен правильный ordering class scores, а не точная joint density. Ошибки likelihood могут частично сокращаться. В high-dimensional sparse data оценка простых marginals имеет низкую variance, поэтому bias сильного assumption окупается малой sample complexity.
+Для classification не обязательно точно оценить joint probability: достаточно правильного ordering class scores. Сильное assumption даёт high bias, но low variance и хорошую sample efficiency.
 
-Но correlated features могут быть учтены несколько раз и создавать overconfident posterior.
+Проблема correlated features: одна и та же информация учитывается несколько раз, posterior становится overconfident.
 
-## Priors и distribution shift
+## Priors и imbalance
 
-Class prior:
+Prior должен отражать ожидаемую prevalence. Если train искусственно сбалансирован, empirical prior не соответствует production. При prior shift score можно корректировать, но при изменении $p(x\mid y)$ простой correction не спасёт.
 
-$$
-\widehat{P}(C_k)=\frac{n_k}{n}
-$$
+## Text pipeline
 
-или задаётся из production prevalence. Если train был artificially balanced, empirical train prior не равен production prior.
+```python
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import Pipeline
 
-Изменение $P(C_k)$ при стабильном $p(x\mid C_k)$ — prior shift; score можно корректировать. Если меняется class-conditional distribution, простой prior correction недостаточен.
+pipeline = Pipeline([
+    ("vectorizer", TfidfVectorizer(ngram_range=(1, 2), min_df=2)),
+    ("model", MultinomialNB(alpha=1.0)),
+])
+```
 
-## Failure modes
+Vocabulary fit только на train fold. Multinomial NB требует non-negative features.
 
-- использовать Multinomial NB с negative standardized features;
-- считать posterior хорошо calibrated без проверки;
-- дублировать correlated/derived features;
-- строить vocabulary до split;
-- игнорировать class prior после resampling;
-- путать conditional independence с unconditional independence.
+## Calibration
+
+Naive Bayes probabilities часто overconfident из-за independence assumption. Используйте ranking/decision metrics и отдельно проверяйте calibration.
+
+## Когда использовать
+
+- текстовые задачи (spam detection, sentiment) с bag-of-words/TF-IDF;
+- маленькие датасеты и высокоразмерные разреженные признаки;
+- быстрый обучение/инференс и простота;
+- НЕ использовать, когда признаки сильно зависимы и эта зависимость важна для решения, или когда нужны хорошо откалиброванные вероятности (обычно требуется calibration).
+
+## Визуализация
+
+Компонент `naive-bayes-evidence-lab`:
+
+- prior slider;
+- включение признаков;
+- likelihood каждого класса;
+- log-score decomposition;
+- correlated duplicate feature toggle;
+- posterior before/after evidence.
+
+## Частые ошибки
+
+- Multinomial NB после StandardScaler с negative values;
+- vocabulary на полном dataset;
+- считать posterior calibrated;
+- дублировать correlated features;
+- забыть prior после resampling;
+- путать conditional independence с обычной independence;
+- сравнивать probabilities разных variants без calibration.
 
 ## Связи
 
-- [[Conditional Probability and Bayes Theorem]] — Bayes rule и conditional independence.
-- [[Random Variables and Distributions]] — Gaussian, Bernoulli и count distributions.
-- [[Likelihood MLE and MAP]] — оценка class-conditional parameters и priors.
-- [[ML Foundations]] — strong bias может снижать variance.
-- [[Validation Splits and Data Leakage]] — vocabulary и likelihood parameters fit только на train.
+- [[Conditional Probability and Bayes Theorem]]
+- [[Likelihood MLE and MAP]]
+- [[Classical NLP Foundations]]
+- [[Probability Calibration]]

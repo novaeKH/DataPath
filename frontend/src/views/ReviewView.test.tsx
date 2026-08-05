@@ -326,6 +326,24 @@ describe('ReviewView', () => {
     await waitFor(() => expect(mock.submitCalls.length).toBe(1))
   })
 
+  it('session: клавиатура — Enter проверяет, 1 оценивает Again', async () => {
+    const mock = makeFetch({
+      summary: summaryDue,
+      items: [makeItem({ id: 1 })],
+    })
+    vi.stubGlobal('fetch', mock.fn)
+    renderReview()
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /Начать повторение/ }))
+    await user.click(await screen.findByRole('radio', { name: /Первый/ }))
+    await user.keyboard('{Enter}')
+    expect(await screen.findByText(/Объяснение правильного ответа/)).toBeInTheDocument()
+    await user.keyboard('1')
+    await waitFor(() =>
+      expect(mock.submitCalls.some((call) => call.user_rating === 'Again')).toBe(true),
+    )
+  })
+
   it('session: итог сессии после последнего элемента', async () => {
     const mock = makeFetch({
       summary: summaryDue,

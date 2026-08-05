@@ -2,43 +2,95 @@ import { useState } from 'react'
 import type { LessonScene } from '../../lib/api'
 import { MarkdownContent } from './MarkdownContent'
 import { LabHost } from '../interactive/LabHost'
+import { CheckpointScene } from './CheckpointScene'
 
 /** Пользовательский заголовок сцены: display_title (Фаза 6A) → title. */
 function sceneTitle(scene: LessonScene): string | null {
   return scene.display_title ?? scene.title ?? null
 }
 
-/** Сцена-маркдаун: заголовок секции + связный текст. */
+/* ===============================================================
+   Semantic scene renderers
+   =============================================================== */
+
+/** Scene role badges — quiet visual cues, not loud labels. */
+function SceneRoleBadge({ role, type }: { role?: string | null; type: string }) {
+  if (!role || role === type || role === 'theory') return null
+  const label =
+    role === 'motivation'
+      ? 'Зачем'
+      : role === 'objectives'
+        ? 'Цели'
+        : role === 'example'
+          ? 'Пример'
+          : role === 'pitfalls'
+            ? 'Ошибки'
+            : role === 'summary'
+              ? 'Итог'
+              : role === 'interview'
+                ? 'Интервью'
+                : role === 'intuition'
+                  ? 'Интуиция'
+                  : role === 'mechanism'
+                    ? 'Механизм'
+                    : null
+  if (!label) return null
+  return (
+    <span
+      className="mb-2 inline-block text-[10px] font-semibold uppercase tracking-wider rounded-full px-2 py-0.5"
+      style={{ background: 'var(--dp-surface-interactive)', color: 'var(--dp-text-muted)' }}
+    >
+      {label}
+    </span>
+  )
+}
+
+/** Markdown theory scene with optional role badge. */
 function MarkdownScene({ scene }: { scene: LessonScene }) {
   const title = sceneTitle(scene)
   return (
-    <section className="datapath-scene">
+    <section className="dp-scene">
+      <SceneRoleBadge role={scene.semantic_role} type={scene.type} />
       {title && (
-        <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+        <h3
+          className="mb-3 text-lg font-semibold"
+          style={{ color: 'var(--dp-text-primary)' }}
+        >
+          {title}
+        </h3>
       )}
-      {scene.markdown && <MarkdownContent markdown={scene.markdown} />}
+      {scene.markdown && (
+        <div className="dp-content">
+          <MarkdownContent markdown={scene.markdown} />
+        </div>
+      )}
     </section>
   )
 }
 
-/** Сцена-формула: LaTeX через KaTeX (remark-math + rehype-katex). */
+/** Formula scene with explanation. */
 function FormulaScene({ scene }: { scene: LessonScene }) {
   const title = sceneTitle(scene)
   return (
-    <section className="datapath-scene rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/50">
+    <section className="dp-scene">
+      <SceneRoleBadge role={scene.semantic_role} type={scene.type} />
       {title && (
-        <h3 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+        <h3
+          className="mb-2 text-lg font-semibold"
+          style={{ color: 'var(--dp-text-primary)' }}
+        >
+          {title}
+        </h3>
       )}
-      <div className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        Формула
-      </div>
       {scene.formula && (
-        <div className="overflow-x-auto py-2">
-          <MarkdownContent markdown={`$$\n${scene.formula}\n$$`} />
+        <div className="dp-formula-block">
+          <div className="overflow-x-auto">
+            <MarkdownContent markdown={`$$\\n${scene.formula}\\n$$`} />
+          </div>
         </div>
       )}
       {scene.explanation && (
-        <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+        <div className="mt-3 dp-content">
           <MarkdownContent markdown={scene.explanation} />
         </div>
       )}
@@ -46,24 +98,59 @@ function FormulaScene({ scene }: { scene: LessonScene }) {
   )
 }
 
-/** Сцена-код: язык, код, подпись. */
-function CodeScene({ scene }: { scene: LessonScene }) {
+/** Code scene with language label, copy button, line wrapping. */
+function CodeSceneComponent({ scene }: { scene: LessonScene }) {
   const title = sceneTitle(scene)
+  const [copied, setCopied] = useState(false)
+  const languageLabel =
+    scene.language && scene.language !== 'text' ? scene.language : null
+
+  const handleCopy = () => {
+    if (scene.code) {
+      navigator.clipboard.writeText(scene.code).catch(() => {})
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
   return (
-    <section className="datapath-scene">
+    <section className="dp-scene">
+      <SceneRoleBadge role={scene.semantic_role} type={scene.type} />
       {title && (
-        <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+        <h3
+          className="mb-2 text-lg font-semibold"
+          style={{ color: 'var(--dp-text-primary)' }}
+        >
+          {title}
+        </h3>
       )}
-      <div className="overflow-hidden rounded-lg border border-slate-700">
-        <div className="flex items-center justify-between bg-slate-800 px-4 py-1.5 text-xs text-slate-300">
-          <span className="font-mono">{scene.language ?? 'code'}</span>
+      <div className="dp-code-block">
+        <div
+          className="flex items-center justify-between px-4 py-1.5 text-xs"
+          style={{ background: 'var(--dp-surface-interactive)', color: 'var(--dp-text-secondary)' }}
+        >
+          {languageLabel ? (
+            <span className="font-mono font-semibold">{languageLabel}</span>
+          ) : (
+            <span>код</span>
+          )}
+          <button
+            onClick={handleCopy}
+            className="rounded px-2 py-0.5 text-[11px] font-medium transition-colors dp-hover-interactive"
+            style={{ color: 'var(--dp-text-muted)' }}
+          >
+            {copied ? '✓ Скопировано' : 'Копировать'}
+          </button>
         </div>
-        <pre className="overflow-x-auto bg-slate-900 p-4 text-[13px] leading-relaxed text-slate-100">
+        <pre
+          className="overflow-x-auto p-4 text-[13px] leading-relaxed"
+          style={{ color: 'var(--dp-text-primary)' }}
+        >
           <code>{scene.code}</code>
         </pre>
       </div>
       {scene.caption && (
-        <div className="mt-2 text-sm italic text-slate-500 dark:text-slate-400">
+        <div className="mt-2 text-sm dp-content">
           <MarkdownContent markdown={scene.caption} />
         </div>
       )}
@@ -71,57 +158,50 @@ function CodeScene({ scene }: { scene: LessonScene }) {
   )
 }
 
-/** Сцена-callout: важная мысль/предупреждение/пример. */
+/** Callout scene: warning, tip, important note. */
 function CalloutScene({ scene }: { scene: LessonScene }) {
   const title = sceneTitle(scene)
-  return (
-    <section className="datapath-scene">
-      {title && (
-        <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
-      )}
-      {scene.markdown && (
-        <MarkdownContent markdown={`> [${scene.callout_type ?? 'note'}] ${scene.markdown}`} />
-      )}
-    </section>
-  )
-}
+  const type = scene.callout_type ?? 'note'
+  const typeStyles: Record<string, { bg: string; border: string; icon: string }> = {
+    warning: { bg: 'var(--dp-warning-subtle)', border: 'var(--dp-warning)', icon: '⚠️' },
+    tip: { bg: 'var(--dp-success-subtle)', border: 'var(--dp-success)', icon: '💡' },
+    important: { bg: 'var(--dp-accent-subtle)', border: 'var(--dp-accent)', icon: '📌' },
+    note: { bg: 'var(--dp-surface-interactive)', border: 'var(--dp-border-strong)', icon: '📝' },
+  }
+  const style = typeStyles[type] ?? typeStyles.note
 
-/** Сцена-checkpoint: самопроверка без сохранения оценки. */
-function CheckpointScene({ scene }: { scene: LessonScene }) {
-  const [answer, setAnswer] = useState('')
-  const [revealed, setRevealed] = useState(false)
   return (
-    <section className="datapath-scene rounded-xl border border-indigo-200 bg-indigo-50/60 px-5 py-4 dark:border-indigo-900/60 dark:bg-indigo-950/20">
-      <div className="mb-1 text-xs font-bold uppercase tracking-wide text-indigo-500 dark:text-indigo-300">
-        Проверь себя
-      </div>
-      <p className="text-[15px] font-medium text-slate-800 dark:text-slate-100">{scene.question}</p>
-      <textarea
-        value={answer}
-        onChange={(event) => setAnswer(event.target.value)}
-        placeholder="Сформулируй ответ своими словами (нигде не сохраняется)"
-        rows={3}
-        className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:focus:border-indigo-500 dark:focus:ring-indigo-900/40"
-      />
-      <div className="mt-2 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-        <button
-          onClick={() => setRevealed((value) => !value)}
-          className="rounded-md border border-slate-300 px-2.5 py-1 font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+    <section className="dp-scene">
+      {title && (
+        <h3
+          className="mb-2 text-lg font-semibold"
+          style={{ color: 'var(--dp-text-primary)' }}
         >
-          {revealed ? 'Скрыть подсказку' : 'Показать подсказку'}
-        </button>
-        {revealed && (
-          <span className="text-indigo-600 dark:text-indigo-300">
-            Ключевые слова из урока: вспомни термины, которые только что прочитал, и проверь, что
-            можешь объяснить каждый.
-          </span>
+          {title}
+        </h3>
+      )}
+      <div
+        className="rounded-lg px-4 py-3 text-sm"
+        style={{
+          background: style.bg,
+          borderLeft: `3px solid ${style.border}`,
+          color: 'var(--dp-text-secondary)',
+        }}
+      >
+        {scene.markdown && (
+          <div className="dp-content">
+            <MarkdownContent markdown={scene.markdown} />
+          </div>
         )}
       </div>
     </section>
   )
 }
 
-/** Точка входа рендера сцены. */
+/* ===============================================================
+   Entry point: routes scene type to the correct renderer.
+   =============================================================== */
+
 export function SceneView({ scene }: { scene: LessonScene }) {
   switch (scene.type) {
     case 'markdown':
@@ -129,7 +209,7 @@ export function SceneView({ scene }: { scene: LessonScene }) {
     case 'formula':
       return <FormulaScene scene={scene} />
     case 'code':
-      return <CodeScene scene={scene} />
+      return <CodeSceneComponent scene={scene} />
     case 'callout':
       return <CalloutScene scene={scene} />
     case 'checkpoint':
@@ -137,10 +217,8 @@ export function SceneView({ scene }: { scene: LessonScene }) {
     case 'interactive_lab':
       return scene.lab_id ? <LabHost labId={scene.lab_id} title={scene.lab_title ?? null} /> : null
     case 'table':
-      // Таблица — рендерится как markdown с table-обёрткой (уже в MarkdownContent)
       return <MarkdownScene scene={scene} />
     case 'visual':
-      // Визуализация — placeholder для будущих image/embed сцен (Фаза 6A)
       return <MarkdownScene scene={scene} />
     default:
       return null

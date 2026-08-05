@@ -1,33 +1,53 @@
 ---
-title: "10. Python для Data Science"
-type: "concept"
-area: "python"
-status: "active"
-source: "Python_Interview_Preparation"
-integrated: "2026-07-31"
-tags: ["python/core", "interview/python"]
+title: 10. Python для Data Science
 id: concept.python.10-python-dlia-data-science
+type: concept
+area: python
 schema_version: 2
 language: ru
+status: active
 rag: include
 rag_collection: knowledge
 app: source
+source: Python_Interview_Preparation
+tags:
+- python/core
+- interview/python
+- data-science
 ---
+
 # 10. Python для Data Science
 
-[[09_Память_GC_GIL|← Предыдущий]] · [[11_Typing_Testing_Code_Quality|Следующий →]]
+## Главная идея
 
-## Базовая реализация → идиоматичный инструмент
+В Data Science Python связывает несколько уровней: чтение данных, преобразование таблиц, численные вычисления, обучение модели, оценку и воспроизводимый эксперимент. Хороший код не обязан быть сложным: он должен явно показывать контракт данных и не скрывать leakage.
 
-### Агрегации: dict → Counter/defaultdict
+## Базовый путь данных
+
+```text
+источник → чтение → проверка схемы → очистка → признаки → split
+→ fit preprocessing → fit model → оценка → артефакты
+```
+
+Каждый этап лучше выражать отдельной функцией с понятными входами и выходами.
 
 ```python
-def count_labels(labels: list[str]) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for label in labels:
-        counts[label] = counts.get(label, 0) + 1
-    return counts
+from pathlib import Path
+import pandas as pd
+
+
+def load_events(path: Path) -> pd.DataFrame:
+    frame = pd.read_parquet(path)
+    required = {"user_id", "event_time", "target"}
+    missing = required - set(frame.columns)
+    if missing:
+        raise ValueError(f"Не хватает колонок: {sorted(missing)}")
+    return frame
 ```
+
+## Коллекции стандартной библиотеки
+
+### Подсчёт: `Counter`
 
 ```python
 from collections import Counter
@@ -35,132 +55,165 @@ from collections import Counter
 counts = Counter(labels)
 ```
 
-Сначала умейте объяснить dict-шаблон, затем используйте `Counter`. Для группировки:
+Нужно понимать базовый dict-шаблон, но в рабочем коде `Counter` точнее выражает намерение.
+
+### Группировка: `defaultdict`
 
 ```python
 from collections import defaultdict
 
 rows_by_group: defaultdict[str, list[int]] = defaultdict(list)
-for index, label in enumerate(labels):
-    rows_by_group[label].append(index)
+for index, group in enumerate(groups):
+    rows_by_group[group].append(index)
 ```
 
-### Дедупликация: set
-
-`set(values)` быстро убирает повторы, но не обещает порядок. Для порядка используйте `list(dict.fromkeys(values))` или явный `seen`.
-
-### Скользящие вычисления: deque
+### Очередь и окно: `deque`
 
 ```python
 from collections import deque
 
-window: deque[float] = deque(maxlen=3)
-for value in stream:
-    window.append(value)
+window: deque[float] = deque(maxlen=100)
 ```
 
-`deque` даёт O(1) операции с обоих концов; list `pop(0)` — O(n).
+`deque.popleft()` имеет амортизированную сложность `O(1)`, тогда как удаление первого элемента списка требует сдвига.
 
-### Top-K: heapq
+## Чистые преобразования
+
+Функция легче тестируется, если не меняет скрытое внешнее состояние:
 
 ```python
-from heapq import nlargest
-
-top_features = nlargest(5, features, key=lambda row: row.score)
+def add_ratio(frame: pd.DataFrame) -> pd.DataFrame:
+    result = frame.copy()
+    result["ratio"] = result["income"] / result["debt"].clip(lower=1)
+    return result
 ```
 
-Если нужны все элементы по порядку — сортировка яснее. Если `k << n` или поток — heap обычно полезнее.
+Не обязательно копировать DataFrame на каждом шаге. Важно, чтобы политика изменения была ясной и не возникало неожиданного side effect.
 
-### Порог: bisect
+## Работа с путями
 
 ```python
-from bisect import bisect_left
+from pathlib import Path
 
-index = bisect_left(sorted_thresholds, value)
+DATA_DIR = Path("data")
+train_path = DATA_DIR / "train.parquet"
 ```
 
-Поиск O(log n), вставка в list после найденной позиции остаётся O(n).
+`Path` переносим между ОС, умеет проверять существование, создавать каталоги и читать файлы без ручной сборки строк.
 
-### Комбинации: itertools
+## Воспроизводимость
 
-`chain`, `islice`, `pairwise`, `product`, `combinations` выражают потоковые операции без ручных индексов. Не материализуйте бесконечный iterator.
-
-## `enumerate`, `zip`, `any`, `all`
+Seed нужен не «для магии», а чтобы повторить конкретный эксперимент:
 
 ```python
-for index, row in enumerate(rows):
-    ...
-
-for feature, weight in zip(features, weights, strict=True):
-    ...
-
-has_missing = any(value is None for value in row)
-all_valid = all(value >= 0 for value in values)
-```
-
-`any` и `all` short-circuit. `all([]) == True`, `any([]) == False`.
-
-## `sorted`, `min`, `max` с `key`
-
-```python
-best = max(models, key=lambda model: model.validation_score)
-ranked = sorted(models, key=lambda model: (-model.validation_score, model.name))
-```
-
-`max(..., key=...)` не требует полной сортировки: O(n) вместо O(n log n).
-
-## Python-цикл и NumPy-векторизация
-
-```python
-def standardize_python(values: list[float], mean: float, std: float) -> list[float]:
-    if std == 0:
-        raise ValueError("std must be non-zero")
-    return [(value - mean) / std for value in values]
-```
-
-```python
+import random
 import numpy as np
 
-array = np.asarray(values, dtype=float)
-standardized = (array - array.mean()) / array.std()
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
 ```
 
-Векторизация убирает Python-level цикл и использует компактную память/native loops. Но создаёт временные массивы и не всегда выгодна на маленьких данных. Проверяйте dtype, broadcasting, NaN и память.
+Seed не гарантирует полную детерминированность всех GPU-операций или распределённых вычислений. Нужно также фиксировать данные, версии пакетов, split и конфигурацию.
 
-## Generator для потока
+## Конфигурация вместо магических чисел
 
 ```python
-from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 
-def positive(values: Iterable[float]) -> Iterator[float]:
-    for value in values:
-        if value > 0:
-            yield value
+@dataclass(frozen=True)
+class TrainConfig:
+    seed: int = 42
+    test_size: float = 0.2
+    max_depth: int = 6
 ```
 
-## Перенос алгоритмов в DS
+Конфигурация делает эксперимент читаемым и сохраняемым. Не превращайте каждую константу в сложную систему настроек.
 
-| Шаблон | Рабочая аналогия |
-|---|---|
-| Hash Map | категории, агрегации, индексация |
-| set | дедупликация |
-| Sliding Window | rolling-метрики, временные ряды |
-| Prefix Sum | быстрые range aggregates |
-| Binary Search | поиск порога в монотонном критерии |
-| heap | Top-K объектов/признаков |
-| BFS/DFS | компоненты графа, обход зависимостей |
-| generator | батчи и большие файлы |
+## Логирование
 
-LeetCode не имитирует ежедневную работу DS. Он тренирует ясность состояния, выбор структуры, оценку стоимости и проверку edge cases.
+Для библиотечного или долгого кода используйте `logging`, а не десятки `print`:
 
-## Мини-контрольная
+```python
+import logging
 
-1. Почему `max(key=...)` лучше сортировки для одного максимума?
-2. Что делает `zip(..., strict=True)`?
-3. Когда deque лучше list?
-4. Почему `bisect.insort` не O(log n)?
-5. Какие риски у векторизации?
+logger = logging.getLogger(__name__)
+logger.info("Loaded %d rows", len(frame))
+```
 
-<details><summary>Ответы</summary>
-1. O(n) против O(n log n). 2. Проверяет равную длину. 3. Частые операции слева. 4. Сдвиг списка O(n). 5. Память, временные массивы, dtype, broadcasting, NaN.
-</details>
+Лог должен отвечать на вопросы: что запущено, на каких данных, сколько объектов, сколько времени, где сохранён результат.
+
+## Векторизация и границы Python
+
+Цикл Python хорош для логики по небольшому числу объектов. Для миллионов чисел предпочитайте NumPy/pandas operations, которые выполняются в оптимизированном коде.
+
+Плохо:
+
+```python
+frame["double"] = [value * 2 for value in frame["value"]]
+```
+
+Лучше:
+
+```python
+frame["double"] = frame["value"] * 2
+```
+
+Но «vectorized» не всегда значит экономно: временные массивы и `apply(axis=1)` могут быть дорогими. Профилируйте.
+
+## Ошибки данных должны быть явными
+
+Проверяйте:
+
+- обязательные колонки;
+- типы;
+- уникальность ключа;
+- допустимый диапазон;
+- долю пропусков;
+- порядок времени;
+- отсутствие пересечения групп между split.
+
+```python
+assert frame["user_id"].notna().all()
+assert frame["event_time"].is_monotonic_increasing
+```
+
+Для production лучше поднимать информативное исключение, а не полагаться только на `assert`, который может быть отключён.
+
+## Организация проекта
+
+Минимальная структура:
+
+```text
+project/
+  pyproject.toml
+  src/project/
+    data.py
+    features.py
+    train.py
+    evaluate.py
+  tests/
+  notebooks/
+  configs/
+  README.md
+```
+
+Notebook полезен для исследования. Повторяемую логику переносите в функции и модули, чтобы её можно было тестировать и запускать без ручного порядка ячеек.
+
+## Частые ошибки
+
+- огромный notebook как единственный источник логики;
+- preprocessing до split;
+- глобальные переменные с данными;
+- неявное изменение DataFrame;
+- `except Exception: return empty_frame`;
+- путаница между списком, Series и ndarray;
+- циклы по строкам там, где есть векторная операция;
+- отсутствие сохранённой конфигурации эксперимента.
+
+## Связи
+
+- [[NumPy Foundations]] — массивы и векторизация.
+- [[pandas Foundations and Selection]] — табличная работа.
+- [[Exploratory Data Analysis Workflow]] — исследование до модели.
+- [[sklearn End-to-End Classification — Practice]] — полный pipeline.

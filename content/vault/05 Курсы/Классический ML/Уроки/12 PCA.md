@@ -31,51 +31,102 @@ cssclasses:
 
 # PCA как проекция с сохранением variance
 
-> [!summary] Результат урока
-> - связать PCA с covariance и eigenvectors
-> - объяснить explained variance
-> - понимать влияние scaling и интерпретируемости
+## Результат урока
 
-## Основной материал
-
-Canonical source: [[Principal Component Analysis]]. Приложение загружает содержание по `content_path`, поэтому здесь теория не копируется.
+- понять components как directions variance
+- связать covariance, eigenvectors и SVD
+- применять PCA без leakage
 
 ## Сценарий урока
 
 ```datapath
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "layout": "focus",
   "content_path": "10 Знания/ML/01 Classical ML/Principal Component Analysis.md",
   "scenes": [
     {
       "type": "hook",
-      "title": "Зачем это нужно в реальной задаче"
+      "title": "Зачем это нужно и какой результат получим"
     },
     {
       "type": "content",
-      "source_heading": "Идея за 30 секунд"
+      "source_heading": "Интуиция"
     },
     {
       "type": "content",
-      "source_heading": "Зачем нужно"
+      "source_heading": "Подготовка"
+    },
+    {
+      "type": "content",
+      "source_heading": "Covariance view"
     },
     {
       "type": "interactive",
       "component": "pca-projection-lab"
     },
     {
+      "type": "content",
+      "source_heading": "SVD view"
+    },
+    {
+      "type": "content",
+      "source_heading": "Projection"
+    },
+    {
+      "type": "content",
+      "source_heading": "Сравнение с другими методами снижения размерности"
+    },
+    {
       "type": "retrieval",
-      "mode": "free-recall",
-      "prompt": "Объясни главную идею своими словами без подсказки."
+      "mode": "single-choice-or-free-recall",
+      "prompt": "Почему PCA нужно fit только на train и как scaling меняет найденные directions?"
+    },
+    {
+      "type": "content",
+      "source_heading": "Explained variance"
+    },
+    {
+      "type": "content",
+      "source_heading": "Пример"
+    },
+    {
+      "type": "content",
+      "source_heading": "Scaling меняет задачу"
+    },
+    {
+      "type": "content",
+      "source_heading": "Leakage"
+    },
+    {
+      "type": "content",
+      "source_heading": "Интерпретация"
+    },
+    {
+      "type": "content",
+      "source_heading": "Sparse data"
     },
     {
       "type": "application",
-      "mode": "micro-task"
+      "mode": "micro-task",
+      "prompt": "Выбери число components для KNN pipeline и объясни, почему нельзя опираться только на 95% variance."
+    },
+    {
+      "type": "content",
+      "source_heading": "Визуализация"
+    },
+    {
+      "type": "content",
+      "source_heading": "sklearn пример"
+    },
+    {
+      "type": "content",
+      "source_heading": "Частые ошибки"
     },
     {
       "type": "interview",
-      "mode": "follow-up"
+      "mode": "follow-up",
+      "prompt": "Как PCA работает математически и какие у неё ограничения?"
     },
     {
       "type": "reflection",
@@ -87,12 +138,12 @@ Canonical source: [[Principal Component Analysis]]. Приложение заг�
 
 ## Проверка понимания
 
-1. Сформулируй главную идею одним абзацем без терминов, которые не можешь объяснить.
-2. Назови один случай, когда метод или правило даст неверный вывод.
-3. Приведи небольшой пример из табличной ML-задачи.
+1. Почему PCA нужно fit только на train и как scaling меняет найденные directions?
+2. Выбери число components для KNN pipeline и объясни, почему нельзя опираться только на 95% variance.
+3. Как PCA работает математически и какие у неё ограничения?
 
 ## Связи
 
 - Курс: [[00 Курс — Классический ML]]
-- Модуль: [[04 Unsupervised ML]]
-- Источники: [[DataPath — проверенные источники]]
+- Модуль: определяется по `module_id` во frontmatter.
+- Теория: `content_path` во frontmatter является каноническим источником.

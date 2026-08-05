@@ -209,7 +209,7 @@ describe('LessonOutline — display_title (Фаза 6A)', () => {
     ]
     render(<LessonOutline scenes={scenes} currentIndex={0} onSelect={onSelect} />)
     expect(screen.getByRole('button', { name: /Лаба/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Вопрос/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Проверка 1/ })).toBeTruthy()
   })
 })
 

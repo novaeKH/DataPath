@@ -34,26 +34,23 @@ cssclasses:
 
 # End-to-end classification pipeline
 
-> [!summary] Результат урока
-> - собрать preprocessing и model в Pipeline
-> - сравнить baseline и кандидатов честно
-> - закончить итерацию error analysis
+## Результат урока
 
-## Основной материал
-
-Canonical source: [[sklearn End-to-End Classification — Practice]]. Приложение загружает содержание по `content_path`, поэтому здесь теория не копируется.
+- собрать validation-safe preprocessing и model
+- получить out-of-fold/validation probabilities
+- выбрать threshold и сохранить полный pipeline
 
 ## Сценарий урока
 
 ```datapath
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "layout": "focus",
   "content_path": "15 Практика/sklearn/sklearn End-to-End Classification — Practice.md",
   "scenes": [
     {
       "type": "hook",
-      "title": "Зачем это нужно в реальной задаче"
+      "title": "Зачем это нужно и какой результат получим"
     },
     {
       "type": "content",
@@ -64,21 +61,51 @@ Canonical source: [[sklearn End-to-End Classification — Practice]]. Прило
       "source_heading": "Полная прямая реализация"
     },
     {
+      "type": "content",
+      "source_heading": "Threshold по constraint"
+    },
+    {
       "type": "interactive",
-      "component": "pipeline-builder"
+      "component": "pipeline-builder-lab"
+    },
+    {
+      "type": "content",
+      "source_heading": "Проверки и инварианты"
+    },
+    {
+      "type": "content",
+      "source_heading": "Что добавить в реальном проекте"
+    },
+    {
+      "type": "content",
+      "source_heading": "Пример"
+    },
+    {
+      "type": "content",
+      "source_heading": "Визуализация"
+    },
+    {
+      "type": "content",
+      "source_heading": "Сравнение"
     },
     {
       "type": "retrieval",
-      "mode": "free-recall",
-      "prompt": "Объясни главную идею своими словами без подсказки."
+      "mode": "single-choice-or-free-recall",
+      "prompt": "Какие transformations должны fit только на train и почему estimator без preprocessing не является полным объектом оценки?"
+    },
+    {
+      "type": "content",
+      "source_heading": "Типичные ошибки"
     },
     {
       "type": "application",
-      "mode": "micro-task"
+      "mode": "micro-task",
+      "prompt": "Собери план pipeline для mixed numeric/categorical dataset и перечисли артефакты финального эксперимента."
     },
     {
       "type": "interview",
-      "mode": "follow-up"
+      "mode": "follow-up",
+      "prompt": "Расскажите end-to-end процесс от raw data до честной test оценки."
     },
     {
       "type": "reflection",
@@ -90,12 +117,12 @@ Canonical source: [[sklearn End-to-End Classification — Practice]]. Прило
 
 ## Проверка понимания
 
-1. Сформулируй главную идею одним абзацем без терминов, которые не можешь объяснить.
-2. Назови один случай, когда метод или правило даст неверный вывод.
-3. Приведи небольшой пример из табличной ML-задачи.
+1. Какие transformations должны fit только на train и почему estimator без preprocessing не является полным объектом оценки?
+2. Собери план pipeline для mixed numeric/categorical dataset и перечисли артефакты финального эксперимента.
+3. Расскажите end-to-end процесс от raw data до честной test оценки.
 
 ## Связи
 
 - Курс: [[00 Курс — Классический ML]]
-- Модуль: [[05 End-to-end]]
-- Источники: [[DataPath — проверенные источники]]
+- Модуль: определяется по `module_id` во frontmatter.
+- Теория: `content_path` во frontmatter является каноническим источником.

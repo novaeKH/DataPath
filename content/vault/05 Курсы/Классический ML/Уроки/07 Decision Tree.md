@@ -30,26 +30,23 @@ cssclasses:
 
 # Decision Tree без магии
 
-> [!summary] Результат урока
-> - объяснить greedy split по impurity
-> - увидеть переобучение глубокого дерева
-> - назвать главные ограничения дерева
+## Результат урока
 
-## Основной материал
-
-Canonical source: [[Decision Trees]]. Приложение загружает содержание по `content_path`, поэтому здесь теория не копируется.
+- понять рекурсивные splits и prediction в leaf
+- посчитать impurity decrease
+- объяснить overfit и ограничения дерева
 
 ## Сценарий урока
 
 ```datapath
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "layout": "focus",
   "content_path": "10 Знания/ML/01 Classical ML/Decision Trees.md",
   "scenes": [
     {
       "type": "hook",
-      "title": "Зачем это нужно в реальной задаче"
+      "title": "Зачем это нужно и какой результат получим"
     },
     {
       "type": "content",
@@ -60,21 +57,67 @@ Canonical source: [[Decision Trees]]. Приложение загружает с
       "source_heading": "Как строится prediction"
     },
     {
+      "type": "content",
+      "source_heading": "Split gain"
+    },
+    {
       "type": "interactive",
       "component": "decision-tree-split-lab"
     },
     {
+      "type": "content",
+      "source_heading": "Classification criteria"
+    },
+    {
+      "type": "content",
+      "source_heading": "Пример расчёта Gain"
+    },
+    {
+      "type": "content",
+      "source_heading": "Визуализация"
+    },
+    {
+      "type": "content",
+      "source_heading": "Сравнение с линейными моделями и ансамблями"
+    },
+    {
       "type": "retrieval",
-      "mode": "free-recall",
-      "prompt": "Объясни главную идею своими словами без подсказки."
+      "mode": "single-choice-or-free-recall",
+      "prompt": "Почему дерево выбирает split жадно и как считается weighted child impurity?"
+    },
+    {
+      "type": "content",
+      "source_heading": "Regression tree"
+    },
+    {
+      "type": "content",
+      "source_heading": "Почему дерево overfit"
+    },
+    {
+      "type": "content",
+      "source_heading": "Scaling, missing values и categories"
     },
     {
       "type": "application",
-      "mode": "micro-task"
+      "mode": "micro-task",
+      "prompt": "Посчитай Gini и Gain для маленького candidate split и реши, полезен ли он."
+    },
+    {
+      "type": "content",
+      "source_heading": "Feature importance"
+    },
+    {
+      "type": "content",
+      "source_heading": "Что если предположения нарушены"
+    },
+    {
+      "type": "content",
+      "source_heading": "Ответ для собеседования"
     },
     {
       "type": "interview",
-      "mode": "follow-up"
+      "mode": "follow-up",
+      "prompt": "Как дерево выбирает split, почему переобучается и как его regularize?"
     },
     {
       "type": "reflection",
@@ -86,12 +129,12 @@ Canonical source: [[Decision Trees]]. Приложение загружает с
 
 ## Проверка понимания
 
-1. Сформулируй главную идею одним абзацем без терминов, которые не можешь объяснить.
-2. Назови один случай, когда метод или правило даст неверный вывод.
-3. Приведи небольшой пример из табличной ML-задачи.
+1. Почему дерево выбирает split жадно и как считается weighted child impurity?
+2. Посчитай Gini и Gain для маленького candidate split и реши, полезен ли он.
+3. Как дерево выбирает split, почему переобучается и как его regularize?
 
 ## Связи
 
 - Курс: [[00 Курс — Классический ML]]
-- Модуль: [[03 Деревья и ансамбли]]
-- Источники: [[DataPath — проверенные источники]]
+- Модуль: определяется по `module_id` во frontmatter.
+- Теория: `content_path` во frontmatter является каноническим источником.

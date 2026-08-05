@@ -10,6 +10,9 @@ import {
   type CaseSpec,
   type CaseSubmitResult,
 } from '../lib/api'
+import { EmptyState, ErrorState, LoadingBlock, PageHeader } from '../components/ui/PageState'
+import { Button } from '../components/ui/Button'
+import { buttonClassNames } from '../components/ui/buttonStyles'
 
 type Mode = 'guided' | 'standard' | 'interview'
 
@@ -27,6 +30,9 @@ const MODE_LABEL: Record<Mode, string> = {
   standard: 'Standard — без промежуточных подсказок',
   interview: 'Interview — краткая формулировка и итоговый разбор',
 }
+
+/** Значения difficulty, которые на самом деле являются режимом кейса. */
+const MODE_LIKE_DIFFICULTY = new Set(['guided', 'standard', 'interview'])
 
 /** /studio — список кейсов и прохождение. */
 export function StudioView() {
@@ -64,101 +70,92 @@ function CaseList() {
     return () => controller.abort()
   }, [load])
 
-  if (state.kind === 'loading') return <Centered>Загрузка кейсов…</Centered>
+  if (state.kind === 'loading') {
+    return <LoadingBlock label="Загрузка кейсов…" rows={4} />
+  }
   if (state.kind === 'error') {
     return (
-      <Centered>
-        <div className="font-semibold text-rose-600 dark:text-rose-300">Ошибка загрузки</div>
-        <p className="mt-2 max-w-md text-sm text-rose-500">{state.message}</p>
-        <button
-          onClick={() => void load()}
-          className="mt-4 rounded-lg bg-rose-500/15 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-500/25 dark:text-rose-200"
-        >
-          Попробовать снова
-        </button>
-      </Centered>
+      <ErrorState title="Ошибка загрузки" message={state.message} onRetry={() => void load()} />
     )
   }
 
   const { cases } = state
   return (
-    <div className="mx-auto max-w-4xl">
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-        <header className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Studio</h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Структурированные кейсы: проверка навыков на практике. Оценка и разбор — на backend.
-            </p>
-          </div>
-          <Link
-            to="/atlas"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+      <PageHeader
+        title="Studio"
+        subtitle="Структурированные кейсы: проверка навыков на практике. Оценка и разбор — на backend."
+        actions={
+          <Link to="/atlas" className={buttonClassNames('outline', 'sm')}>
             ← Atlas
           </Link>
-        </header>
+        }
+      />
 
-        {cases.length === 0 ? (
-          <div className="mt-8 rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500 dark:border-slate-700">
-            Кейсы ещё не добавлены.
-          </div>
-        ) : (
-          <div className="mt-6 flex flex-col gap-4">
-            {cases.map((caseSpec) => (
-              <section
-                key={caseSpec.id}
-                className="rounded-xl border border-slate-200 bg-white/70 p-5 dark:border-slate-800 dark:bg-slate-900/50"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                      <span
-                        className={`rounded-full px-2 py-0.5 font-medium ${
-                          caseSpec.practice_kind === 'module-case'
-                            ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-200'
-                            : 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-200'
-                        }`}
-                      >
-                        {caseSpec.practice_kind === 'module-case' ? 'Итоговый кейс' : 'Мини-кейс'}
-                      </span>
-                      {caseSpec.estimated_minutes != null && (
-                        <span>~{caseSpec.estimated_minutes} мин</span>
-                      )}
-                      {caseSpec.difficulty && <span>· {caseSpec.difficulty}</span>}
-                    </div>
-                    <h2 className="mt-1.5 text-lg font-semibold text-slate-900 dark:text-slate-100">
-                      {caseSpec.title}
-                    </h2>
-                    <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                      {caseSpec.description}
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {caseSpec.skill_ids.map((skill) => (
-                        <span
-                          key={skill}
-                          className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-500 dark:bg-slate-800/70 dark:text-slate-400"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 flex-col gap-2">
-                    <Link
-                      to={`/studio?case=${encodeURIComponent(caseSpec.id)}`}
-                      className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900"
+      {cases.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState
+            title="Кейсы ещё не добавлены"
+            description="Загляните позже или пройдите уроки курса — кейсы появятся в Studio."
+          />
+        </div>
+      ) : (
+        <div className="mt-6 flex flex-col gap-4">
+          {cases.map((caseSpec) => (
+            <section
+              key={caseSpec.id}
+              className="rounded-xl p-5 dp-surface"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span
+                      className={`rounded-full px-2 py-0.5 font-medium ${
+                        caseSpec.practice_kind === 'module-case'
+                          ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-200'
+                          : 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-200'
+                      }`}
                     >
-                      Пройти кейс →
-                    </Link>
+                      {caseSpec.practice_kind === 'module-case' ? 'Итоговый кейс' : 'Мини-кейс'}
+                    </span>
+                    {caseSpec.estimated_minutes != null && (
+                      <span>~{caseSpec.estimated_minutes} мин</span>
+                    )}
+                    {caseSpec.difficulty && !MODE_LIKE_DIFFICULTY.has(caseSpec.difficulty) && (
+                      <span>· {caseSpec.difficulty}</span>
+                    )}
+                  </div>
+                  <h2 className="mt-1.5 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    {caseSpec.title}
+                  </h2>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                    {caseSpec.description}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {caseSpec.skill_ids.map((skill) => (
+                      <span
+                        key={skill}
+                        className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-500 dark:bg-slate-800/70 dark:text-slate-400"
+                      >
+                        {skill}
+                      </span>
+                    ))}
                   </div>
                 </div>
-              </section>
-            ))}
-          </div>
-        )}
-      </motion.div>
-    </div>
+                <div className="flex shrink-0 flex-col gap-2">
+                  <Link
+                    to={`/studio?case=${encodeURIComponent(caseSpec.id)}`}
+                    className={buttonClassNames('secondary')}
+                  >
+                    Пройти кейс →
+                  </Link>
+                </div>
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+    </motion.div>
   )
 }
 
@@ -209,29 +206,17 @@ function CaseRunner({ caseId, onBack }: { caseId: string; onBack: () => void }) 
     }
   }, [caseId, result])
 
-  if (runState.kind === 'loading') return <Centered>Загрузка кейса…</Centered>
+  if (runState.kind === 'loading') {
+    return <LoadingBlock label="Загрузка кейса…" rows={5} />
+  }
   if (runState.kind === 'error' || runState.kind === 'idle') {
     return (
-      <Centered>
-        <div className="font-semibold text-rose-600 dark:text-rose-300">Ошибка</div>
-        <p className="mt-2 max-w-md text-sm text-rose-500">
-          {runState.kind === 'error' ? runState.message : 'Кейс не выбран.'}
-        </p>
-        <div className="mt-4 flex gap-3">
-          <button
-            onClick={() => void load()}
-            className="rounded-lg bg-rose-500/15 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-500/25 dark:text-rose-200"
-          >
-            Попробовать снова
-          </button>
-          <button
-            onClick={onBack}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            К списку
-          </button>
-        </div>
-      </Centered>
+      <ErrorState
+        title="Ошибка"
+        message={runState.kind === 'error' ? runState.message : 'Кейс не выбран.'}
+        onRetry={() => void load()}
+        className="min-h-[280px]"
+      />
     )
   }
 
@@ -312,7 +297,7 @@ function CaseRunner({ caseId, onBack }: { caseId: string; onBack: () => void }) 
 
         {/* Интро */}
         {spec.intro && (
-          <div className="mt-5 rounded-xl border border-slate-200 bg-white/70 p-5 dark:border-slate-800 dark:bg-slate-900/50">
+          <div className="mt-5 rounded-xl p-5 dp-surface">
             <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-200">
               {spec.intro}
             </p>
@@ -343,20 +328,20 @@ function CaseRunner({ caseId, onBack }: { caseId: string; onBack: () => void }) 
         {result && <ResultCard result={result} spec={spec} />}
 
         {!result && (
-          <div className="mt-6 flex items-center justify-end gap-3">
-            <button
-              onClick={onBack}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
+          <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+            <span className="mr-auto text-xs text-slate-400">
+              {canSubmit ? '' : 'Ответьте на все вопросы, чтобы отправить.'}
+            </span>
+            <Button variant="outline" onClick={onBack}>
               Отмена
-            </button>
-            <button
-              onClick={() => void handleSubmit()}
+            </Button>
+            <Button
+              variant="primary"
               disabled={!canSubmit || submitting}
-              className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white transition enabled:hover:bg-violet-500 disabled:opacity-40"
+              onClick={() => void handleSubmit()}
             >
               {submitting ? 'Проверяем…' : 'Отправить и проверить'}
-            </button>
+            </Button>
           </div>
         )}
 
@@ -377,9 +362,10 @@ function ModeSelect({ value, onChange }: { value: Mode; onChange: (mode: Mode) =
         <button
           key={mode}
           onClick={() => onChange(mode)}
+          aria-pressed={value === mode}
           className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
             value === mode
-              ? 'border-violet-400 bg-violet-600 text-white'
+              ? 'border-emerald-400 bg-emerald-600 text-white'
               : 'border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'
           }`}
         >
@@ -404,7 +390,7 @@ function QuestionCard({
   onChange: (value: unknown) => void
 }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white/70 p-5 dark:border-slate-800 dark:bg-slate-900/50">
+    <section className="rounded-xl p-5 dp-surface">
       <div className="flex items-start gap-3">
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
           {index + 1}
@@ -423,10 +409,10 @@ function QuestionCard({
 
           {question.hint && (
             <details className="mt-2">
-              <summary className="cursor-pointer text-xs font-medium text-violet-600 hover:text-violet-500 dark:text-violet-400">
+              <summary className="cursor-pointer text-xs font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-400">
                 Подсказка
               </summary>
-              <p className="mt-1 rounded-lg bg-violet-50 px-3 py-2 text-xs text-violet-700 dark:bg-violet-950/30 dark:text-violet-200">
+              <p className="mt-1 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200">
                 {question.hint}
               </p>
             </details>
@@ -465,7 +451,7 @@ function AnswerInput({
             key={idx}
             className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-sm transition ${
               value === idx
-                ? 'border-violet-400 bg-violet-50 dark:border-violet-600 dark:bg-violet-950/30'
+                ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-600 dark:bg-emerald-950/30'
                 : 'border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50'
             } ${disabled ? 'cursor-default opacity-80' : ''}`}
           >
@@ -475,7 +461,7 @@ function AnswerInput({
               disabled={disabled}
               checked={value === idx}
               onChange={() => onChange(idx)}
-              className="mt-0.5 accent-violet-600"
+              className="mt-0.5 accent-emerald-600"
             />
             <span className="text-slate-700 dark:text-slate-200">
               {idx + 1}. {option}
@@ -501,7 +487,7 @@ function AnswerInput({
             key={idx}
             className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-sm transition ${
               current.includes(idx)
-                ? 'border-violet-400 bg-violet-50 dark:border-violet-600 dark:bg-violet-950/30'
+                ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-600 dark:bg-emerald-950/30'
                 : 'border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50'
             } ${disabled ? 'cursor-default opacity-80' : ''}`}
           >
@@ -510,7 +496,7 @@ function AnswerInput({
               disabled={disabled}
               checked={current.includes(idx)}
               onChange={() => toggle(idx)}
-              className="mt-0.5 accent-violet-600"
+              className="mt-0.5 accent-emerald-600"
             />
             <span className="text-slate-700 dark:text-slate-200">
               {idx + 1}. {option}
@@ -529,7 +515,7 @@ function AnswerInput({
         value={(value as string) ?? ''}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Введите число"
-        className="w-full max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-violet-400 disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+        className="w-full max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-emerald-400 disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
       />
     )
   }
@@ -604,7 +590,7 @@ function AnswerInput({
 function ResultCard({ result, spec }: { result: CaseSubmitResult; spec: CaseSpec }) {
   const percent = Math.round(result.total_score * 100)
   return (
-    <section className="mt-6 rounded-xl border border-slate-200 bg-white/80 p-5 dark:border-slate-800 dark:bg-slate-900/60">
+    <section className="mt-6 rounded-xl p-5 dp-surface">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -686,11 +672,5 @@ function ResultCard({ result, spec }: { result: CaseSubmitResult; spec: CaseSpec
         </div>
       )}
     </section>
-  )
-}
-
-function Centered({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex h-[60vh] flex-col items-center justify-center text-center">{children}</div>
   )
 }

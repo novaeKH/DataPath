@@ -31,51 +31,98 @@ cssclasses:
 
 # K-Means и смысл кластера
 
-> [!summary] Результат урока
-> - объяснить objective K-Means
-> - понять влияние scaling и initialization
-> - не путать кластеры с истинными классами
+## Результат урока
 
-## Основной материал
-
-Canonical source: [[K-Means]]. Приложение загружает содержание по `content_path`, поэтому здесь теория не копируется.
+- понять objective и Lloyd algorithm
+- объяснить scaling и geometry assumptions
+- оценивать K и stability без target
 
 ## Сценарий урока
 
 ```datapath
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "layout": "focus",
   "content_path": "10 Знания/ML/01 Classical ML/K-Means.md",
   "scenes": [
     {
       "type": "hook",
-      "title": "Зачем это нужно в реальной задаче"
+      "title": "Зачем это нужно и какой результат получим"
     },
     {
       "type": "content",
-      "source_heading": "Идея за 30 секунд"
+      "source_heading": "Что решает K-Means"
     },
     {
       "type": "content",
       "source_heading": "Objective"
     },
     {
+      "type": "content",
+      "source_heading": "Lloyd algorithm"
+    },
+    {
       "type": "interactive",
       "component": "kmeans-canvas"
     },
     {
+      "type": "content",
+      "source_heading": "Числовой пример"
+    },
+    {
+      "type": "content",
+      "source_heading": "Initialization"
+    },
+    {
+      "type": "content",
+      "source_heading": "Сравнение с DBSCAN и hierarchical"
+    },
+    {
       "type": "retrieval",
-      "mode": "free-recall",
-      "prompt": "Объясни главную идею своими словами без подсказки."
+      "mode": "single-choice-or-free-recall",
+      "prompt": "Почему centroid является mean и почему inertia всегда уменьшается при росте K?"
+    },
+    {
+      "type": "content",
+      "source_heading": "Scaling и representation"
+    },
+    {
+      "type": "content",
+      "source_heading": "Geometry assumptions"
+    },
+    {
+      "type": "content",
+      "source_heading": "Как выбрать K"
+    },
+    {
+      "type": "content",
+      "source_heading": "Оценка без labels"
+    },
+    {
+      "type": "content",
+      "source_heading": "Prediction новых points"
     },
     {
       "type": "application",
-      "mode": "micro-task"
+      "mode": "micro-task",
+      "prompt": "Для customer segmentation выбери features, scaling и критерии полезности clusters."
+    },
+    {
+      "type": "content",
+      "source_heading": "Визуализация"
+    },
+    {
+      "type": "content",
+      "source_heading": "sklearn пример"
+    },
+    {
+      "type": "content",
+      "source_heading": "Частые ошибки"
     },
     {
       "type": "interview",
-      "mode": "follow-up"
+      "mode": "follow-up",
+      "prompt": "Как работает K-Means, как выбрать K и когда метод неприменим?"
     },
     {
       "type": "reflection",
@@ -87,12 +134,12 @@ Canonical source: [[K-Means]]. Приложение загружает соде�
 
 ## Проверка понимания
 
-1. Сформулируй главную идею одним абзацем без терминов, которые не можешь объяснить.
-2. Назови один случай, когда метод или правило даст неверный вывод.
-3. Приведи небольшой пример из табличной ML-задачи.
+1. Почему centroid является mean и почему inertia всегда уменьшается при росте K?
+2. Для customer segmentation выбери features, scaling и критерии полезности clusters.
+3. Как работает K-Means, как выбрать K и когда метод неприменим?
 
 ## Связи
 
 - Курс: [[00 Курс — Классический ML]]
-- Модуль: [[04 Unsupervised ML]]
-- Источники: [[DataPath — проверенные источники]]
+- Модуль: определяется по `module_id` во frontmatter.
+- Теория: `content_path` во frontmatter является каноническим источником.

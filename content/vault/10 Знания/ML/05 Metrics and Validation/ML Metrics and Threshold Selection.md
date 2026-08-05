@@ -243,6 +243,47 @@ Offline metric зависит от candidate set, negative sampling и exposure 
 
 Metric без decision context легко оптимизировать в неверную сторону.
 
+## Визуализация
+
+Confusion matrix показывает ошибки по классам; ROC-кривая — trade-off TPR/FPR по threshold; PR-кривая — precision/recall при дисбалансе. Интерактивный «порог» (slider) помогает увидеть, как меняются precision, recall и число объектов по классам при сдвиге threshold.
+
+## Частые ошибки
+
+- accuracy при сильном дисбалансе классов;
+- выбор метрики «как все», без стоимости ошибок бизнеса;
+- PR-AUC вместо ROC-AUC для редкого позитивного класса (и наоборот);
+- threshold, подобранный на test и выданный за «обобщение»;
+- усреднение multiclass метрик без понимания averaging scheme;
+- сравнивать модели по метрике, не соответствующей решению.
+
+## Сравнение метрик
+
+| Метрика | Спрашивает | Когда использовать |
+|---|---|---|
+| Accuracy | доля верных | баланс классов |
+| Precision | сколько из предсказанных — верные | дорогие ложные срабатывания |
+| Recall | сколько из истинных нашли | дорогие пропуски |
+| ROC-AUC | разделение классов | сравнение моделей, баланс |
+| PR-AUC | качество на редком классе | сильный дисбаланс |
+| LogLoss | уверенность вероятностей | нужны вероятности |
+
+## Простой пример
+
+Кредитный скор: 2% дефолтов. Accuracy ≈ 98% у «всегда не дефолт» — бесполезна. PR-AUC и threshold по стоимости ошибок дают осмысленную оценку.
+
+## Пример кода
+
+```python
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score,
+    roc_auc_score, log_loss, confusion_matrix,
+)
+
+print(confusion_matrix(y_val, y_pred))
+print(precision_score(y_val, y_pred), recall_score(y_val, y_pred))
+print(roc_auc_score(y_val, y_proba), log_loss(y_val, y_proba))
+```
+
 ## Связи
 
 - [[Validation Splits and Data Leakage]] — metric считается на честном split; threshold не выбирают на test.

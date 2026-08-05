@@ -1,134 +1,196 @@
 ---
 title: ML Foundations
+id: concept.ml.ml-foundations
 type: concept
 area: ml
-status: active
-aliases:
-  - Основы машинного обучения
-  - Bias variance overfitting
-tags:
-  - ml/classical
-  - ml/foundations
-math_depth: 1
-id: concept.ml.ml-foundations
 schema_version: 2
 language: ru
+status: active
 rag: include
 rag_collection: knowledge
 app: source
+aliases:
+- Основы машинного обучения
+- Machine Learning Foundations
+tags:
+- ml/classical
+- ml/foundations
+math_depth: 1
 ---
+
 # ML Foundations
 
-## Идея за 30 секунд
+## Что такое машинное обучение
 
-Machine Learning выбирает функцию по данным так, чтобы она хорошо работала на новых объектах. Качество определяется не только алгоритмом: сначала фиксируют объект, target, момент прогноза, доступные признаки, split и metric. Training error показывает fit к наблюдённой выборке; generalization проверяется на данных, которые не участвовали в выборе модели.
+Машинное обучение строит правило по примерам. Вместо ручного набора условий мы задаём данные, target, допустимый класс моделей и критерий качества. Алгоритм подбирает параметры так, чтобы хорошо работать не только на известных строках, но и на новых объектах.
 
-## Типы задач
+Пример: для каждого клиента известны возраст, история покупок и факт оттока. Мы хотим оценить вероятность оттока для клиента, которого модель не видела при обучении.
 
-- **Regression** — численный target.
-- **Classification** — класс или probability класса.
-- **Ranking** — порядок кандидатов.
-- **Clustering** — структура без labels.
-- **Dimensionality reduction** — компактное представление.
-- **Anomaly detection** — редкие нетипичные объекты.
-- **Recommendation** — персональный retrieval/ranking.
-- **Forecasting** — prediction с временным порядком.
+## Четыре части ML-задачи
 
-Supervised learning использует target. Unsupervised learning ищет структуру без размеченной цели. Self-supervised learning создаёт supervision из самих данных, например предсказывает masked или next token.
+1. **Объект** — одна строка, для которой делается prediction.
+2. **Features** $x$ — информация, доступная в момент решения.
+3. **Target** $y$ — правильный ответ, сформированный позже или размеченный человеком.
+4. **Metric и action** — как измеряется качество и что происходит после prediction.
 
-## Постановка задачи
+Без prediction time и action задача сформулирована неполно. Один и тот же target может требовать разных моделей, если меняются horizon, стоимость ошибки или доступные признаки.
 
-До выбора модели нужно ответить:
+## Обучение с учителем
 
-1. что является одной строкой или sequence;
-2. какой estimand/target нужен бизнесу;
-3. в какой момент строится prediction;
-4. какие данные реально доступны в этот момент;
-5. какое решение будет принято по prediction.
+Есть пары $(x_i, y_i)$.
 
-Ошибка в постановке может дать высокий offline score для бесполезной или утечечной модели.
+- classification предсказывает класс или вероятность;
+- regression предсказывает число;
+- ranking упорядочивает объекты;
+- forecasting предсказывает будущее с учётом времени.
 
-## Parameters, hyperparameters и learning
+Модель $f_\theta(x)$ имеет параметры $\theta$. Обучение минимизирует loss:
 
-Parameters оцениваются из train data:
+$$
+\widehat{\theta}
+=\arg\min_\theta
+\frac{1}{n}\sum_{i=1}^{n}L(y_i,f_\theta(x_i)).
+$$
 
-- coefficients linear model;
-- split thresholds и leaf values;
-- weights neural network.
+Loss нужен optimizer. Business metric может отличаться: модель обучается на LogLoss, а решение оценивается по стоимости false positive и false negative.
 
-Hyperparameters задают family или процесс:
+## Обучение без учителя
 
-- regularization strength;
-- tree depth;
-- number of neighbors;
-- learning rate.
+Target отсутствует. Алгоритм ищет структуру по выбранному objective:
 
-Hyperparameters тоже выбираются по данным — через validation/CV. Поэтому test не должен участвовать ни в feature engineering decisions, ни в tuning.
+- clustering;
+- dimensionality reduction;
+- anomaly detection;
+- representation learning.
 
-## Baseline
+Найденный cluster не является «истинным типом клиента» автоматически. Полезность проверяется устойчивостью, интерпретацией и downstream-задачей.
 
-Baseline — самое простое разумное решение:
+## Train, validation и test
 
-- mean/median для regression;
-- frequent class или calibrated prevalence для classification;
-- popularity для recommendation;
-- last observed value для forecasting;
-- linear model до сложного ensemble.
+- train — подобрать параметры;
+- validation — выбрать модель, признаки, hyperparameters и threshold;
+- test — один раз оценить зафиксированный pipeline.
 
-Baseline проверяет target, metric, split и оправданность complexity. Сложная модель без корректного baseline не доказывает ценность.
+Split должен имитировать deployment. Для повторяющихся пользователей нужен group split, для будущего — time split. Random split не является универсальным default.
+
+## Generalization
+
+Train score показывает, насколько модель описала известные данные. Нас интересует expected quality на новых данных из production distribution.
+
+Разница возникает из-за:
+
+- конечной выборки;
+- noise;
+- слишком большой или малой capacity;
+- drift;
+- leakage;
+- неверной validation scheme.
 
 ## Bias и variance
 
-Bias — systematic error из слишком ограниченного model family или неверных assumptions. Variance — чувствительность fitted model к конкретной train sample.
+**Bias** — систематическая ошибка слишком простой модели. **Variance** — чувствительность к конкретной train-выборке.
 
-Рабочая диагностика:
+- простая linear model может недоучить nonlinear pattern: high bias;
+- глубокое дерево может запомнить случайные детали: high variance;
+- regularization уменьшает variance ценой некоторого bias;
+- ансамбли уменьшают variance или bias разными способами.
 
-- train и validation плохи → вероятен высокий bias, слабые features или optimization problem;
-- train хорош, validation заметно хуже → вероятен высокий variance, leakage или distribution mismatch;
-- оба хороши offline, production плох → проверить shift, feedback loops, latency и feature availability.
+Не нужно буквально вычислять bias/variance для каждого проекта: это ментальная модель диагностики underfit и overfit.
 
-Bias–variance — mental model, а не единственная причина error. Label noise и irreducible uncertainty остаются даже у правильной модели.
+## Parameters и hyperparameters
 
-## Overfitting
+Parameters обучаются из данных: коэффициенты regression, split tree, neural weights.
 
-Overfitting — модель использует закономерности train sample, которые не воспроизводятся на новых данных.
+Hyperparameters задают процесс и capacity: глубина дерева, strength regularization, learning rate, число neighbours. Их выбирают только по validation/CV.
 
-Проверять в порядке:
+## Preprocessing как часть модели
 
-1. честность split и отсутствие leakage;
-2. корректность metric и implementation;
-3. стабильность по folds, time и segments;
-4. capacity модели;
-5. regularization и early stopping;
-6. качество и объём данных.
+Imputer, scaler, encoder, PCA и feature selection должны fit только на train. Поэтому настоящий объект оценки — полный pipeline, а не только estimator.
 
-«Уменьшить depth» не лечит leakage, а «добавить данных» не исправляет неверный target.
+```text
+raw data → validation-safe preprocessing → model → calibration/threshold
+```
 
-## Underfitting
+## Baseline
 
-Причины:
+Baseline отвечает: даёт ли сложность реальный выигрыш?
 
-- model family не выражает нужную зависимость;
-- features не содержат signal;
-- regularization слишком сильна;
-- optimization не сошлась;
-- label/target сформирован неверно.
+Примеры:
 
-Увеличивать complexity стоит после проверки pipeline и baseline.
+- majority class;
+- mean/median;
+- logistic/linear regression;
+- shallow tree;
+- popularity;
+- last known value.
 
-## Feature selection
+Baseline должен быть честным и проходить тот же split.
 
-- **Filter**: variance, correlation, mutual information без fitted final model.
-- **Wrapper**: сравнение feature subsets через model/CV.
-- **Embedded**: L1, tree splits и другие model-specific mechanisms.
+## Data leakage
 
-Любой data-driven selection выполняется внутри training/CV. Feature importance не является доказательством causality.
+Leakage — информация, которая недоступна в реальном prediction или попала из validation/test в обучение.
+
+Типичные источники:
+
+- post-outcome признаки;
+- aggregation после cutoff;
+- один пользователь в train и validation;
+- scaling/PCA на полном dataset;
+- target encoding с собственной label;
+- многократный подбор по test.
+
+## От score к решению
+
+Модель часто выдаёт score или probability. Business action требует threshold или top-K. Threshold выбирается на validation с учётом costs и capacity, а не автоматически как `0.5`.
+
+## Рабочий цикл
+
+```text
+задача → data contract → split → baseline → pipeline → CV
+→ error analysis → улучшение → финальный test → monitoring
+```
+
+Каждая итерация должна проверять гипотезу, а не добавлять случайную сложность.
+
+## Визуализация
+
+Компонент `bias-variance-playground`:
+
+- пользователь меняет complexity;
+- видит train и validation error;
+- переключает noise и sample size;
+- наблюдает underfit, optimal region и overfit;
+- сравнивает один split и несколько train samples.
+
+## Частые ошибки и заблуждения
+
+- высокая train metric означает хорошую модель;
+- более сложная модель всегда лучше;
+- cross-validation исправляет неверный split;
+- feature importance показывает причинность;
+- unsupervised cluster имеет объективный смысл;
+- test можно смотреть после каждой идеи;
+- хороший offline score гарантирует business effect.
+
+## Сравнение: обучение с учителем и без
+
+| | С учителем | Без учителя |
+|---|---|---|
+| Данные | есть target | нет target |
+| Задача | предсказать target | найти структуру |
+| Примеры | классификация, регрессия | кластеризация, снижение размерности |
+| Оценка | метрики против истины | внутренние метрики, ручная проверка |
+
+Выбор зависит от того, что доступно: если есть размеченные ответы и решение меняется от прогноза — supervised; если нужно понять структуру данных — unsupervised.
+
+## Простой пример
+
+Задача оттока: объект — один клиент, признаки — история покупок к моменту прогноза, target — отток в следующие 30 дней, момент прогноза — конец текущего дня. Это supervised-задача: есть прошлые примеры «ушёл/остался», и решение (скидка, звонок) меняется после прогноза.
 
 ## Связи
 
-- [[Validation Splits and Data Leakage]] — честная оценка generalization.
-- [[ML Metrics and Threshold Selection]] — измерение качества с учётом задачи и решения.
-- [[Regularization]] — управляет trade-off между fit и stability.
-- [[Linear Regression]] — прозрачный regression baseline.
-- [[Logistic Regression]] — вероятностный classification baseline.
-- [[ML Basics and Linear Models — Interview]] — короткая проверка знаний.
+- [[Validation Splits and Data Leakage]]
+- [[ML Metrics and Threshold Selection]]
+- [[Regularization]]
+- [[From EDA to ML Pipeline]]
+- [[Model Selection and Hyperparameter Tuning]]

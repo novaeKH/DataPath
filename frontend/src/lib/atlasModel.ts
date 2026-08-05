@@ -24,9 +24,9 @@ export function clamp(value: number, min: number, max: number): number {
  * Режим «Маршрут курса»: узлы маршрутов курсов (course/module/lesson/case)
  * + непосредственно связанные с ними материалы (1 hop по рёбрам).
  *
- * Детерминированная под-раскладка: курс → колонки модулей → уроки,
- * связанные материалы (concepts, кейсы без module_id и пр.) — справа,
- * по областям (порядок по id). Никакой случайности.
+ * Детерминированная под-раскладка: курс сверху → колонки модулей → уроки,
+ * связанные материалы (concepts, кейсы без module_id) — компактной сеткой
+ * ниже маршрута. Никакой случайности: одинаковые данные → одинаковые позиции.
  */
 export function buildRouteView(data: AtlasData): AtlasData {
   const route = data.routes
@@ -51,16 +51,20 @@ export function buildRouteView(data: AtlasData): AtlasData {
   const nodes = data.nodes.filter((n) => inScope.has(n.id))
   const byId = new Map(nodes.map((n) => [n.id, n]))
 
-  const COL_W = 260
-  const ROW_H = 92
-  const MOD_OFFSET_X = 200
-  const LESSON_OFFSET_Y = 120
-  const KNOWLEDGE_COL_W = 300
+  // Просторные шаги сетки: подписи не перекрываются.
+  const COL_W = 250
+  const ROW_H = 104
+  const MOD_OFFSET_X = 170
+  const LESSON_OFFSET_Y = 110
+  const COURSE_Y = -190
+  const EXTRAS_COLS = 6
+  const EXTRAS_COL_W = 300
+  const EXTRAS_TOP_OFFSET = 150
   const positions = new Map<string, [number, number]>()
   let maxY = 0
 
   for (const courseId of Object.keys(route)) {
-    positions.set(courseId, [0, 0])
+    positions.set(courseId, [0, COURSE_Y])
     const r = route[courseId]
     for (let col = 0; col < r.modules.length; col++) {
       const moduleId = r.modules[col]
@@ -81,48 +85,52 @@ export function buildRouteView(data: AtlasData): AtlasData {
     }
   }
 
-  // Связанные материалы (concepts, кейсы без module_id и т.п.) — справа, по областям.
+  // Связанные материалы (concepts, кейсы без module_id и т.п.) — компактной
+  // сеткой под маршрутом (не раздвигают ширину графа).
   const extras = nodes.filter((n) => !positions.has(n.id))
   if (extras.length > 0) {
-    const byArea = new Map<string, AtlasNode[]>()
-    for (const node of extras) {
-      const key = node.area ?? 'other'
-      const list = byArea.get(key)
-      if (list) list.push(node)
-      else byArea.set(key, [node])
-    }
-    const moduleColumns = Math.max(0, ...Object.values(route).map((r) => r.modules.length))
-    const baseX = MOD_OFFSET_X + (moduleColumns + 1) * COL_W + 40
-    const areaKeys = [...byArea.keys()].sort()
-    for (let col = 0; col < areaKeys.length; col++) {
-      const x = baseX + col * KNOWLEDGE_COL_W
-      // Сначала опубликованные (кейсы), затем источники; внутри — по id.
-      const list = [...byArea.get(areaKeys[col])!].sort(
-        (a, b) => Number(b.publish) - Number(a.publish) || a.id.localeCompare(b.id),
-      )
-      for (let row = 0; row < list.length; row++) {
-        positions.set(list[row].id, [x, 20 + row * ROW_H])
-        maxY = Math.max(maxY, 20 + row * ROW_H)
-      }
+    const baseX = 20
+    const baseY = maxY + EXTRAS_TOP_OFFSET
+    const sorted = [...extras].sort(
+      (a, b) => Number(b.publish) - Number(a.publish) || a.id.localeCompare(b.id),
+    )
+    for (let i = 0; i < sorted.length; i++) {
+      const x = baseX + (i % EXTRAS_COLS) * EXTRAS_COL_W
+      const y = baseY + Math.floor(i / EXTRAS_COLS) * ROW_H
+      positions.set(sorted[i].id, [x, y])
+      maxY = Math.max(maxY, y)
     }
   }
 
-  const maxX = Math.max(0, ...[...positions.values()].map(([x]) => x)) + 140
+  const maxX =
+    Math.max(
+      0,
+      ...[...positions.values()].map(([x]) => x),
+      MOD_OFFSET_X +
+        (Math.max(0, ...Object.values(route).map((r) => r.modules.length)) - 1) * COL_W +
+        COL_W,
+    ) + 140
   const edges = data.edges.filter((e) => inScope.has(e.source) && inScope.has(e.target))
   const prerequisites = data.prerequisites.filter(
     (e) => inScope.has(e.source) && inScope.has(e.target),
   )
 
+  // Применяем под-раскладку к узлам (ранее позиции вычислялись, но не назначались).
+  const positionedNodes = nodes.map((node) => {
+    const pos = positions.get(node.id)
+    return pos ? { ...node, x: pos[0], y: pos[1] } : node
+  })
+
   return {
     ...data,
-    nodes,
+    nodes: positionedNodes,
     edges,
     prerequisites,
     node_types: [...new Set(nodes.map((n) => n.type))].sort(),
     areas: [...new Set(nodes.map((n) => n.area).filter((a): a is string => Boolean(a)))].sort(),
     layout: {
       width: Math.max(maxX, 480),
-      height: Math.max(maxY + 120, 360),
+      height: Math.max(maxY + 160, 420),
       mode: 'deterministic',
     },
   }

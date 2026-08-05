@@ -31,26 +31,23 @@ cssclasses:
 
 # Gradient Boosting как последовательное исправление ошибок
 
-> [!summary] Результат урока
-> - объяснить функциональный gradient descent интуитивно
-> - связать learning rate и число деревьев
-> - распознать переобучение и недообучение
+## Результат урока
 
-## Основной материал
-
-Canonical source: [[Gradient Boosting]]. Приложение загружает содержание по `content_path`, поэтому здесь теория не копируется.
+- понять additive model и pseudo-residuals
+- проследить несколько boosting steps
+- объяснить learning rate, depth и early stopping
 
 ## Сценарий урока
 
 ```datapath
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "layout": "focus",
   "content_path": "10 Знания/ML/01 Classical ML/Gradient Boosting.md",
   "scenes": [
     {
       "type": "hook",
-      "title": "Зачем это нужно в реальной задаче"
+      "title": "Зачем это нужно и какой результат получим"
     },
     {
       "type": "content",
@@ -61,21 +58,71 @@ Canonical source: [[Gradient Boosting]]. Приложение загружает
       "source_heading": "Additive model"
     },
     {
+      "type": "content",
+      "source_heading": "От loss к pseudo-residuals"
+    },
+    {
       "type": "interactive",
       "component": "boosting-residuals-lab"
     },
     {
+      "type": "content",
+      "source_heading": "Squared error"
+    },
+    {
+      "type": "content",
+      "source_heading": "Пример: 3 шага boosting"
+    },
+    {
+      "type": "content",
+      "source_heading": "Визуализация"
+    },
+    {
+      "type": "content",
+      "source_heading": "Сравнение с Random Forest"
+    },
+    {
       "type": "retrieval",
-      "mode": "free-recall",
-      "prompt": "Объясни главную идею своими словами без подсказки."
+      "mode": "single-choice-or-free-recall",
+      "prompt": "Почему boosting learners нельзя обучить полностью независимо и что такое pseudo-residual?"
+    },
+    {
+      "type": "content",
+      "source_heading": "Binary LogLoss"
+    },
+    {
+      "type": "content",
+      "source_heading": "Почему обучение последовательное"
+    },
+    {
+      "type": "content",
+      "source_heading": "Tree complexity и interactions"
+    },
+    {
+      "type": "content",
+      "source_heading": "Learning rate и iterations"
     },
     {
       "type": "application",
-      "mode": "micro-task"
+      "mode": "micro-task",
+      "prompt": "По train/validation curves выбери learning rate, iteration limit и early stopping."
+    },
+    {
+      "type": "content",
+      "source_heading": "Row/feature subsampling"
+    },
+    {
+      "type": "content",
+      "source_heading": "Failure modes"
+    },
+    {
+      "type": "content",
+      "source_heading": "Ответ для собеседования"
     },
     {
       "type": "interview",
-      "mode": "follow-up"
+      "mode": "follow-up",
+      "prompt": "Объясните Gradient Boosting через negative gradient и главные гиперпараметры."
     },
     {
       "type": "reflection",
@@ -87,12 +134,12 @@ Canonical source: [[Gradient Boosting]]. Приложение загружает
 
 ## Проверка понимания
 
-1. Сформулируй главную идею одним абзацем без терминов, которые не можешь объяснить.
-2. Назови один случай, когда метод или правило даст неверный вывод.
-3. Приведи небольшой пример из табличной ML-задачи.
+1. Почему boosting learners нельзя обучить полностью независимо и что такое pseudo-residual?
+2. По train/validation curves выбери learning rate, iteration limit и early stopping.
+3. Объясните Gradient Boosting через negative gradient и главные гиперпараметры.
 
 ## Связи
 
 - Курс: [[00 Курс — Классический ML]]
-- Модуль: [[03 Деревья и ансамбли]]
-- Источники: [[DataPath — проверенные источники]]
+- Модуль: определяется по `module_id` во frontmatter.
+- Теория: `content_path` во frontmatter является каноническим источником.

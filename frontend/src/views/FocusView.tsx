@@ -14,6 +14,10 @@ import {
 } from '../lib/api'
 import { SceneView } from '../components/lesson/SceneView'
 import { LessonOutline } from '../components/lesson/LessonOutline'
+import { EmptyState, ErrorState, LoadingBlock } from '../components/ui/PageState'
+import { Button } from '../components/ui/Button'
+import { buttonClassNames } from '../components/ui/buttonStyles'
+import { formatCount } from '../lib/format'
 
 const DEFAULT_COURSE_ID = 'course.classic-ml'
 
@@ -34,25 +38,45 @@ export function FocusView() {
   return <CoursePicker onNavigate={navigate} />
 }
 
-/** Выбор урока (список модулей и уроков курса). */
+/* ================================================================
+   CoursePicker: Polished learning route with vertical continuity.
+   ================================================================ */
+
+type LessonProgressMap = Record<string, { completed: boolean; current: boolean }>
+
 function CoursePicker({ onNavigate }: { onNavigate: (path: string) => void }) {
   const [state, setState] = useState<
     | { kind: 'loading' }
     | { kind: 'error'; message: string }
-    | { kind: 'ready'; course: CourseDetail }
+    | { kind: 'ready'; course: CourseDetail; progress: LessonProgressMap }
   >({ kind: 'loading' })
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setState({ kind: 'loading' })
     try {
       const course = await fetchCourseDetail(DEFAULT_COURSE_ID, signal)
-      setState({ kind: 'ready', course })
+      // Build lightweight progress map (started/completed) for all lessons
+      const progress: LessonProgressMap = {}
+      const allLessons = course.modules.flatMap((m) => m.lessons)
+      await Promise.all(
+        allLessons.map(async (lesson) => {
+          try {
+            const p = await fetchLessonProgress(lesson.id, signal)
+            progress[lesson.id] = {
+              completed: !!p?.completed_at,
+              current: !!p && !p.completed_at && (p.completed_scenes?.length ?? 0) > 0,
+            }
+          } catch {
+            progress[lesson.id] = { completed: false, current: false }
+          }
+        }),
+      )
+      setState({ kind: 'ready', course, progress })
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       setState({
         kind: 'error',
-        message:
-          'Не удалось загрузить курс. Проверьте, что backend запущен и каталог синхронизирован.',
+        message: 'Не удалось загрузить курс. Проверьте, что backend запущен и каталог синхронизирован.',
       })
     }
   }, [])
@@ -64,131 +88,295 @@ function CoursePicker({ onNavigate }: { onNavigate: (path: string) => void }) {
   }, [load])
 
   if (state.kind === 'loading') {
-    return <Centered>Загрузка курса…</Centered>
+    return <LoadingBlock label="Загрузка курса…" rows={5} />
   }
   if (state.kind === 'error') {
-    return (
-      <Centered>
-        <div className="font-semibold text-rose-600 dark:text-rose-300">Курс недоступен</div>
-        <p className="mt-2 max-w-md text-sm text-rose-500">{state.message}</p>
-        <button
-          onClick={() => void load()}
-          className="mt-4 rounded-lg bg-rose-500/15 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-500/25 dark:text-rose-200"
-        >
-          Попробовать снова
-        </button>
-      </Centered>
-    )
+    return <ErrorState title="Курс недоступен" message={state.message} onRetry={() => void load()} />
   }
 
-  const { course } = state
+  const { course, progress } = state
+  const allLessons = course.modules.flatMap((m) => m.lessons)
+  const completedCount = allLessons.filter((l) => progress[l.id]?.completed).length
+  const currentLessonId = allLessons.find((l) => progress[l.id]?.current)?.id ?? null
+
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-3xl">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
+        transition={{ duration: 0.25 }}
       >
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {course.title}
-            </h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {course.difficulty} · {course.estimated_hours ?? '—'} часов ·{' '}
-              {course.modules.reduce((sum, module) => sum + module.lessons.length, 0)} уроков
-            </p>
-          </div>
-          <Link
-            to="/atlas"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            ← Atlas
-          </Link>
-        </div>
-
-        <div className="mt-6 flex flex-col gap-5">
-          {course.modules.map((module) => (
-            <section
-              key={module.id}
-              className="rounded-xl border border-slate-200 bg-white/70 p-5 dark:border-slate-800 dark:bg-slate-900/50"
+        {/* Course header */}
+        <header className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <Link
+              to="/atlas"
+              className="text-sm hover:underline"
+              style={{ color: 'var(--dp-text-muted)' }}
             >
-              <div className="flex items-baseline justify-between gap-2">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  {module.title}
-                </h2>
-                {module.estimated_minutes != null && (
-                  <span className="text-xs text-slate-500">{module.estimated_minutes} мин</span>
-                )}
-              </div>
-              <div className="mt-3 flex flex-col gap-1.5">
-                {module.lessons.length === 0 && (
-                  <div className="text-sm text-slate-400">Уроки ещё не добавлены</div>
-                )}
-                {module.lessons.map((lesson) => (
-                  <button
-                    key={lesson.id}
-                    onClick={() => onNavigate(`/focus/${lesson.id}`)}
-                    className="group flex items-center justify-between gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left transition hover:border-slate-200 hover:bg-slate-50 dark:hover:border-slate-700 dark:hover:bg-slate-800/50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="w-8 shrink-0 text-center font-mono text-xs text-slate-400">
-                        {String(lesson.lesson_order ?? '').padStart(2, '0')}
-                      </span>
-                      <div>
-                        <div className="font-medium text-slate-800 group-hover:text-slate-900 dark:text-slate-200">
-                          {lesson.title}
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 text-[11px] text-slate-500">
-                          {lesson.estimated_minutes != null && (
-                            <span>{lesson.estimated_minutes} мин</span>
-                          )}
-                          {lesson.difficulty && <span>· {lesson.difficulty}</span>}
-                          {lesson.laboratory_ids.length > 0 && (
-                            <span className="text-emerald-600 dark:text-emerald-400">
-                              · ⚡ лаборатория
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-600 dark:group-hover:text-slate-300">
-                      →
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
+              ← Atlas
+            </Link>
+            <span className="text-sm" style={{ color: 'var(--dp-text-muted)' }}>
+              ·
+            </span>
+            <span
+              className="text-xs font-semibold uppercase tracking-wider rounded-full px-2.5 py-0.5"
+              style={{
+                background: 'var(--dp-accent-subtle)',
+                color: 'var(--dp-accent)',
+              }}
+            >
+              {course.difficulty ?? 'Средняя'}
+            </span>
+          </div>
+          <h1 className="dp-page-title">{course.title}</h1>
+          <p className="dp-page-subtitle mt-2">
+            {formatCount(
+              allLessons.length,
+              'урок',
+              'урока',
+              'уроков',
+            )}{' '}
+            · {course.estimated_hours ?? '—'} часов · {completedCount} завершено
+          </p>
+        </header>
+
+        {/* Learning route */}
+        <div className="relative">
+          {/* Vertical route line */}
+          <div
+            className="absolute left-[23px] top-3 bottom-3 w-px"
+            style={{ background: 'var(--dp-border-subtle)' }}
+          />
+
+          <div className="flex flex-col gap-6">
+            {course.modules.map((module) => (
+              <ModuleSection
+                key={module.id}
+                module={module}
+                progress={progress}
+                currentLessonId={currentLessonId}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
         </div>
 
+        {/* Cases section */}
         {course.cases.length > 0 && (
-          <section className="mt-5 rounded-xl border border-dashed border-slate-300 p-5 dark:border-slate-700">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Кейсы курса
-            </h2>
-            <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-8 pt-6" style={{ borderTop: '1px solid var(--dp-border-subtle)' }}>
+            <h2 className="dp-section-title mb-3">Кейсы курса</h2>
+            <div className="flex flex-wrap gap-2">
               {course.cases.map((caseItem) => (
-                <span
+                <Link
                   key={caseItem.id}
-                  className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                  to={`/studio?case=${encodeURIComponent(caseItem.id)}`}
+                  className="rounded-lg px-3 py-2 text-sm font-medium transition-colors dp-hover-interactive"
+                  style={{
+                    background: 'var(--dp-surface-interactive)',
+                    color: 'var(--dp-text-secondary)',
+                    border: '1px solid var(--dp-border-subtle)',
+                  }}
                 >
-                  {caseItem.title} · {caseItem.practice_kind}
-                </span>
+                  {caseItem.title} · {caseItem.practice_kind} →
+                </Link>
               ))}
             </div>
-            <p className="mt-2 text-xs text-slate-400">
-              Кейсы станут доступны в Studio в следующих фазах.
+            <p className="mt-2 text-xs" style={{ color: 'var(--dp-text-muted)' }}>
+              Кейсы проходятся в Studio: ответы и разбор считает backend без AI.
             </p>
-          </section>
+          </div>
         )}
       </motion.div>
     </div>
   )
 }
 
-/** Урок: сцены, outline, навигация между сценами и уроками. */
+function ModuleSection({
+  module,
+  progress,
+  currentLessonId,
+  onNavigate,
+}: {
+  module: CourseDetail['modules'][number]
+  progress: LessonProgressMap
+  currentLessonId: string | null
+  onNavigate: (path: string) => void
+}) {
+  const moduleCompleted = module.lessons.every((l) => progress[l.id]?.completed)
+  const moduleActive = module.lessons.some(
+    (l) => progress[l.id]?.current || l.id === currentLessonId,
+  )
+
+  return (
+    <div>
+      {/* Module header */}
+      <div className="flex items-center gap-3 mb-2 pl-12">
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
+          {module.title}
+        </h3>
+        {moduleCompleted && (
+          <span
+            className="text-[10px] font-medium rounded-full px-1.5 py-0.5"
+            style={{ background: 'var(--dp-success-subtle)', color: 'var(--dp-success)' }}
+          >
+            ✓
+          </span>
+        )}
+        {moduleActive && !moduleCompleted && (
+          <span
+            className="text-[10px] font-medium rounded-full px-1.5 py-0.5"
+            style={{ background: 'var(--dp-accent-subtle)', color: 'var(--dp-accent)' }}
+          >
+            в процессе
+          </span>
+        )}
+        {module.estimated_minutes != null && (
+          <span className="text-[11px]" style={{ color: 'var(--dp-text-muted)' }}>
+            ~{module.estimated_minutes} мин
+          </span>
+        )}
+      </div>
+
+      {/* Lessons */}
+      <div className="flex flex-col gap-1">
+        {module.lessons.map((lesson) => {
+          const lessonNum = lesson.lesson_order ?? 0
+          const isCompleted = progress[lesson.id]?.completed
+          const isCurrent = progress[lesson.id]?.current || lesson.id === currentLessonId
+
+          return (
+            <button
+              key={lesson.id}
+              onClick={() => onNavigate(`/focus/${lesson.id}`)}
+              className="group relative flex items-start gap-3 pl-12 pr-3 py-2.5 rounded-lg text-left transition-colors duration-150 w-full"
+              style={{
+                background: isCurrent
+                  ? 'var(--dp-accent-subtle)'
+                  : isCompleted
+                    ? 'transparent'
+                    : 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                if (!isCurrent) {
+                  e.currentTarget.style.background = 'var(--dp-surface-interactive)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isCurrent) {
+                  e.currentTarget.style.background = 'transparent'
+                }
+              }}
+            >
+              {/* Progress marker on route line */}
+              <div
+                className="absolute left-[17px] top-[14px] z-10 flex h-[13px] w-[13px] shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-150"
+                style={{
+                  background: isCompleted
+                    ? 'var(--dp-success)'
+                    : isCurrent
+                      ? 'var(--dp-surface)'
+                      : 'var(--dp-surface)',
+                  borderColor: isCompleted
+                    ? 'var(--dp-success)'
+                    : isCurrent
+                      ? 'var(--dp-accent)'
+                      : 'var(--dp-border-strong)',
+                }}
+              >
+                {isCompleted && (
+                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                    <path d="M1.5 4L3.5 6L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+                {isCurrent && (
+                  <div
+                    className="h-[5px] w-[5px] rounded-full"
+                    style={{ background: 'var(--dp-accent)' }}
+                  />
+                )}
+              </div>
+
+              {/* Content */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span
+                    className="text-xs font-mono shrink-0"
+                    style={{
+                      color: isCurrent ? 'var(--dp-accent)' : 'var(--dp-text-muted)',
+                      fontWeight: isCurrent ? 600 : 400,
+                    }}
+                  >
+                    {String(lessonNum).padStart(2, '0')}
+                  </span>
+                  <div>
+                    <div
+                      className="text-sm font-medium transition-colors duration-150"
+                      style={{
+                        color: isCurrent
+                          ? 'var(--dp-accent)'
+                          : isCompleted
+                            ? 'var(--dp-text-secondary)'
+                            : 'var(--dp-text-primary)',
+                      }}
+                    >
+                      {lesson.title}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                      {lesson.estimated_minutes != null && (
+                        <span className="text-[11px]" style={{ color: 'var(--dp-text-muted)' }}>
+                          ~{lesson.estimated_minutes} мин
+                        </span>
+                      )}
+                      {lesson.difficulty && (
+                        <span className="text-[11px]" style={{ color: 'var(--dp-text-muted)' }}>
+                          · {lesson.difficulty}
+                        </span>
+                      )}
+                      {lesson.laboratory_ids.length > 0 && (
+                        <span className="text-[11px]" style={{ color: 'var(--dp-accent)' }}>
+                          · ⚡ лаб.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Arrow */}
+              <span
+                className="shrink-0 text-sm transition-transform duration-150 group-hover:translate-x-0.5"
+                style={{ color: 'var(--dp-text-muted)' }}
+                aria-hidden="true"
+              >
+                →
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ================================================================
+   LessonView — Lesson V2 with outline rail, scenes, checkpoints.
+   (Preserved from existing, enhanced below.)
+   ================================================================ */
+
 function LessonView({
+  lessonId,
+  onNavigate,
+}: {
+  lessonId: string
+  onNavigate: (path: string) => void
+}) {
+  // ... existing lesson view implementation — stays intact, enhanced in Stage C
+  return <ExistingLessonView lessonId={lessonId} onNavigate={onNavigate} />
+}
+
+/** Preserved existing lesson view (enhancements in Stage C). */
+function ExistingLessonView({
   lessonId,
   onNavigate,
 }: {
@@ -211,12 +399,10 @@ function LessonView({
         const lesson = await fetchLesson(lessonId, signal)
         setState({ kind: 'ready', lesson })
 
-        // Число активных повторений урока (для ссылки «Повторить тему»).
         fetchReviewSummary(lessonId, signal)
           .then((summary) => setReviewCount(summary.active_items))
           .catch(() => setReviewCount(null))
 
-        // Восстановление позиции: последняя незавершённая сцена.
         try {
           const saved = await fetchLessonProgress(lessonId, signal)
           setProgress(saved)
@@ -253,7 +439,6 @@ function LessonView({
     return () => controller.abort()
   }, [load])
 
-  // Сохранение текущей сцены при навигации.
   const saveScene = useCallback(
     async (index: number) => {
       if (state.kind !== 'ready') return
@@ -315,7 +500,6 @@ function LessonView({
     try {
       await completeLesson(lessonId)
       setCompletedFlash(true)
-      // После завершения урока материал попадает в расписание повторений.
       fetchReviewSummary(lessonId)
         .then((summary) => setReviewCount(summary.active_items))
         .catch(() => setReviewCount(null))
@@ -343,44 +527,27 @@ function LessonView({
   const currentScene = scenes[sceneIndex] ?? null
 
   if (state.kind === 'loading') {
-    return <Centered>Загрузка урока…</Centered>
+    return <LoadingBlock label="Загрузка урока…" rows={4} />
   }
   if (state.kind === 'not-found') {
     return (
-      <Centered>
-        <div className="font-semibold text-slate-700 dark:text-slate-300">Урок не найден</div>
-        <p className="mt-2 max-w-md text-sm text-slate-500">
-          Урок {lessonId} не существует или не опубликован в каталоге.
-        </p>
-        <div className="mt-4 flex gap-3">
-          <button
-            onClick={() => onNavigate('/focus')}
-            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900"
-          >
-            К списку уроков
-          </button>
-          <button
-            onClick={() => onNavigate('/atlas')}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            В Atlas
-          </button>
-        </div>
-      </Centered>
+      <EmptyState
+        title="Урок не найден"
+        description={`Урок ${lessonId} не существует или не опубликован в каталоге.`}
+        action={
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button onClick={() => onNavigate('/focus')}>К списку уроков</Button>
+            <Button variant="outline" onClick={() => onNavigate('/atlas')}>
+              В Atlas
+            </Button>
+          </div>
+        }
+      />
     )
   }
   if (state.kind === 'error') {
     return (
-      <Centered>
-        <div className="font-semibold text-rose-600 dark:text-rose-300">Ошибка загрузки</div>
-        <p className="mt-2 max-w-md text-sm text-rose-500">{state.message}</p>
-        <button
-          onClick={() => void load()}
-          className="mt-4 rounded-lg bg-rose-500/15 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-500/25 dark:text-rose-200"
-        >
-          Попробовать снова
-        </button>
-      </Centered>
+      <ErrorState title="Ошибка загрузки" message={state.message} onRetry={() => void load()} />
     )
   }
 
@@ -397,71 +564,82 @@ function LessonView({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
       >
-        {/* Шапка урока */}
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-              <Link to="/atlas" className="hover:text-slate-700 dark:hover:text-slate-300">
-                Atlas
-              </Link>
-              <span>/</span>
-              <Link to="/focus" className="hover:text-slate-700 dark:hover:text-slate-300">
-                {lesson.course?.title ?? 'Курс'}
-              </Link>
-              {lesson.module && (
-                <>
-                  <span>/</span>
-                  <span>{lesson.module.title}</span>
-                </>
-              )}
-            </div>
-            <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {lesson.title}
-            </h1>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-              {lesson.estimated_minutes != null && (
-                <span className="rounded-full bg-slate-200 px-2.5 py-0.5 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                  ~{lesson.estimated_minutes} мин
-                </span>
-              )}
-              {lesson.difficulty && (
-                <span className="rounded-full bg-slate-200 px-2.5 py-0.5 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                  {lesson.difficulty}
-                </span>
-              )}
-              {lesson.skills.map((skill) => (
-                <span
-                  key={skill}
-                  className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-500 dark:bg-slate-800/70 dark:text-slate-400"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
+        {/* Lesson header — separated: breadcrumbs, title, purpose, metadata */}
+        <header>
+          <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--dp-text-muted)' }}>
+            <Link to="/atlas" className="hover:underline">
+              Atlas
+            </Link>
+            <span>/</span>
+            <Link to="/focus" className="hover:underline">
+              {lesson.course?.title ?? 'Курс'}
+            </Link>
+            {lesson.module && (
+              <>
+                <span>/</span>
+                <span>{lesson.module.title}</span>
+              </>
+            )}
           </div>
-          <Link
-            to="/atlas"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            ← Atlas
-          </Link>
-        </div>
 
-        {/* Контент урока */}
+          <h1 className="dp-page-title mt-1.5">{lesson.title}</h1>
+
+          <div className="mt-2 flex flex-wrap items-center gap-2.5">
+            {lesson.estimated_minutes != null && (
+              <span
+                className="text-xs font-medium rounded-full px-2.5 py-0.5"
+                style={{
+                  background: 'var(--dp-surface-interactive)',
+                  color: 'var(--dp-text-secondary)',
+                }}
+              >
+                ~{lesson.estimated_minutes} мин
+              </span>
+            )}
+            {lesson.difficulty && (
+              <span
+                className="text-xs font-medium rounded-full px-2.5 py-0.5"
+                style={{
+                  background: 'var(--dp-surface-interactive)',
+                  color: 'var(--dp-text-secondary)',
+                }}
+              >
+                {lesson.difficulty}
+              </span>
+            )}
+            {/* Skills moved to quiet metadata row */}
+            {lesson.skills.length > 0 && (
+              <span className="text-[11px]" style={{ color: 'var(--dp-text-muted)' }}>
+                {lesson.skills.slice(0, 3).join(' · ')}
+                {lesson.skills.length > 3 ? ' …' : ''}
+              </span>
+            )}
+          </div>
+        </header>
+
+        {/* Content area: outline rail + scenes */}
         {scenes.length === 0 ? (
-          <div className="mt-8 rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500 dark:border-slate-700">
+          <div
+            className="mt-8 rounded-xl border border-dashed p-10 text-center text-sm"
+            style={{ borderColor: 'var(--dp-border-strong)', color: 'var(--dp-text-muted)' }}
+          >
             В уроке пока нет сцен.
           </div>
         ) : (
-          <div className="mt-6 grid gap-6 lg:grid-cols-[260px_1fr]">
-            <aside className="lg:sticky lg:top-6 lg:self-start">
-              <div className="rounded-xl border border-slate-200 bg-white/70 p-4 dark:border-slate-800 dark:bg-slate-900/50">
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Содержание урока
-                  </div>
+          <div className="mt-8 flex flex-col gap-6 lg:flex-row lg:items-start">
+            {/* Outline rail — compact, on the side */}
+            <aside className="lg:sticky lg:top-6 lg:w-56 lg:shrink-0">
+              <div
+                className="rounded-xl p-4"
+                style={{
+                  background: 'var(--dp-surface)',
+                  border: '1px solid var(--dp-border-subtle)',
+                }}
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="dp-section-title">Содержание</span>
                   {progress && (
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[11px]" style={{ color: 'var(--dp-text-muted)' }}>
                       {progress.completed_scenes.length}/{scenes.length}
                     </span>
                   )}
@@ -472,105 +650,103 @@ function LessonView({
                   completedScenes={progress?.completed_scenes}
                   onSelect={handleSelectScene}
                 />
-                <div className="mt-4 border-t border-slate-200 pt-3 dark:border-slate-800">
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Навигация по курсу
-                    </div>
-                    <SaveIndicator saveState={saveState} />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => goToLesson(lesson.previous_lesson_id)}
-                      disabled={!lesson.previous_lesson_id}
-                      className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-medium text-slate-600 transition enabled:hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:enabled:hover:bg-slate-800"
-                    >
-                      ← Пред. урок
-                    </button>
-                    <button
-                      onClick={() => goToLesson(lesson.next_lesson_id)}
-                      disabled={!lesson.next_lesson_id}
-                      className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-medium text-slate-600 transition enabled:hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:enabled:hover:bg-slate-800"
-                    >
-                      След. урок →
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => void handleCompleteLesson()}
-                    disabled={completing || progress?.completed_at != null}
-                    className="mt-3 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition enabled:hover:bg-emerald-500 disabled:opacity-40"
-                  >
-                    {progress?.completed_at
-                      ? '✓ Урок завершён'
-                      : completing
-                        ? 'Завершаем…'
-                        : 'Завершить урок'}
-                  </button>
-                  {completedFlash && (
-                    <div className="mt-2 rounded-lg bg-emerald-50 px-2 py-1.5 text-center text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                      ✓ Урок завершён — навыки обновлены, материал добавлен в расписание повторений.
-                    </div>
-                  )}
-                  {reviewCount != null && reviewCount > 0 && (
-                    <Link
-                      to="/review"
-                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-emerald-300/70 px-3 py-2 text-xs font-medium text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-800/60 dark:text-emerald-300 dark:hover:bg-emerald-950/20"
-                    >
-                      Повторить тему ({reviewCount}) →
-                    </Link>
-                  )}
-                </div>
               </div>
             </aside>
 
-            <div className="min-w-0">
-              <div className="mb-4 flex items-center justify-between text-xs text-slate-500">
+            {/* Main reading area */}
+            <div className="min-w-0 flex-1 dp-reading">
+              {/* Progress bar */}
+              <div className="mb-6 flex items-center gap-3 text-xs" style={{ color: 'var(--dp-text-muted)' }}>
                 <span>
                   Сцена {sceneIndex + 1} из {scenes.length}
                 </span>
-                <div className="h-1.5 w-40 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'var(--dp-border-subtle)' }}>
                   <div
-                    className="h-full rounded-full bg-emerald-500 transition-all duration-300"
-                    style={{ width: `${((sceneIndex + 1) / scenes.length) * 100}%` }}
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{
+                      width: `${((sceneIndex + 1) / scenes.length) * 100}%`,
+                      background: 'var(--dp-accent)',
+                    }}
                   />
                 </div>
               </div>
 
-              {currentScene && (
-                <motion.div
-                  key={currentScene.id}
-                  initial={{ opacity: 0, x: 8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="rounded-xl border border-slate-200 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/50"
-                >
-                  <SceneView scene={currentScene} />
-                </motion.div>
-              )}
+              {currentScene && <SceneView scene={currentScene} />}
 
-              <div className="mt-5 flex items-center justify-between gap-3">
+              {/* Navigation */}
+              <div className="mt-8 flex items-center justify-between gap-3">
                 <button
                   onClick={handlePrev}
                   disabled={sceneIndex === 0}
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition enabled:hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:enabled:hover:bg-slate-800"
+                  className={buttonClassNames('outline', 'md', 'disabled:opacity-30')}
                 >
                   ← Назад
                 </button>
-                {sceneIndex === scenes.length - 1 ? (
-                  <button
-                    onClick={() => goToLesson(lesson.next_lesson_id)}
-                    disabled={!lesson.next_lesson_id}
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-40"
+
+                <div className="flex items-center gap-3">
+                  <SaveIndicator saveState={saveState} />
+                  {sceneIndex < scenes.length - 1 ? (
+                    <button onClick={handleNext} className={buttonClassNames('primary', 'md')}>
+                      Далее →
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => void handleCompleteLesson()}
+                      disabled={completing || progress?.completed_at != null}
+                      className={buttonClassNames('primary', 'md')}
+                    >
+                      {progress?.completed_at
+                        ? '✓ Урок завершён'
+                        : completing
+                          ? 'Завершаем…'
+                          : 'Завершить урок'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {completedFlash && (
+                <div
+                  className="mt-4 rounded-lg px-3 py-2 text-center text-xs font-medium"
+                  style={{
+                    background: 'var(--dp-success-subtle)',
+                    color: 'var(--dp-success)',
+                  }}
+                >
+                  ✓ Урок завершён — навыки обновлены, материал добавлен в расписание повторений.
+                </div>
+              )}
+
+              {/* Course navigation + Review link */}
+              <div className="mt-6 flex flex-wrap items-center gap-3 pt-4" style={{ borderTop: '1px solid var(--dp-border-subtle)' }}>
+                <button
+                  onClick={() => goToLesson(lesson.previous_lesson_id)}
+                  disabled={!lesson.previous_lesson_id}
+                  className="text-xs font-medium disabled:opacity-30 dp-hover-interactive rounded-lg px-3 py-1.5"
+                  style={{ color: 'var(--dp-text-secondary)' }}
+                >
+                  ← Предыдущий урок
+                </button>
+                <button
+                  onClick={() => goToLesson(lesson.next_lesson_id)}
+                  disabled={!lesson.next_lesson_id}
+                  className="text-xs font-medium disabled:opacity-30 dp-hover-interactive rounded-lg px-3 py-1.5"
+                  style={{ color: 'var(--dp-text-secondary)' }}
+                >
+                  Следующий урок →
+                </button>
+                <div className="flex-1" />
+                {reviewCount != null && reviewCount > 0 && (
+                  <Link
+                    to="/review"
+                    className="text-xs font-medium rounded-lg px-3 py-1.5 transition-colors"
+                    style={{
+                      color: 'var(--dp-accent)',
+                      background: 'var(--dp-accent-subtle)',
+                    }}
                   >
-                    Следующий урок →
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleNext}
-                    className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
-                  >
-                    Далее →
-                  </button>
+                    Повторить тему ({reviewCount}) →
+                  </Link>
                 )}
               </div>
             </div>
@@ -581,25 +757,15 @@ function LessonView({
   )
 }
 
-function Centered({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex h-[60vh] flex-col items-center justify-center text-center">{children}</div>
-  )
-}
-
-function SaveIndicator({ saveState }: { saveState: 'idle' | 'saving' | 'saved' | 'error' }) {
+function SaveIndicator({ saveState }: { saveState: string }) {
   if (saveState === 'saving') {
-    return <span className="text-[11px] text-slate-400">сохраняем…</span>
+    return <span className="text-xs" style={{ color: 'var(--dp-text-muted)' }}>Сохранение…</span>
   }
   if (saveState === 'saved') {
-    return (
-      <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-        ✓ сохранено
-      </span>
-    )
+    return <span className="text-xs" style={{ color: 'var(--dp-success)' }}>✓ Сохранено</span>
   }
   if (saveState === 'error') {
-    return <span className="text-[11px] font-medium text-rose-500">ошибка сохранения</span>
+    return <span className="text-xs" style={{ color: 'var(--dp-error)' }}>Ошибка сохранения</span>
   }
   return null
 }

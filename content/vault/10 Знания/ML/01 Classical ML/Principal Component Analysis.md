@@ -1,154 +1,185 @@
 ---
 title: Principal Component Analysis
+id: concept.ml.principal-component-analysis
 type: concept
 area: ml
-status: active
-aliases:
-  - PCA
-  - Метод главных компонент
-tags:
-  - ml/classical
-  - ml/dimensionality-reduction
-math_depth: 2
-id: concept.ml.principal-component-analysis
 schema_version: 2
 language: ru
+status: active
 rag: include
 rag_collection: knowledge
 app: source
+visual: true
+aliases:
+- PCA
+- Метод главных компонент
+tags:
+- ml/classical
+- ml/dimensionality-reduction
+math_depth: 2
 ---
+
 # Principal Component Analysis
 
-## Идея за 30 секунд
+## Интуиция
 
-PCA — unsupervised linear dimensionality reduction. Она центрирует data, находит orthogonal directions максимальной variance и проецирует objects на первые components. Через SVD это делается устойчиво. Scaling меняет вопрос: covariance PCA сохраняет absolute variance, standardized PCA работает с correlation structure.
+Если points образуют вытянутое облако, можно повернуть координаты так, чтобы первая ось шла вдоль максимального разброса, вторая — вдоль следующего независимого направления. PCA строит такие orthogonal components и позволяет оставить первые $k$.
 
-## Зачем нужно
+## Подготовка
 
-- compression;
-- visualization;
-- устранение linear redundancy;
-- denoising при разумном low-rank assumption;
-- preprocessing для distance/linear methods;
-- диагностика latent directions.
-
-PCA не использует target и не гарантирует улучшение supervised metric.
-
-## Алгоритм
-
-Пусть $X\in\mathbb{R}^{n\times d}$.
-
-### 1. Center
+Матрица $X\in\mathbb R^{n\times d}$ центрируется:
 
 $$
-X_c=X-\mathbf{1}\bar{x}^\top.
+X_c=X-\mathbf 1\bar x^\top.
 $$
 
-Без centering directions могут описывать положение mean относительно origin.
+Если units отличаются и absolute variance не должна определять importance, сначала standardize features.
 
-### 2. При необходимости scale
-
-$$
-x_{ij}^{(s)}
-=\frac{x_{ij}-\bar{x}_j}{s_j}.
-$$
-
-Scaling нужен, если units несопоставимы и absolute variance не должна задавать importance.
-
-### 3. Найти directions
-
-Covariance matrix:
+## Covariance view
 
 $$
 S=\frac{1}{n-1}X_c^\top X_c.
 $$
 
-Eigenproblem:
+Principal direction $v_j$ — eigenvector covariance matrix:
 
 $$
 Sv_j=\lambda_jv_j.
 $$
 
-$v_j$ — component direction, $\lambda_j$ — variance projection.
+$\lambda_j$ — variance проекции. Components сортируются по убыванию $\lambda$.
 
-Практически используют:
+## SVD view
 
 $$
-X_c=U\Sigma V^\top,
+X_c=U\Sigma V^\top.
 $$
 
-где columns $V$ — principal directions, а:
+Columns $V$ — principal directions, а:
 
 $$
 \lambda_j=\frac{\sigma_j^2}{n-1}.
 $$
 
-### 4. Project
+SVD обычно используется для устойчивого вычисления.
+
+## Projection
 
 $$
 Z=X_cV_k.
 $$
 
-$Z\in\mathbb{R}^{n\times k}$ — coordinates в component space.
+$Z$ содержит coordinates objects в reduced space. Reconstruction:
+
+$$
+\widehat X=ZV_k^\top+\bar x.
+$$
+
+Первые $k$ components минимизируют squared reconstruction error среди linear rank-$k$ projections.
 
 ## Explained variance
 
 $$
-\operatorname{EVR}_j
-=\frac{\lambda_j}{\sum_{\ell=1}^{d}\lambda_\ell}.
+\operatorname{EVR}_j=\frac{\lambda_j}{\sum_l\lambda_l}.
 $$
 
-Выбор $k$:
+Выбор $k$ зависит от:
 
-- cumulative EVR;
-- reconstruction error;
 - downstream CV metric;
-- latency/memory constraint;
+- reconstruction;
+- memory/latency;
+- visualization;
+- stability;
 - interpretability.
 
-Порог $95\%$ — heuristic, не закон.
+`95% variance` — heuristic, не универсальное правило.
 
-## Почему именно maximum variance
+## Пример
 
-Для centered data и orthogonal projection rank $k$ minimization reconstruction squared error эквивалентна maximization retained variance. Это делает PCA оптимальной в конкретной linear/L2 постановке.
+Два features: рост в сантиметрах и рост в дюймах. Они почти дублируют друг друга. Первая component сохраняет общий direction роста, вторая имеет очень малую variance и в основном описывает noise/несогласованность.
 
-Если важен nonlinear manifold, robust loss или supervised signal, нужны другие objectives.
+## Scaling меняет задачу
 
-## Leakage-safe pipeline
+Без scaling feature с большой variance в физических units доминирует. После StandardScaler PCA работает с correlation-like structure. Оба варианта могут быть правильными — вопрос должен быть сформулирован заранее.
 
-На каждом training fold:
+## Leakage
 
-```text
-fit center/scale на fold-train
-→ fit PCA на fold-train
-→ transform fold-train и fold-validation
-→ fit downstream model
-```
-
-Fit PCA на полном dataset использует covariance validation/test features и создаёт leakage, даже без labels.
-
-## Что если предположения нарушены
-
-- Outliers сильно вращают covariance directions.
-- High variance может быть nuisance, а low variance — predictive signal.
-- Components меняют sign без изменения meaning; близкие eigenvalues дают нестабильные individual directions.
-- Sparse matrix после centering становится dense; TruncatedSVD решает другую, не полностью centered задачу.
-- New data с shifted mean/scale некорректно представляется старой PCA.
+Scaler и PCA fit только на train fold. Даже без target covariance validation data содержит информацию о distribution.
 
 ## Интерпретация
 
-Loading $v_{j\ell}$ показывает вклад исходного feature $\ell$ в component $j$, но:
+Loadings показывают direction component, но:
 
 - sign условен;
-- correlated features могут распределять weights;
+- при близких eigenvalues directions нестабильны;
 - component не causal factor;
-- rotation ради interpretability меняет representation.
+- high variance не означает predictive importance;
+- low-variance feature может быть сильным для target.
+
+## Sparse data
+
+Centering sparse matrix делает её dense. `TruncatedSVD` не выполняет полное centering и решает близкую, но другую задачу. Для text это часто практичнее.
+
+## Когда использовать
+
+- снижение размерности для визуализации (2–3 компоненты);
+- декорреляция признаков и борьба с multicollinearity;
+- шумоподавление и сжатие (с сохранением explained variance);
+- НЕ использовать как «чёрный ящик» без масштабирования; не полагаться на интерпретацию компонент как реальных признаков; PCA до split — leakage.
+
+## Визуализация
+
+Компонент `pca-projection-lab`:
+
+- вращаемое 2D cloud;
+- first/second component arrows;
+- projection onto PC1;
+- reconstruction error;
+- scaling toggle;
+- outlier toggle;
+- explained variance bars.
+
+## sklearn пример
+
+```python
+from sklearn.decomposition import PCA
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+
+pipeline = Pipeline([
+    ("scale", StandardScaler()),
+    ("pca", PCA(n_components=0.95, random_state=42)),
+    ("model", model),
+])
+```
+
+## Ответ для собеседования
+
+> PCA находит ортогональные направления максимальной дисперсии данных: собственные векторы ковариационной матрицы (или правые сингулярные векторы через SVD). Проекция $X W_k$ даёт новые признаки; число компонент выбирают по explained variance. Обязательно масштабирование признаков и fit только на train, иначе утечка информации.
+
+## Частые ошибки
+
+- fit PCA на полном dataset;
+- считать 2D separation доказательством;
+- применять без scaling по привычке;
+- интерпретировать component как реальную скрытую сущность;
+- удалять low-variance components без downstream validation;
+- сравнивать loadings при нестабильных close eigenvalues.
+
+## Сравнение с другими методами снижения размерности
+
+| Метод | Линейность | Интерпретация | Когда |
+|---|---|---|---|
+| PCA | линейный | компоненты-направления | декорреляция, визуализация |
+| t-SNE | нелинейный | расстояния в малой размерности | визуализация |
+| UMAP | нелинейный | сохраняет локальную структуру | визуализация больших данных |
+| Feature selection | — | сохраняет исходные признаки | интерпретируемость |
+
+PCA — детерминированный и обратимый; t-SNE/UMAP — для картинок, не для фичей модели.
 
 ## Связи
 
-- [[Eigenvalues Covariance Matrix and PCA Foundations]] — математическое происхождение directions и EVR.
-- [[Singular Value Decomposition]] — устойчивое вычисление и low-rank approximation.
-- [[Expectation Variance Covariance and Correlation]] — covariance и scaling.
-- [[K-Nearest Neighbors]] — PCA может улучшить distance geometry, но только по CV.
-- [[K-Means]] — PCA часто используется для visualization, не как обязательный preprocessing.
-- [[Validation Splits and Data Leakage]] — transformer fit внутри folds.
+- [[Eigenvalues Covariance Matrix and PCA Foundations]]
+- [[Singular Value Decomposition]]
+- [[K-Means]]
+- [[K-Nearest Neighbors]]

@@ -31,26 +31,23 @@ cssclasses:
 
 # XGBoost, LightGBM и CatBoost
 
-> [!summary] Результат урока
-> - различить алгоритм boosting и конкретную библиотеку
-> - объяснить histogram, GOSS/EFB и ordered statistics на нужном уровне
-> - выбрать библиотеку под структуру данных и ограничения
+## Результат урока
 
-## Основной материал
-
-Canonical source: [[XGBoost LightGBM and CatBoost]]. Приложение загружает содержание по `content_path`, поэтому здесь теория не копируется.
+- понять общую основу gradient-boosted trees
+- различать ключевые оптимизации XGBoost, LightGBM и CatBoost
+- выбирать библиотеку по данным и ограничениям
 
 ## Сценарий урока
 
 ```datapath
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "layout": "focus",
   "content_path": "10 Знания/ML/01 Classical ML/XGBoost LightGBM and CatBoost.md",
   "scenes": [
     {
       "type": "hook",
-      "title": "Зачем это нужно в реальной задаче"
+      "title": "Зачем это нужно и какой результат получим"
     },
     {
       "type": "content",
@@ -61,21 +58,63 @@ Canonical source: [[XGBoost LightGBM and CatBoost]]. Приложение заг
       "source_heading": "Общая основа"
     },
     {
+      "type": "content",
+      "source_heading": "XGBoost: second-order objective"
+    },
+    {
       "type": "interactive",
       "component": "categorical-encoding-lab"
     },
     {
+      "type": "content",
+      "source_heading": "LightGBM: histograms и leaf-wise growth"
+    },
+    {
+      "type": "content",
+      "source_heading": "CatBoost: ordered categories и ordered boosting"
+    },
+    {
+      "type": "content",
+      "source_heading": "Визуализация"
+    },
+    {
+      "type": "content",
+      "source_heading": "Простой пример"
+    },
+    {
+      "type": "content",
+      "source_heading": "Пример"
+    },
+    {
+      "type": "content",
+      "source_heading": "Частые ошибки"
+    },
+    {
       "type": "retrieval",
-      "mode": "free-recall",
-      "prompt": "Объясни главную идею своими словами без подсказки."
+      "mode": "single-choice-or-free-recall",
+      "prompt": "Как ordered target statistics CatBoost снижают leakage и чем это отличается от ordered boosting?"
+    },
+    {
+      "type": "content",
+      "source_heading": "Сравнение"
     },
     {
       "type": "application",
-      "mode": "micro-task"
+      "mode": "micro-task",
+      "prompt": "Для таблицы с большим числом категорий и 500 тысяч строк выбери стартовую библиотеку и план честного сравнения."
+    },
+    {
+      "type": "content",
+      "source_heading": "Практический tuning order"
+    },
+    {
+      "type": "content",
+      "source_heading": "Ответ для собеседования"
     },
     {
       "type": "interview",
-      "mode": "follow-up"
+      "mode": "follow-up",
+      "prompt": "Чем XGBoost, LightGBM и CatBoost отличаются под капотом и на практике?"
     },
     {
       "type": "reflection",
@@ -87,12 +126,12 @@ Canonical source: [[XGBoost LightGBM and CatBoost]]. Приложение заг
 
 ## Проверка понимания
 
-1. Сформулируй главную идею одним абзацем без терминов, которые не можешь объяснить.
-2. Назови один случай, когда метод или правило даст неверный вывод.
-3. Приведи небольшой пример из табличной ML-задачи.
+1. Как ordered target statistics CatBoost снижают leakage и чем это отличается от ordered boosting?
+2. Для таблицы с большим числом категорий и 500 тысяч строк выбери стартовую библиотеку и план честного сравнения.
+3. Чем XGBoost, LightGBM и CatBoost отличаются под капотом и на практике?
 
 ## Связи
 
 - Курс: [[00 Курс — Классический ML]]
-- Модуль: [[03 Деревья и ансамбли]]
-- Источники: [[DataPath — проверенные источники]]
+- Модуль: определяется по `module_id` во frontmatter.
+- Теория: `content_path` во frontmatter является каноническим источником.

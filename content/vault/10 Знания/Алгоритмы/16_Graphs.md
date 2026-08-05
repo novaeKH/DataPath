@@ -12,6 +12,7 @@ language: ru
 rag: include
 rag_collection: knowledge
 app: source
+visual: true
 ---
 # 16. Graph basics
 

@@ -215,9 +215,35 @@ Ordered boosting аналогично стремится считать gradient
 - путать ordered statistics и ordered boosting;
 - считать strong defaults заменой validation.
 
+## Когда использовать
+
+- табличные данные, качество важнее простоты: XGBoost — надёжный стандарт; LightGBM — быстрее на больших данных, leaf-wise рост; CatBoost — категориальные признаки и устойчивость к переобучению;
+- соревнования и продакшен-табличные задачи;
+- НЕ использовать, если нужна простая интерпретация или данных мало (риск overfit — помогают regularization и CV).
+
 ## Ответ для собеседования
 
 XGBoost, LightGBM и CatBoost — три оптимизированные реализации Gradient Boosting. **XGBoost** использует вторые производные (Hessian) для более точного поиска splits и встроенную L1/L2-регуляризацию деревьев. **LightGBM** ускоряет обучение через histogram-based поиск splits и leaf-wise (вместо level-wise) рост деревьев — хорошо для больших данных, но глубокая ветка на малой выборке рискует overfit. **CatBoost** специализируется на категориальных признаках: ordered target statistic вычисляет encoding без утечки целевой переменной (data leakage), плюс symmetric trees для быстрого инференса. **Выбор:** CatBoost — когда много категорий, LightGBM — когда важна скорость на больших данных, XGBoost — когда нужна тонкая настройка и зрелая экосистема (Dask, Spark, MLOps-интеграции).
+
+## Простой пример
+
+Один датасет, три библиотеки — одинаковая идея градиентного бустинга, разный API:
+
+```python
+import xgboost as xgb
+import lightgbm as lgb
+from catboost import CatBoostClassifier
+
+xgb_model = xgb.XGBClassifier(n_estimators=300, learning_rate=0.05, max_depth=6)
+lgb_model = lgb.LGBMClassifier(n_estimators=300, learning_rate=0.05, num_leaves=31)
+cat_model = CatBoostClassifier(iterations=300, learning_rate=0.05, depth=6, verbose=0)
+
+for name, model in [("XGBoost", xgb_model), ("LightGBM", lgb_model), ("CatBoost", cat_model)]:
+    model.fit(X_train, y_train)
+    print(name, model.score(X_val, y_val))
+```
+
+На одном и том же сплите различия в качестве обычно небольшие; выбор библиотеки — про скорость, категориальные признаки и экосистему.
 
 ## Сравнение
 
@@ -246,6 +272,23 @@ XGBoost, LightGBM и CatBoost — три оптимизированные реа
 5. Добавить row/feature sampling.
 6. Усилить penalties при train/validation gap.
 7. Проверить calibration, threshold, segments и inference cost.
+
+## Визуализация
+
+Компонент `ensemble-comparison-lab` сравнивает Decision Tree, Random Forest и Gradient Boosting на одном датасете (CatBoost — при наличии CPU-пакета): видно bias/variance и влияние параметров ансамблей.
+
+## Пример
+
+Задача оттока, один честный split: XGBoost дал PR-AUC 0.71, LightGBM — 0.72, CatBoost — 0.73. Разница небольшая, но LightGBM обучился втрое быстрее, а CatBoost не потребовал кодирования категорий. Выбор библиотеки — это в первую очередь компромисс скорости, работы с категориями и экосистемы, а не «какая лучше».
+
+## Частые ошибки
+
+- настраивать только одну библиотеку и «доказывать», что она лучшая;
+- сравнивать модели на разных split/предобработке;
+- забывать про early stopping (переобучение при многих итерациях);
+- игнорировать масштаб признаков там, где он важен (linear models), или считать его ненужным для деревьев без проверки;
+- использовать категориальные признаки без учёта их обработки (one-hot раздувает, target encoding — утечка);
+- принимать результаты одного запуска без вариативности (seed, folds).
 
 ## Связи
 

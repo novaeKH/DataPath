@@ -1,180 +1,262 @@
 ---
 title: Linear Regression
+id: concept.ml.linear-regression
 type: concept
 area: ml
-status: active
-aliases:
-  - Линейная регрессия
-  - OLS
-  - Ordinary Least Squares
-tags:
-  - ml/classical
-  - ml/linear-models
-math_depth: 2
-id: concept.ml.linear-regression
 schema_version: 2
 language: ru
+status: active
 rag: include
 rag_collection: knowledge
 app: source
+visual: true
+aliases:
+- Линейная регрессия
+tags:
+- ml/classical
+- ml/linear-models
+math_depth: 2
 ---
+
 # Linear Regression
 
-## Идея за 30 секунд
+## Задача с нуля
 
-Linear Regression моделирует conditional mean target как affine function признаков. При Gaussian additive noise maximum likelihood приводит к minimization squared residuals — поэтому возникает MSE/OLS. Отдельно Gauss–Markov объясняет, когда OLS является наиболее efficient linear unbiased estimator; это не источник squared loss.
-
-## Зачем нужно
-
-- сильный и быстрый baseline;
-- интерпретируемая additive specification;
-- работа с sparse/high-dimensional data;
-- foundation для regularization, generalized linear models и causal regression;
-- диагностика качества данных и feature construction.
-
-## Формальная модель
-
-Добавим intercept как column единиц в design matrix:
+Нужно предсказать число: стоимость квартиры, время доставки, сумму покупок. Linear Regression предполагает, что prediction складывается из вкладов признаков:
 
 $$
-y=X\beta+\varepsilon,
+\widehat{y}=\beta_0+\beta_1x_1+\dots+\beta_px_p.
 $$
 
-где:
+$\beta_0$ — intercept, $\beta_j$ — изменение prediction при увеличении $x_j$ на единицу при фиксированных остальных признаках.
 
-- $X\in\mathbb{R}^{n\times p}$ — features и intercept column;
-- $y\in\mathbb{R}^n$ — target;
-- $\beta\in\mathbb{R}^p$ — coefficients;
-- $\varepsilon$ — unexplained errors.
+## Простой пример
 
-Prediction:
+Если:
 
 $$
-\widehat{y}=X\widehat{\beta}.
+\widehat{price}=2.5+0.12\cdot area,
 $$
 
-Coefficient $\beta_j$ — постоянное ceteris-paribus изменение conditional mean при увеличении $x_j$ на единицу внутри выбранной linear specification. Это не автоматически causal effect.
+то при увеличении площади на 10 м² prediction растёт на $1.2$ условных единицы. Это интерпретация модели, а не автоматически causal effect.
 
-## Почему именно squared error
+## Как обучается
 
-Предположим independent Gaussian noise с общей variance:
-
-$$
-\varepsilon_i\overset{\text{iid}}{\sim}\mathcal{N}(0,\sigma^2).
-$$
-
-Тогда:
+Обычный least squares минимизирует сумму квадратов ошибок:
 
 $$
-y_i\mid x_i
-\sim
-\mathcal{N}(x_i^\top\beta,\sigma^2).
+\operatorname{MSE}
+=\frac{1}{n}\sum_{i=1}^{n}(y_i-\widehat{y}_i)^2.
 $$
 
-Likelihood:
+Квадрат сильнее штрафует крупные ошибки и делает objective differentiable. Для matrix $X$:
 
 $$
-\mathcal{L}(\beta,\sigma^2)
-=\prod_{i=1}^{n}
-\frac{1}{\sqrt{2\pi\sigma^2}}
-\exp\left(
--\frac{(y_i-x_i^\top\beta)^2}{2\sigma^2}
-\right).
+\widehat{y}=X\beta.
 $$
 
-Negative log-likelihood с точностью до terms, не зависящих от $\beta$:
+При полном rank аналитическое решение:
 
 $$
--\ell(\beta)
-=\frac{1}{2\sigma^2}
-\sum_{i=1}^{n}
-(y_i-x_i^\top\beta)^2+\text{const}.
+\widehat{\beta}=(X^\top X)^{-1}X^\top y.
 $$
 
-При фиксированной общей $\sigma^2$ MLE:
+На практике не вычисляют inverse напрямую: используют QR/SVD или iterative optimization.
+
+## Почему MSE
+
+Если residuals условно Gaussian с постоянной variance, minimization MSE совпадает с maximum likelihood. Но для prediction модель может быть полезной и без нормальности residuals. Нормальность важнее для классических inference formulas.
+
+## Геометрия
+
+Model projection ищет точку $X\widehat{\beta}$ в column space $X$, ближайшую к target $y$ по Euclidean distance. Residual vector ортогонален columns $X$ в обычной least-squares постановке.
+
+## Категориальные признаки
+
+Категория требует encoding. Для one-hot одну категорию обычно удаляют или используют regularization, чтобы избежать полной collinearity с intercept.
+
+```text
+city = Moscow / SPb / Other
+→ city_Moscow, city_SPb
+```
+
+Coefficient сравнивает категорию с reference group при прочих фиксированных признаках.
+
+## Scaling
+
+Prediction ordinary Linear Regression не требует scaling для самой representational capacity, но scaling:
+
+- улучшает optimization;
+- делает regularization сопоставимой;
+- помогает сравнивать standardized coefficients;
+- необходима для стабильности некоторых solvers.
+
+Scaler fit только на train.
+
+## Multicollinearity
+
+Если features почти линейно зависимы, predictions могут оставаться приемлемыми, но coefficients становятся нестабильными и имеют большую uncertainty. Решения:
+
+- удалить duplicate/redundant features;
+- объединить;
+- Ridge;
+- собрать больше данных;
+- не делать сильные выводы по individual coefficient.
+
+## Полиномиальная регрессия
+
+Когда зависимость нелинейная, линейная модель по исходным признакам недообучается. Polynomial Regression добавляет степени исходных признаков и остаётся **линейной по параметрам**:
 
 $$
-\widehat{\beta}_{\text{MLE}}
-=\arg\min_\beta
-\sum_{i=1}^{n}
-(y_i-x_i^\top\beta)^2.
+\widehat{y}=\beta_0+\beta_1x+\beta_2x^2+\dots+\beta_dx^d.
 $$
 
-MSE отличается от SSE только положительным factor $1/n$, поэтому имеет тот же optimum.
+- **Почему работает**: базисное расширение (basis expansion) переводит нелинейность в новое пространство признаков, где модель снова линейная.
+- **Как обучается**: те же least squares / gradient descent, что и у Linear Regression; добавляется только шаг генерации признаков `PolynomialFeatures`.
+- **Важные параметры**: степень `degree` (главный — контролирует гибкость) и `include_bias`.
+- **Преимущества**: простота, интерпретируемость (коэффициенты), работает как baseline для криволинейных зависимостей.
+- **Ограничения**: при больших `degree` — сильный overfit, раздувание признаков (interactions), опасная экстраполяция за пределы train range; чувствителен к масштабу.
+- **Когда использовать**: заметный криволинейный тренд, небольшое число признаков, нужна простая объяснимая модель; если данных много и форма сложная — лучше деревья/boosting.
 
-## Что меняется при другой noise model
+```python
+from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import PolynomialFeatures
 
-- Heteroscedastic Gaussian noise с известными $\sigma_i^2$ приводит к weighted least squares:
+model = make_pipeline(
+    PolynomialFeatures(degree=3, include_bias=False),
+    LinearRegression(),
+)
+model.fit(X_train, y_train)
+```
 
-$$
-\min_\beta
-\sum_{i=1}^{n}
-\frac{(y_i-x_i^\top\beta)^2}{\sigma_i^2}.
-$$
+Интервью-ответ: «Полиномиальная регрессия — это линейная модель после добавления степеней признаков; она линейна по параметрам, поэтому обучается теми же методами, а гибкость задаётся degree и контролируется валидацией».
 
-- Laplace noise приводит к absolute error / median-oriented estimation.
-- Heavy-tailed noise мотивирует Huber или robust regression.
-- Nonlinear conditional mean требует features, splines, trees или другой family.
+## Нелинейность
 
-Loss следует из того, какую observation model мы считаем разумной, а не из названия алгоритма.
-
-## OLS solution и геометрия
-
-Objective:
-
-$$
-J(\beta)=\lVert y-X\beta\rVert_2^2.
-$$
-
-Gradient:
+Linear model линейна по parameters, но может использовать transformed features:
 
 $$
-\nabla_\beta J
-=-2X^\top(y-X\beta).
+\widehat{y}=\beta_0+\beta_1x+\beta_2x^2.
 $$
 
-В optimum:
+Interactions:
 
 $$
-X^\top(y-X\widehat{\beta})=0.
+\widehat{y}=\beta_0+\beta_1x_1+\beta_2x_2+\beta_3x_1x_2.
 $$
 
-Residual ортогонален column space $X$; prediction — projection $y$ на это subspace. При полном column rank:
+Feature engineering повышает capacity и риск overfit.
+
+## Residual analysis
+
+Residual:
 
 $$
-\widehat{\beta}
-=(X^\top X)^{-1}X^\top y.
+e_i=y_i-\widehat{y}_i.
 $$
 
-На практике используют QR/SVD или iterative solver, а не explicit inverse.
+Проверяйте:
 
-## Предположения
+- residual vs prediction;
+- residual по времени и сегментам;
+- heteroscedasticity;
+- крупные influential points;
+- systematic curve;
+- train-validation gap.
 
-Для корректной интерпретации coefficients и classical inference важны:
+Структура residual означает, что модель не использовала доступный pattern или данные нарушают contract.
 
-- linear conditional mean;
-- exogeneity $\mathbb{E}[\varepsilon\mid X]=0$;
-- отсутствие exact multicollinearity;
-- корректная sampling/dependence structure;
-- homoscedasticity и uncorrelated errors для классической Gauss–Markov efficiency;
-- Gaussianity главным образом для exact small-sample inference, не для существования OLS.
+## Функции потерь для регрессии
 
-Для prediction некоторые assumptions можно нарушить, но результат, uncertainty и transferability меняются.
+- **MSE** $\frac{1}{n}\sum_i(y_i-\widehat{y}_i)^2$ — квадратичный штраф: сильно наказывает крупные ошибки, даёт гладкий градиент; стандарт для обучения.
+- **MAE** $\frac{1}{n}\sum_i|y_i-\widehat{y}_i|$ — линейный штраф: устойчивее к outliers, но негладкая в нуле.
+- **Huber** — гибрид: квадратичная вблизи нуля и линейная за порогом $\delta$; сочетает устойчивость MAE и гладкость MSE.
 
-## Что если предположения нарушены
+Выбор loss = выбор того, какие ошибки считать дорогими. Если outliers — шум данных, а не сигнал, MSE заставит модель «тянуться» к ним; MAE/Huber этого избегают.
 
-- Heteroscedasticity: point estimator может оставаться consistent при exogeneity, но standard errors нужны robust/weighted.
-- Correlated errors: cluster/time-aware inference.
-- Multicollinearity: predictions могут быть стабильнее coefficients; помогает regularization или redesign features.
-- Omitted variable correlated with features: coefficients biased; robust SE не исправляет bias.
-- Outliers/high leverage: проверить data quality, influence и robust alternatives.
-- Extrapolation: linear function продолжает тренд за train range и может давать бессмысленные values.
+## Metrics
+
+- MAE — средняя absolute error, понятна в target units;
+- RMSE — сильнее штрафует крупные ошибки;
+- $R^2$ — доля variance относительно constant mean baseline;
+- MAPE опасна при target около нуля.
+
+Метрику выбирают по cost ошибок и distribution target.
+
+## Regularization
+
+Ridge:
+
+$$
+\min_\beta \sum_i(y_i-x_i^\top\beta)^2+\lambda\sum_j\beta_j^2.
+$$
+
+Lasso использует $L_1$ penalty и может занулять coefficients. Intercept обычно не штрафуется. $\lambda$ выбирают внутри CV.
+
+## Предположения и интерпретация
+
+Для unbiased classical coefficient estimates нужны корректная specification и exogeneity. Gauss–Markov добавляет условия для minimum variance среди linear unbiased estimators. Для чистого prediction главный вопрос — generalization и stability.
+
+Coefficient нельзя автоматически читать причинно: omitted variables, selection и reverse causality остаются.
+
+## Когда использовать
+
+- маленький/средний датасет с линейной или умеренно нелинейной зависимостью;
+- нужна интерпретируемость коэффициентов и baseline для сравнения;
+- важно быстрое обучение и предсказуемое поведение;
+- НЕ использовать, если признаки слабо связаны с target, много категорий с высокой cardinality, сильные interactions — сначала попробовать деревья/ансамбли.
+
+## Визуализация
+
+Компонент `linear-fit-residual-lab`:
+
+- draggable points;
+- линия fit;
+- отображение residual segments;
+- переключатель MSE/MAE;
+- добавление outlier;
+- изменение polynomial degree;
+- train и validation error.
+
+## sklearn пример
+
+```python
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import Ridge
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+pipeline = Pipeline([
+    ("preprocess", preprocessor),
+    ("model", Ridge(alpha=1.0)),
+])
+```
+
+## Ответ для собеседования
+
+> Линейная регрессия ищет коэффициенты $\beta$, минимизирующие MSE (обычно closed-form или градиентным спуском). Это линейная модель по параметрам, поэтому polynomial features остаются «линейной регрессией». Главные риски — outliers, multicollinearity, отсутствие scaling и причинная интерпретация коэффициентов без дополнительных предположений.
+
+## Частые ошибки
+
+- интерпретировать coefficient причинно;
+- fit scaler на полном dataset;
+- использовать MAPE при нулях;
+- игнорировать нелинейный residual pattern;
+- сравнивать raw coefficients признаков разных scales;
+- считать высокий $R^2$ доказательством полезности;
+- extrapolate далеко за train range.
+
+## Сравнение с другими моделями
+
+- **Linear vs Logistic**: первая для непрерывного target (MSE), вторая — для вероятности класса (LogLoss);
+- **Linear vs деревья/ансамбли**: линейная — интерпретируемая и стабильная, но не ловит сложные interactions; ансамбли — выше качество на нелинейных данных ценой интерпретируемости;
+- **Ridge/Lasso vs plain Linear**: регуляризация нужна при multicollinearity, многих признаках и переобучении.
 
 ## Связи
 
-- [[Random Variables and Distributions]] — Gaussian noise и альтернативные observation models.
-- [[Likelihood MLE and MAP]] — формальный мост от Gaussian likelihood к MSE.
-- [[Gauss-Markov Theorem]] — отдельная ветка BLUE.
-- [[Linear Algebra for ML]] — projection и normal equations.
-- [[Regularization]] — Ridge, Lasso и Elastic Net.
-- [[ML Basics and Linear Models — Interview]] — короткий формат собеседования.
+- [[Regularization]]
+- [[Gauss-Markov Theorem]]
+- [[Likelihood MLE and MAP]]
+- [[Data Preprocessing and Feature Engineering]]

@@ -31,30 +31,31 @@ cssclasses:
 
 # Validation, split и data leakage
 
-> [!summary] Результат урока
-> - выбрать random, group или time split
-> - обнаружить leakage до обучения
-> - объяснить роль train, validation и test
+## Результат урока
 
-## Основной материал
-
-Canonical source: [[Validation Splits and Data Leakage]]. Приложение загружает содержание по `content_path`, поэтому здесь теория не копируется.
+- объяснить роли train, validation и test
+- выбрать random, group или time split
+- найти target, time, group и preprocessing leakage
 
 ## Сценарий урока
 
 ```datapath
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "layout": "focus",
   "content_path": "10 Знания/ML/05 Metrics and Validation/Validation Splits and Data Leakage.md",
   "scenes": [
     {
       "type": "hook",
-      "title": "Зачем это нужно в реальной задаче"
+      "title": "Зачем это нужно и какой результат получим"
     },
     {
       "type": "content",
       "source_heading": "Идея за 30 секунд"
+    },
+    {
+      "type": "content",
+      "source_heading": "Сначала определить prediction contract"
     },
     {
       "type": "content",
@@ -65,17 +66,63 @@ Canonical source: [[Validation Splits and Data Leakage]]. Приложение �
       "component": "validation-split-lab"
     },
     {
+      "type": "content",
+      "source_heading": "Random split"
+    },
+    {
+      "type": "content",
+      "source_heading": "Group split и GroupKFold"
+    },
+    {
+      "type": "content",
+      "source_heading": "Визуализация"
+    },
+    {
+      "type": "content",
+      "source_heading": "Частые ошибки"
+    },
+    {
+      "type": "content",
+      "source_heading": "Сравнение стратегий split"
+    },
+    {
+      "type": "content",
+      "source_heading": "Простой пример"
+    },
+    {
       "type": "retrieval",
-      "mode": "free-recall",
-      "prompt": "Объясни главную идею своими словами без подсказки."
+      "mode": "single-choice-or-free-recall",
+      "prompt": "Почему случайный split опасен, если у одного пользователя много транзакций?"
+    },
+    {
+      "type": "content",
+      "source_heading": "Time split"
+    },
+    {
+      "type": "content",
+      "source_heading": "Cross-validation"
     },
     {
       "type": "application",
-      "mode": "micro-task"
+      "mode": "micro-task",
+      "prompt": "Для таблицы событий пользователей выбери split и перечисли три операции, которые нужно fit только внутри train fold."
+    },
+    {
+      "type": "content",
+      "source_heading": "Preprocessing внутри folds"
+    },
+    {
+      "type": "content",
+      "source_heading": "Виды leakage"
+    },
+    {
+      "type": "content",
+      "source_heading": "Early stopping, calibration и threshold"
     },
     {
       "type": "interview",
-      "mode": "follow-up"
+      "mode": "follow-up",
+      "prompt": "Как понять, какой split использовать, и что считается data leakage?"
     },
     {
       "type": "reflection",
@@ -87,12 +134,12 @@ Canonical source: [[Validation Splits and Data Leakage]]. Приложение �
 
 ## Проверка понимания
 
-1. Сформулируй главную идею одним абзацем без терминов, которые не можешь объяснить.
-2. Назови один случай, когда метод или правило даст неверный вывод.
-3. Приведи небольшой пример из табличной ML-задачи.
+1. Почему случайный split опасен, если у одного пользователя много транзакций?
+2. Для таблицы событий пользователей выбери split и перечисли три операции, которые нужно fit только внутри train fold.
+3. Как понять, какой split использовать, и что считается data leakage?
 
 ## Связи
 
 - Курс: [[00 Курс — Классический ML]]
-- Модуль: [[01 Постановка задачи и оценка]]
-- Источники: [[DataPath — проверенные источники]]
+- Модуль: определяется по `module_id` во frontmatter.
+- Теория: `content_path` во frontmatter является каноническим источником.

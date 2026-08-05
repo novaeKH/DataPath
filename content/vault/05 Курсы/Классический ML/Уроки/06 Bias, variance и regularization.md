@@ -31,51 +31,98 @@ cssclasses:
 
 # Bias, variance и regularization
 
-> [!summary] Результат урока
-> - объяснить bias-variance trade-off
-> - сравнить L1 и L2
-> - подобрать сложность только внутри validation
+## Результат урока
 
-## Основной материал
-
-Canonical source: [[Regularization]]. Приложение загружает содержание по `content_path`, поэтому здесь теория не копируется.
+- различать underfit и overfit
+- объяснить L1, L2 и structural regularization
+- выбирать strength только по validation
 
 ## Сценарий урока
 
 ```datapath
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "layout": "focus",
   "content_path": "10 Знания/ML/01 Classical ML/Regularization.md",
   "scenes": [
     {
       "type": "hook",
-      "title": "Зачем это нужно в реальной задаче"
+      "title": "Зачем это нужно и какой результат получим"
     },
     {
       "type": "content",
-      "source_heading": "Идея за 30 секунд"
+      "source_heading": "Зачем нужна regularization"
     },
     {
       "type": "content",
-      "source_heading": "Penalized objective"
+      "source_heading": "L2 / Ridge"
+    },
+    {
+      "type": "content",
+      "source_heading": "L1 / Lasso"
     },
     {
       "type": "interactive",
-      "component": "regularization-path"
+      "component": "regularization-path-lab"
+    },
+    {
+      "type": "content",
+      "source_heading": "Elastic Net"
+    },
+    {
+      "type": "content",
+      "source_heading": "Почему scaling обязателен"
+    },
+    {
+      "type": "content",
+      "source_heading": "Сравнение: L1 vs L2 vs Elastic Net"
+    },
+    {
+      "type": "content",
+      "source_heading": "Простой пример"
+    },
+    {
+      "type": "content",
+      "source_heading": "Пример кода"
     },
     {
       "type": "retrieval",
-      "mode": "free-recall",
-      "prompt": "Объясни главную идею своими словами без подсказки."
+      "mode": "single-choice-or-free-recall",
+      "prompt": "Какая картина train/validation errors указывает на high bias, а какая — на high variance?"
+    },
+    {
+      "type": "content",
+      "source_heading": "Structural regularization"
+    },
+    {
+      "type": "content",
+      "source_heading": "Early stopping"
+    },
+    {
+      "type": "content",
+      "source_heading": "Bias–variance diagnostics"
     },
     {
       "type": "application",
-      "mode": "micro-task"
+      "mode": "micro-task",
+      "prompt": "Для linear model с correlated features выбери Ridge, Lasso или Elastic Net и объясни trade-off."
+    },
+    {
+      "type": "content",
+      "source_heading": "Выбор strength"
+    },
+    {
+      "type": "content",
+      "source_heading": "Визуализация"
+    },
+    {
+      "type": "content",
+      "source_heading": "Частые ошибки"
     },
     {
       "type": "interview",
-      "mode": "follow-up"
+      "mode": "follow-up",
+      "prompt": "Что такое bias–variance trade-off и какие виды regularization вы используете?"
     },
     {
       "type": "reflection",
@@ -87,12 +134,12 @@ Canonical source: [[Regularization]]. Приложение загружает с
 
 ## Проверка понимания
 
-1. Сформулируй главную идею одним абзацем без терминов, которые не можешь объяснить.
-2. Назови один случай, когда метод или правило даст неверный вывод.
-3. Приведи небольшой пример из табличной ML-задачи.
+1. Какая картина train/validation errors указывает на high bias, а какая — на high variance?
+2. Для linear model с correlated features выбери Ridge, Lasso или Elastic Net и объясни trade-off.
+3. Что такое bias–variance trade-off и какие виды regularization вы используете?
 
 ## Связи
 
 - Курс: [[00 Курс — Классический ML]]
-- Модуль: [[02 Линейные модели]]
-- Источники: [[DataPath — проверенные источники]]
+- Модуль: определяется по `module_id` во frontmatter.
+- Теория: `content_path` во frontmatter является каноническим источником.

@@ -1,156 +1,164 @@
 ---
 title: Regularization
+id: concept.ml.regularization
 type: concept
 area: ml
-status: active
-aliases:
-  - Регуляризация
-  - L1 L2 Elastic Net
-  - Ridge Lasso
-tags:
-  - ml/classical
-  - ml/generalization
-math_depth: 2
-id: concept.ml.regularization
 schema_version: 2
 language: ru
+status: active
 rag: include
 rag_collection: knowledge
 app: source
+visual: true
+aliases:
+- Регуляризация
+- Bias variance
+tags:
+- ml/classical
+- ml/regularization
+math_depth: 2
 ---
+
 # Regularization
 
-## Идея за 30 секунд
+## Зачем нужна regularization
 
-Regularization ограничивает effective complexity модели, принимая небольшой training bias ради меньшей variance и более устойчивого поведения. Для probabilistic model L2 соответствует Gaussian prior и MAP, L1 — Laplace prior и MAP. Сила penalty зависит от feature scale, поэтому numeric features обычно масштабируют внутри pipeline.
+Модель может слишком точно подстроиться под train sample и использовать случайный noise. Regularization ограничивает эффективную complexity: добавляет penalty, ограничивает структуру или останавливает обучение раньше.
 
-## Penalized objective
-
-$$
-\widehat{\theta}
-=\arg\min_\theta
-\left[
-\mathcal{L}_{\text{data}}(\theta)
-+\lambda\Omega(\theta)
-\right].
-$$
-
-$\mathcal{L}_{\text{data}}$ измеряет fit, $\Omega$ — complexity preference, $\lambda\ge0$ — trade-off.
-
-При росте $\lambda$:
-
-- coefficients сильнее shrink;
-- bias обычно растёт;
-- variance обычно уменьшается;
-- optimization/conditioning может улучшиться;
-- underfitting risk растёт.
+Это trade-off: немного увеличиваем bias, чтобы снизить variance и улучшить validation quality.
 
 ## L2 / Ridge
 
 $$
-\Omega_2(\theta)=\sum_j\theta_j^2.
+\min_\beta
+\mathcal L(\beta)+\lambda\sum_j\beta_j^2.
 $$
 
-L2 smooth и сильно штрафует крупные coefficients. При correlated features она часто распределяет вес между ними и стабилизирует solution.
+L2 плавно уменьшает coefficients, особенно у correlated features. Обычно не зануляет их полностью.
 
-### Gaussian prior → MAP
-
-Если:
-
-$$
-\theta_j\overset{\text{ind}}{\sim}\mathcal{N}(0,\tau^2),
-$$
-
-то:
-
-$$
--\log p(\theta)
-=\frac{1}{2\tau^2}\sum_j\theta_j^2+\text{const}.
-$$
-
-MAP objective становится data NLL plus L2. Smaller prior variance $\tau^2$ означает stronger shrinkage.
+Geometry: penalty предпочитает решения с маленькой Euclidean norm.
 
 ## L1 / Lasso
 
 $$
-\Omega_1(\theta)=\sum_j|\theta_j|.
+\min_\beta
+\mathcal L(\beta)+\lambda\sum_j|\beta_j|.
 $$
 
-L1 имеет kink в нуле, поэтому optimum часто содержит exact zero coefficients. Это даёт sparse model, но не гарантирует стабильный feature selection.
-
-### Laplace prior → MAP
-
-$$
-p(\theta_j)
-\propto
-\exp\left(-\frac{|\theta_j|}{b}\right).
-$$
-
-Тогда:
-
-$$
--\log p(\theta)
-=\frac{1}{b}\sum_j|\theta_j|+\text{const},
-$$
-
-что даёт L1 penalty.
-
-При группе correlated features L1 может выбрать один почти случайно и менять выбор между folds.
+L1 может занулять часть coefficients и выполнять feature selection. При correlated features выбирает один нестабильно; интерпретировать выбор как «истинно важный» нельзя.
 
 ## Elastic Net
 
 $$
-\Omega(\theta)
-=\alpha\sum_j|\theta_j|
-+(1-\alpha)\sum_j\theta_j^2.
+\mathcal L(\beta)+\lambda
+\left[
+\alpha\lVert\beta\rVert_1+(1-\alpha)\lVert\beta\rVert_2^2
+\right].
 $$
 
-Elastic Net сочетает sparsity L1 и stability L2. Полезна при многих correlated features, когда чистая L1 слишком нестабильна.
+Совмещает sparsity L1 и stability L2.
 
 ## Почему scaling обязателен
 
-Penalty действует на coefficients, а coefficient magnitude зависит от units feature. Если один feature измерен в метрах, другой в миллиметрах, одинаковая predictive effect требует coefficients разного масштаба.
+Penalty зависит от величины coefficient. Если features имеют разные units, одинаковый effect требует разных coefficients и штрафуется неравномерно. Scaler fit внутри train folds.
 
-Правильный pipeline:
+## Structural regularization
 
-```text
-train split
-→ fit scaler на train
-→ transform train/validation
-→ fit regularized model
+Для trees:
+
+- `max_depth`;
+- `min_samples_leaf`;
+- pruning;
+- feature subsampling.
+
+Для boosting:
+
+- learning rate;
+- число trees;
+- depth;
+- subsampling;
+- early stopping.
+
+Для neural networks:
+
+- weight decay;
+- dropout;
+- data augmentation;
+- early stopping;
+- architecture capacity.
+
+Regularization шире, чем добавление penalty в formula.
+
+## Early stopping
+
+Остановить обучение на iteration с лучшей validation metric. Validation становится частью model selection, test не используется.
+
+## Data augmentation
+
+Создаёт дополнительные examples, сохраняющие label. Это вносит prior о invariance. Неверная augmentation может менять label и ухудшать model.
+
+## Bias–variance diagnostics
+
+- train и validation плохие → вероятен underfit/high bias;
+- train хороший, validation хуже → overfit/high variance;
+- оба хорошие, production падает → drift/contract/leakage.
+
+Сильнее regularization не лечит неверные labels и leakage.
+
+## Выбор strength
+
+$\lambda$, `C`, depth и dropout выбирают по CV/validation. Сравнивайте pipeline целиком. Для временных данных используйте time-aware split.
+
+## Визуализация
+
+Компонент `regularization-path-lab`:
+
+- slider $\lambda$;
+- paths coefficients Ridge/Lasso;
+- train/validation error;
+- correlated features toggle;
+- decision boundary;
+- selected features.
+
+## Частые ошибки
+
+- scaling до split;
+- штрафовать intercept без понимания;
+- выбрать $\lambda$ по test;
+- считать zero coefficient доказательством ненужности feature;
+- применять dropout в evaluation;
+- использовать weight decay как полную замену data quality;
+- сравнивать models с разным preprocessing нечестно.
+
+## Сравнение: L1 vs L2 vs Elastic Net
+
+| | L2 / Ridge | L1 / Lasso | Elastic Net |
+|---|---|---|---|
+| Штраф | $\lambda\sum \beta_j^2$ | $\lambda\sum |\beta_j|$ | комбинация |
+| Эффект | сжатие коэффициентов | зануление (отбор) | сжатие + отбор |
+| Коррелированные признаки | делят вес | выбирает один | группы |
+| Когда | много шумных, multicollinearity | отбор признаков | много коррелированных |
+
+## Простой пример
+
+Полином степени 15 на 20 точках: без регуляризации коэффициенты взрываются и модель осциллирует; с ростом $\lambda$ кривая сглаживается, train quality падает, validation растёт — классический bias-variance trade-off.
+
+## Пример кода
+
+```python
+from sklearn.linear_model import Ridge, Lasso, ElasticNet
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+for model in [Ridge(alpha=1.0), Lasso(alpha=0.01), ElasticNet(alpha=0.01, l1_ratio=0.5)]:
+    pipe = make_pipeline(StandardScaler(), model)
+    pipe.fit(X_train, y_train)
+    print(type(model).__name__, pipe.score(X_val, y_val))
 ```
-
-Fit scaler до split создаёт leakage.
-
-## Что обычно не regularize
-
-Intercept часто не штрафуют: он задаёт global baseline, а не sensitivity к feature. Конкретное поведение зависит от библиотеки и representation intercept.
-
-## Другие формы regularization
-
-- Early stopping ограничивает число boosting/gradient steps.
-- Dropout добавляет stochastic perturbation activations.
-- Data augmentation задаёт invariances через новые examples.
-- Tree depth/min leaf ограничивают structural capacity.
-- Weight decay в adaptive optimizer нужно отличать от добавления L2 к gradient; AdamW применяет decoupled weight decay.
-
-## Что если regularization выбрана неверно
-
-- Слишком слабая: unstable coefficients, большой train/validation gap.
-- Слишком сильная: underfit и систематические residual patterns.
-- Неверный split: best $\lambda$ оптимизирует leakage.
-- Resampling/weights: effective loss scale меняется, поэтому численное значение $\lambda$ не переносится автоматически.
-- Не все parameters нужно shrink одинаково: embeddings, bias и normalization parameters могут требовать отдельной политики.
-
-## Ответ для собеседования
-
-Ошибка модели раскладывается на **bias** (систематическая ошибка из-за упрощения), **variance** (чувствительность к конкретной обучающей выборке) и неустранимый шум. Простые модели (линейная регрессия, shallow tree) имеют высокий bias и низкую variance. Сложные (глубокое дерево, полином высокой степени) — наоборот: низкий bias, высокая variance. **Оптимальная сложность** минимизирует сумму bias² + variance. Regularization (L1/L2, early stopping, dropout) снижает variance ценой небольшого роста bias — это и есть bias-variance trade-off. **Практический признак high variance:** большой разрыв между train и validation метриками. **Признак high bias:** обе метрики плохие и близки друг к другу.
 
 ## Связи
 
-- [[Likelihood MLE and MAP]] — probabilistic вывод L1/L2.
-- [[ML Foundations]] — bias–variance и overfitting.
-- [[Linear Regression]] — Ridge/Lasso для continuous target.
-- [[Logistic Regression]] — regularized probabilistic classifier.
-- [[Gradients Chain Rule and Optimization]] — penalty меняет gradient и curvature.
-- [[Validation Splits and Data Leakage]] — tuning regularization только внутри validation scheme.
+- [[Linear Regression]]
+- [[Logistic Regression]]
+- [[Optimization and Regularization in Deep Learning]]
+- [[Model Selection and Hyperparameter Tuning]]

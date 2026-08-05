@@ -39,6 +39,11 @@ data/
 
 # Локальные данные ChromaDB
 chroma/
+
+# Импорт-артефакты Phase 9A (контент уже влит в content/vault)
+vault 2/
+content/vault.zip
+
 chromadb/
 *.chroma
 

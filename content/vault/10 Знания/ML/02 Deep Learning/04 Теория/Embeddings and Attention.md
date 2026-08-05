@@ -1,178 +1,123 @@
 ---
 title: Embeddings and Attention
+id: concept.dl.embeddings-and-attention
 type: concept
 area: dl
-status: active
-aliases:
-  - Эмбеддинги и attention
-  - Self-attention
-  - Scaled Dot-Product Attention
-tags:
-  - dl/transformers
-  - nlp/embeddings
-math_depth: 2
-id: concept.dl.embeddings-and-attention
 schema_version: 2
 language: ru
+status: active
 rag: include
 rag_collection: knowledge
 app: source
+visual: true
+aliases:
+- Эмбеддинги и attention
+- Self-attention
+- Scaled Dot-Product Attention
+tags:
+- dl/transformers
+- nlp/embeddings
+math_depth: 2
 ---
+
 # Embeddings and Attention
 
-## Идея за 30 секунд
+## Embedding с нуля
 
-Embedding превращает discrete ID/token в learned vector. Attention позволяет каждому query собрать weighted combination values по similarity с keys. В scaled dot-product attention scores $QK^\top$ делят на $\sqrt{d_k}$, затем mask и softmax превращают их в weights. Multi-head attention учит несколько projection spaces.
-
-## Embedding lookup
-
-Embedding matrix:
+Discrete token/category ID нельзя подавать как continuous number: ID `100` не «в два раза больше» ID `50`. Embedding хранит trainable vector для каждого ID.
 
 $$
-E\in\mathbb{R}^{V\times d}.
+E\in\mathbb R^{V\times d},\qquad e_t=E[t].
 $$
 
-Для token ID $t$:
+Это lookup строки matrix. Similar IDs могут оказаться близко только если objective этого требует.
+
+## Static и contextual embeddings
+
+Static embedding слова одинаков в каждом context. Transformer создаёт contextual representation: vector token зависит от surrounding tokens.
+
+Similarity обычно измеряют cosine, но её смысл зависит от training data, pooling и normalization.
+
+## Зачем attention
+
+Каждая position может собрать информацию из других positions. Для query формируются:
+
+- Query — что ищем;
+- Key — по чему сравниваем;
+- Value — какую информацию переносим.
 
 $$
-e_t=E[t].
+Q=XW_Q,\quad K=XW_K,\quad V=XW_V.
 $$
-
-Это lookup row, эквивалентный multiplication one-hot vector на $E$, но без materialization sparse one-hot.
-
-Embedding coordinates не имеют фиксированного смысла; geometry появляется из objective и data. Similarity полезна только после проверки representation и normalization.
-
-## Query, Key и Value
-
-Для input representations $X\in\mathbb{R}^{T\times d_{\text{model}}}$:
-
-$$
-Q=XW_Q,
-\qquad
-K=XW_K,
-\qquad
-V=XW_V.
-$$
-
-- Query: что текущая position ищет.
-- Key: по чему сравнивать source positions.
-- Value: какую информацию передавать при высоком weight.
-
-В self-attention Q/K/V происходят из одной sequence; в cross-attention query и key/value sources различаются.
 
 ## Scaled dot-product attention
 
 $$
-\operatorname{Attention}(Q,K,V)
-=
-\operatorname{softmax}
-\left(
-\frac{QK^\top}{\sqrt{d_k}}+M
-\right)V.
+A=\operatorname{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}+M\right),
+\qquad
+O=AV.
 $$
 
-Shapes для одного head:
+Score matrix shape:
 
-$$
-Q\in\mathbb{R}^{T_q\times d_k},
-\quad
-K\in\mathbb{R}^{T_k\times d_k},
-\quad
-V\in\mathbb{R}^{T_k\times d_v}.
-$$
+```text
+(B, heads, T_query, T_key)
+```
 
-Score matrix имеет shape $T_q\times T_k$; softmax обычно по keys dimension.
+Softmax выполняется по key axis.
 
-## Почему делят на $\sqrt{d_k}$
+## Почему scale
 
-Если components query/key independent с unit variance, dot product variance растёт примерно как $d_k$. Большие logits насыщают softmax: weights становятся почти one-hot, gradients малы/нестабильны.
-
-Division на $\sqrt{d_k}$ удерживает scale logits примерно сопоставимым при изменении head dimension.
-
-## Softmax и weighted sum
-
-Для query $i$:
-
-$$
-\alpha_{ij}
-=
-\frac{
-\exp(s_{ij})
-}{
-\sum_{\ell}\exp(s_{i\ell})
-},
-$$
-
-$$
-o_i=\sum_j\alpha_{ij}v_j.
-$$
-
-Weights не являются causal importance. Они показывают mechanism текущей model при данной parameterization, но explanation требует осторожности.
+Variance dot product растёт с $d_k$. Большие logits насыщают softmax. Деление на $\sqrt{d_k}$ стабилизирует scale.
 
 ## Masks
 
-Mask $M$ добавляет:
+Padding mask запрещает attention к padding. Causal mask запрещает смотреть в future.
 
-- $0$ для разрешённых pairs;
-- большое отрицательное значение/$-\infty$ для запрещённых.
+Если вся строка masked, softmax может дать NaN в некоторых implementations — нужен корректный handling.
 
-После softmax запрещённые weights становятся zero.
+## Multi-head
 
-### Padding mask
+Каждая head имеет свои projections. Outputs concat и проходят через $W_O$. Heads могут учить разные relation patterns, но не обязаны иметь понятную человеческую роль.
 
-Не позволяет собирать информацию из padding tokens.
+## Cross-attention
 
-### Causal mask
-
-Position $t$ не видит positions $>t$. Это предотвращает future-token leakage при autoregressive language modeling.
-
-Mask shape/broadcast — частый источник silent bugs.
-
-## Multi-head attention
-
-Для head $h$:
-
-$$
-\operatorname{head}_h
-=
-\operatorname{Attention}
-(XW_Q^{(h)},XW_K^{(h)},XW_V^{(h)}).
-$$
-
-Затем:
-
-$$
-\operatorname{MHA}(X)
-=
-\operatorname{Concat}(\operatorname{head}_1,\ldots,\operatorname{head}_H)W_O.
-$$
-
-Heads имеют разные projection matrices и могут специализироваться на разных relation patterns. Нельзя гарантировать human-interpretable role каждого head.
+Queries поступают из одной sequence, Keys/Values — из другой. Используется в encoder-decoder, multimodal models и retrieval-conditioned generation.
 
 ## Complexity
 
-Self-attention score matrix требует:
+Standard self-attention требует $O(T^2)$ scores по sequence length. Memory-efficient kernels уменьшают intermediate memory, но exact dependency остаётся quadratic по pair count.
 
-$$
-O(T^2)
-$$
+## Attention не объяснение
 
-memory/time по sequence length для standard implementation. Long-context methods используют sparse/local/linear approximations или memory optimizations, меняя exact computation.
+Высокий attention weight показывает route текущего mechanism, но не causal importance. Изменение value, residual path и downstream layers влияет на output.
 
-## Failure modes
+## Визуализация
 
-- забыть padding/causal mask;
-- softmax по неверной dimension;
-- перепутать $d_{\text{model}}$, head dimension и number of heads;
-- считать token IDs continuous numbers;
-- сравнивать raw embeddings cosine без normalization/context;
-- интерпретировать attention weight как causal contribution;
-- получить NaN из all-masked row.
+Компонент `attention-matrix-lab`:
+
+- short sentence tokens;
+- Q/K vectors;
+- dot scores;
+- scaling;
+- mask;
+- softmax rows;
+- weighted values;
+- multi-head tabs.
+
+## Частые ошибки
+
+- token IDs как numbers;
+- softmax по wrong axis;
+- missing causal/padding mask;
+- Q/K/V shapes mixed;
+- all-masked row;
+- attention weights = explanation;
+- cosine raw unnormalized embeddings;
+- huge sequence without memory estimate.
 
 ## Связи
 
-- [[Linear Algebra for ML]] — dot products, projections и matrix shapes.
-- [[Random Variables and Distributions]] — softmax weights и categorical distributions.
-- [[Neural Networks and Backpropagation]] — Linear projections и gradients.
-- [[Transformer and Language Modeling]] — residual block, positional information и causal LM.
-- [[NLP and Transformers — Interview]] — короткий формат.
+- [[Tensors Shapes and Linear Layers]]
+- [[Transformer and Language Modeling]]
+- [[Linear Algebra for ML]]

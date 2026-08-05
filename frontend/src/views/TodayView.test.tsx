@@ -212,7 +212,7 @@ describe('TodayView with activity', () => {
   it('weak skills shown when evidence is sufficient', async () => {
     renderToday()
     expect(await screen.findByText(/ml.bias_variance_regularization/)).toBeInTheDocument()
-    expect(screen.getByText(/3 измерений/)).toBeInTheDocument()
+    expect(screen.getByText(/3 измерен/)).toBeInTheDocument()
   })
 
   it('recent activity and suggested case are rendered', async () => {

@@ -14,7 +14,7 @@ app: exclude
 
 ## Быстрый старт
 
-1. Открой папку `My_brain_v2_DataPath` как отдельный vault в Obsidian.
+1. Открой эту папку как отдельный vault в Obsidian.
 2. Проверь, что включён CSS snippet `knowledge-system` в **Settings → Appearance → CSS snippets**.
 3. Открой [[00 Каталог курсов]] или [[DataPath — карта курсов.canvas]].
 4. Для проверки структуры запусти:
@@ -23,6 +23,26 @@ app: exclude
 python tools/build_catalog.py
 python tools/validate_vault.py
 ```
+
+## Учебные направления
+
+В переработанном vault подготовлены связанные canonical blocks и draft routes:
+
+- Python Core и Python для Data Science;
+- NumPy;
+- pandas;
+- Matplotlib;
+- Seaborn;
+- EDA и data quality;
+- Classical Machine Learning;
+- Deep Learning;
+- дальнейшие алгоритмы и прикладные ML-направления.
+
+Текущий app catalog намеренно сохраняет один проверенный active Classic ML route. Новые курсы имеют `status: draft` и `app: exclude`: их следует включать пакетами после реализации Lesson V2, настоящих checkpoints и visual components.
+
+## Правило учебного материала
+
+Canonical note должна быть понятна человеку без предварительного знания темы: простое определение, механизм, объяснение symbols, небольшой numerical example, practical use, limitations, common mistakes и связи. Для визуально важных mechanisms используются спецификации из [[DATAPATH_VISUAL_DEMOS|DataPath Visual Demonstrations]]. Lesson composition определяется [[DATAPATH_LESSON_V2_SPEC|DataPath Lesson V2 Spec]].
 
 ## Подключение к приложению
 

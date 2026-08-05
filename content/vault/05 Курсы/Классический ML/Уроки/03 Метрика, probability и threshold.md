@@ -30,26 +30,23 @@ cssclasses:
 
 # Метрика, probability и threshold
 
-> [!summary] Результат урока
-> - разделить качество ranking и выбранный threshold
-> - выбрать метрику под цену ошибок
-> - объяснить Precision, Recall, ROC-AUC и PR-AUC
+## Результат урока
 
-## Основной материал
-
-Canonical source: [[ML Metrics and Threshold Selection]]. Приложение загружает содержание по `content_path`, поэтому здесь теория не копируется.
+- отличить ranking, probability и decision metrics
+- читать confusion matrix
+- выбрать threshold по стоимости или constraint
 
 ## Сценарий урока
 
 ```datapath
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "layout": "focus",
   "content_path": "10 Знания/ML/05 Metrics and Validation/ML Metrics and Threshold Selection.md",
   "scenes": [
     {
       "type": "hook",
-      "title": "Зачем это нужно в реальной задаче"
+      "title": "Зачем это нужно и какой результат получим"
     },
     {
       "type": "content",
@@ -60,21 +57,79 @@ Canonical source: [[ML Metrics and Threshold Selection]]. Приложение �
       "source_heading": "Сначала определить, что оцениваем"
     },
     {
+      "type": "content",
+      "source_heading": "Confusion matrix"
+    },
+    {
       "type": "interactive",
       "component": "threshold-cost-explorer"
     },
     {
+      "type": "content",
+      "source_heading": "Accuracy и balanced accuracy"
+    },
+    {
+      "type": "content",
+      "source_heading": "ROC-AUC"
+    },
+    {
+      "type": "content",
+      "source_heading": "Визуализация"
+    },
+    {
+      "type": "content",
+      "source_heading": "Частые ошибки"
+    },
+    {
+      "type": "content",
+      "source_heading": "Сравнение метрик"
+    },
+    {
+      "type": "content",
+      "source_heading": "Простой пример"
+    },
+    {
+      "type": "content",
+      "source_heading": "Пример кода"
+    },
+    {
       "type": "retrieval",
-      "mode": "free-recall",
-      "prompt": "Объясни главную идею своими словами без подсказки."
+      "mode": "single-choice-or-free-recall",
+      "prompt": "Почему ROC-AUC и precision отвечают на разные вопросы?"
+    },
+    {
+      "type": "content",
+      "source_heading": "Precision–Recall и PR-AUC"
+    },
+    {
+      "type": "content",
+      "source_heading": "LogLoss и Brier score"
+    },
+    {
+      "type": "content",
+      "source_heading": "Threshold selection"
     },
     {
       "type": "application",
-      "mode": "micro-task"
+      "mode": "micro-task",
+      "prompt": "Выбери metric и threshold policy для ручной проверки 500 клиентов в неделю при редком positive class."
+    },
+    {
+      "type": "content",
+      "source_heading": "Multiclass averaging"
+    },
+    {
+      "type": "content",
+      "source_heading": "Regression metrics"
+    },
+    {
+      "type": "content",
+      "source_heading": "Связь с бизнесом"
     },
     {
       "type": "interview",
-      "mode": "follow-up"
+      "mode": "follow-up",
+      "prompt": "Почему threshold 0.5 не универсален и когда PR-AUC полезнее ROC-AUC?"
     },
     {
       "type": "reflection",
@@ -86,12 +141,12 @@ Canonical source: [[ML Metrics and Threshold Selection]]. Приложение �
 
 ## Проверка понимания
 
-1. Сформулируй главную идею одним абзацем без терминов, которые не можешь объяснить.
-2. Назови один случай, когда метод или правило даст неверный вывод.
-3. Приведи небольшой пример из табличной ML-задачи.
+1. Почему ROC-AUC и precision отвечают на разные вопросы?
+2. Выбери metric и threshold policy для ручной проверки 500 клиентов в неделю при редком positive class.
+3. Почему threshold 0.5 не универсален и когда PR-AUC полезнее ROC-AUC?
 
 ## Связи
 
 - Курс: [[00 Курс — Классический ML]]
-- Модуль: [[01 Постановка задачи и оценка]]
-- Источники: [[DataPath — проверенные источники]]
+- Модуль: определяется по `module_id` во frontmatter.
+- Теория: `content_path` во frontmatter является каноническим источником.

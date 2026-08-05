@@ -9,6 +9,7 @@ id: meta.learning-system.learning-catalog-v1
 schema_version: 2
 language: ru
 app: exclude
+updated: 2026-08-05
 ---
 # Learning Catalog v1
 
@@ -457,3 +458,48 @@ app: exclude
 Новый навык добавляется только вместе с существующей заметкой, наблюдаемым
 результатом обучения и диагностикой с рубрикой. После изменения нужно запустить
 валидатор приложения, указанный в `_meta/LEARNING_SYSTEM_STATE.md`.
+
+
+## Планируемые навыки новых треков (curriculum expansion 2026-08-05)
+
+Черновики курсов (Python для Data Science, Анализ данных, Deep Learning, расширение
+Classic ML) используют эти skill_ids. Навыки не активированы в текущем каталоге
+(курсы `app: exclude`) и получат полные outcomes/diagnostics при активации.
+
+| skill_id | Трек | Канонические заметки |
+|---|---|---|
+| `python.00-basics-control-flow` | Python | `10 Знания/Python/00_Основы_синтаксиса_и_управление_потоком.md` |
+| `python.01-ob-ekty-ssylki-i-izmeniaemost` | Python | `10 Знания/Python/01_Объекты_ссылки_и_изменяемость.md` |
+| `python.03-dict-set-i-hash-map` | Python | `10 Знания/Python/03_Dict_Set_Hash_Map.md` |
+| `python.04-funktsii-i-oblasti-vidimosti` | Python | `10 Знания/Python/04_Функции_и_области_видимости.md` |
+| `python.05-iterable-iterator-i-generator` | Python | `10 Знания/Python/05_Iterable_Iterator_Generator.md` |
+| `python.06-oop-i-magicheskie-metody` | Python | `10 Знания/Python/06_OOP_и_магические_методы.md` |
+| `python.07-iskliucheniia-i-context-manager` | Python | `10 Знания/Python/07_Исключения_и_Context_Manager.md` |
+| `python.08-dekoratory-i-zamykaniia` | Python | `10 Знания/Python/08_Декораторы_и_замыкания.md` |
+| `python.09-pamiat-gc-i-gil` | Python | `10 Знания/Python/09_Память_GC_GIL.md` |
+| `python.10-python-dlia-data-science` | Python | `10 Знания/Python/10_Python_для_Data_Science.md` |
+| `python.11-typing-testing-i-kachestvo-koda` | Python | `10 Знания/Python/11_Typing_Testing_Code_Quality.md` |
+| `python.12-modules-files-pathlib-environments` | Python | `10 Знания/Python/12_Модули_файлы_pathlib_и_окружения.md` |
+| `data.analysis` | Анализ данных | `10 Знания/Data Analysis/EDA/*` |
+| `numpy.foundations` | Анализ данных | `10 Знания/Python Libraries/NumPy/NumPy Foundations.md` |
+| `numpy.broadcasting-vectorization` | Анализ данных | `10 Знания/Python Libraries/NumPy/NumPy Indexing Broadcasting and Vectorization.md` |
+| `pandas.foundations-selection` | Анализ данных | `10 Знания/Python Libraries/Pandas/pandas Foundations and Selection.md` |
+| `pandas.cleaning-dtypes` | Анализ данных | `10 Знания/Python Libraries/Pandas/pandas Cleaning and Data Types.md` |
+| `pandas.groupby-merge-reshape` | Анализ данных | `10 Знания/Python Libraries/Pandas/pandas GroupBy Merge and Reshape.md` |
+| `pandas.time-series-windows` | Анализ данных | `10 Знания/Python Libraries/Pandas/pandas Time Series and Window Functions.md` |
+| `pandas.join` | Анализ данных | `10 Знания/Python Libraries/Pandas/pandas GroupBy Merge and Reshape.md` |
+| `matplotlib.figure-axes` | Визуализация | `10 Знания/Python Libraries/Matplotlib/Matplotlib Figure Axes and Plot Design.md` |
+| `seaborn.statistical-plotting` | Визуализация | `10 Знания/Python Libraries/Seaborn/Seaborn Statistical Visualization.md` |
+| `eda.workflow` | EDA | `10 Знания/Data Analysis/EDA/Exploratory Data Analysis Workflow.md` |
+| `eda.quality-missing-outliers` | EDA | `10 Знания/Data Analysis/EDA/Data Quality Missing Values and Outliers.md` |
+| `eda.relationships-time-groups` | EDA | `10 Знания/Data Analysis/EDA/EDA Relationships Time and Groups.md` |
+| `eda.to-ml-pipeline` | EDA | `10 Знания/Data Analysis/EDA/From EDA to ML Pipeline.md` |
+| `dl.foundations` | Deep Learning | `10 Знания/ML/02 Deep Learning/04 Теория/Tensors Shapes and Linear Layers.md`, `Neural Networks and Backpropagation.md` |
+| `dl.architectures` | Deep Learning | `10 Знания/ML/02 Deep Learning/04 Теория/Convolutional Neural Networks.md`, `Recurrent Networks LSTM and GRU.md` |
+| `dl.transformers` | Deep Learning | `10 Знания/ML/02 Deep Learning/04 Теория/Embeddings and Attention.md`, `Transformer and Language Modeling.md` |
+| `dl.training` | Deep Learning | `10 Знания/ML/02 Deep Learning/04 Теория/Training Evaluation and Inference in PyTorch.md`, `Optimization and Regularization in Deep Learning.md` |
+| `dl.peft` | Deep Learning | `10 Знания/ML/02 Deep Learning/04 Теория/Fine-Tuning Transfer Learning and PEFT.md` |
+| `dl.debugging` | Deep Learning | `10 Знания/ML/02 Deep Learning/04 Теория/DL Debugging and Experiment Design.md` |
+| `ml.classic.expansion` | Classic ML расширение | `10 Знания/ML/01 Classical ML/Data Preprocessing and Feature Engineering.md`, `Class Imbalance and Resampling.md`, `Probability Calibration.md`, `Model Selection and Hyperparameter Tuning.md`, `Feature Importance and Model Interpretation.md`, `DBSCAN and Hierarchical Clustering.md`, `Anomaly Detection.md` |
+| `algorithms.big-o` | Алгоритмы | `10 Знания/Алгоритмы/01_Big_O.md` |
+| `algorithms.patterns` | Алгоритмы | `10 Знания/Алгоритмы/04_Two_Pointers.md` … `18_Dynamic_Programming_Basics.md` |

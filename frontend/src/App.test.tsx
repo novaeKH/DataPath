@@ -177,9 +177,9 @@ describe('App routing', () => {
     expect(await screen.findByRole('heading', { name: /Сегодня/i })).toBeInTheDocument()
   })
 
-  it('renders Atlas at /atlas', () => {
+  it('renders Atlas at /atlas', async () => {
     renderAt('/atlas')
-    expect(screen.getByRole('heading', { name: /Atlas знаний/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Atlas знаний/i })).toBeInTheDocument()
   })
 
   it('renders Focus at /focus', async () => {
@@ -207,10 +207,12 @@ describe('App routing', () => {
     expect(await screen.findByRole('heading', { name: /Сегодня/i })).toBeInTheDocument()
   })
 
-  it('sidebar navigation links exist', () => {
+  it('sidebar navigation links exist', async () => {
     renderAt('/today')
-    expect(screen.getByRole('link', { name: /Atlas/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Focus/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Studio/i })).toBeInTheDocument()
+    // Навигация дублируется для desktop и mobile — ищем все вхождения.
+    expect(await screen.findByRole('heading', { name: /Сегодня/i })).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: /Atlas/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: /Focus/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: /Studio/i }).length).toBeGreaterThan(0)
   })
 })
