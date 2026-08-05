@@ -121,6 +121,18 @@ async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
   return (await response.json()) as T
 }
 
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    throw new Error(`Backend вернул HTTP ${response.status}`)
+  }
+  return (await response.json()) as T
+}
+
 export async function fetchSystemStatus(signal?: AbortSignal): Promise<SystemStatus> {
   return request<SystemStatus>('/api/system/status', signal)
 }
@@ -140,4 +152,134 @@ export async function fetchContentItem(id: string, signal?: AbortSignal): Promis
 
 export async function fetchAtlas(signal?: AbortSignal): Promise<AtlasData> {
   return request<AtlasData>('/api/atlas', signal)
+}
+
+// --- Фаза 3: курсы, уроки, сцены, лаборатории ---
+
+export interface LessonRef {
+  id: string
+  title: string
+  lesson_order: number | null
+  estimated_minutes: number | null
+  difficulty: string | null
+  skills: string[]
+  laboratory_ids: string[]
+}
+
+export interface CourseModule {
+  id: string
+  title: string
+  order: number | null
+  estimated_minutes: number | null
+  lessons: LessonRef[]
+}
+
+export interface CourseCaseRef {
+  id: string
+  title: string
+  practice_kind: string | null
+  estimated_minutes: number | null
+  difficulty: string | null
+}
+
+export interface CourseDetail {
+  id: string
+  title: string
+  slug: string
+  area: string | null
+  difficulty: string | null
+  estimated_hours: number | null
+  accent: string | null
+  icon: string | null
+  modules: CourseModule[]
+  cases: CourseCaseRef[]
+  first_lesson_id: string | null
+  last_lesson_id: string | null
+}
+
+export interface LessonScene {
+  id: string
+  type: 'markdown' | 'formula' | 'code' | 'callout' | 'checkpoint' | 'interactive_lab'
+  title?: string | null
+  markdown?: string | null
+  formula?: string | null
+  explanation?: string | null
+  language?: string | null
+  code?: string | null
+  caption?: string | null
+  callout_type?: string | null
+  question?: string | null
+  lab_id?: string | null
+  lab_title?: string | null
+}
+
+export interface LessonMaterialRef {
+  id: string
+  title: string
+  type: string
+  path: string
+}
+
+export interface LessonDetail {
+  id: string
+  title: string
+  slug: string
+  module: { id: string; title: string; order: number | null } | null
+  course: { id: string; title: string } | null
+  estimated_minutes: number | null
+  difficulty: string | null
+  skills: string[]
+  previous_lesson_id: string | null
+  next_lesson_id: string | null
+  scenes: LessonScene[]
+  laboratory_ids: string[]
+  materials: LessonMaterialRef[]
+}
+
+export interface LabParameter {
+  name: string
+  label: string
+  type: 'number' | 'enum'
+  default: string | number
+  min?: number
+  max?: number
+  step?: number
+  values?: string[]
+  unit?: string
+}
+
+export interface LabSpec {
+  id: string
+  title: string
+  description: string
+  lesson_ids: string[]
+  parameters: LabParameter[]
+  defaults: Record<string, string | number>
+  initial_result: Record<string, unknown>
+}
+
+export interface LabRunResult {
+  [key: string]: unknown
+}
+
+export async function fetchCourseDetail(
+  courseId: string,
+  signal?: AbortSignal,
+): Promise<CourseDetail> {
+  return request<CourseDetail>(`/api/content/courses/${encodeURIComponent(courseId)}`, signal)
+}
+
+export async function fetchLesson(lessonId: string, signal?: AbortSignal): Promise<LessonDetail> {
+  return request<LessonDetail>(`/api/content/lessons/${encodeURIComponent(lessonId)}`, signal)
+}
+
+export async function fetchLabSpec(labId: string, signal?: AbortSignal): Promise<LabSpec> {
+  return request<LabSpec>(`/api/labs/${encodeURIComponent(labId)}`, signal)
+}
+
+export async function runLab(
+  labId: string,
+  parameters: Record<string, string | number>,
+): Promise<LabRunResult> {
+  return postJson<LabRunResult>(`/api/labs/${encodeURIComponent(labId)}/run`, { parameters })
 }

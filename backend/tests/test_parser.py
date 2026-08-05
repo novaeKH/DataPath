@@ -69,8 +69,9 @@ def test_parser_extracts_wiki_links(tmp_path: Path) -> None:
     parser = MarkdownParser()
     note = parser.parse(vault / "05 Курсы/Классический ML/Уроки/01 Урок 1.md", vault)
     targets = {link.target for link in note.raw_links if link.kind == "wiki"}
-    assert "Concept A" in targets
-    assert "Concept B" in targets
+    # В теле урока 1 осталась одна wiki-ссылка; [[Concept A]] живёт только
+    # внутри datapath-JSON (fenced block) и не считается ссылкой.
+    assert targets == {"Concept B"}
 
 
 def test_parser_ignores_code_block_links(tmp_path: Path) -> None:

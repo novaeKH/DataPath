@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   buildRouteView,
@@ -319,6 +320,7 @@ export function AtlasView() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [item, setItem] = useState<ContentItem | null>(null)
   const [itemState, setItemState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const navigate = useNavigate()
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setState({ kind: 'loading' })
@@ -498,6 +500,7 @@ export function AtlasView() {
                 node={displayed?.nodes.find((n) => n.id === selectedId) ?? null}
                 item={item}
                 itemState={itemState}
+                onOpenLesson={(lessonId) => navigate(`/focus/${lessonId}`)}
                 onClose={() => selectNode(null)}
               />
             )}
@@ -512,13 +515,25 @@ function NodePanel({
   node,
   item,
   itemState,
+  onOpenLesson,
   onClose,
 }: {
   node: AtlasNode | null
   item: ContentItem | null
   itemState: 'idle' | 'loading' | 'ready' | 'error'
+  onOpenLesson: (lessonId: string) => void
   onClose: () => void
 }) {
+  // Для concept-узла: уроки, которые используют эту заметку (applied_in).
+  const relatedLessons = useMemo(() => {
+    if (!item || node?.type !== 'concept') return []
+    return (item.links.incoming ?? [])
+      .filter((link) => link.relation === 'applied_in' && link.source_id)
+      .map((link) => link.source_id as string)
+  }, [item, node?.type])
+
+  const isLesson = node?.type === 'lesson'
+
   return (
     <div className="flex h-full flex-col rounded-xl border border-slate-200 bg-white/70 p-5 dark:border-slate-800 dark:bg-slate-900/60">
       <div className="flex items-start justify-between gap-2">
@@ -545,6 +560,32 @@ function NodePanel({
       </h3>
       {node && (
         <code className="mt-1 block break-all font-mono text-[11px] text-slate-500">{node.id}</code>
+      )}
+
+      {isLesson && (
+        <button
+          onClick={() => onOpenLesson(node.id)}
+          className="mt-4 w-full rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+        >
+          Открыть урок →
+        </button>
+      )}
+
+      {node?.type === 'concept' && relatedLessons.length > 0 && (
+        <div className="mt-4">
+          <div className="text-xs font-semibold text-slate-500">Уроки, где используется</div>
+          <div className="mt-1.5 flex flex-col gap-1.5">
+            {relatedLessons.map((lessonId) => (
+              <button
+                key={lessonId}
+                onClick={() => onOpenLesson(lessonId)}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60"
+              >
+                {lessonId} →
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="mt-4 flex-1 space-y-3 text-sm">

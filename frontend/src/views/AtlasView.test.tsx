@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AtlasView } from './AtlasView'
 import { buildRouteView, computeFit } from '../lib/atlasModel'
@@ -138,6 +139,18 @@ function stubFetch(atlas: AtlasData) {
   return fetchMock
 }
 
+/** Рендер AtlasView внутри Router (нужен useNavigate). */
+function renderAtlas() {
+  return render(
+    <MemoryRouter initialEntries={['/atlas']}>
+      <Routes>
+        <Route path="/atlas" element={<AtlasView />} />
+        <Route path="/focus/:lessonId" element={<div data-testid="focus-route">FOCUS_VIEW</div>} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
 describe('buildRouteView (режим «Маршрут»)', () => {
   it('оставляет только маршрут и непосредственных соседей', () => {
     const view = buildRouteView(makeAtlas())
@@ -216,7 +229,7 @@ describe('AtlasView', () => {
       () => new Promise<Response>((resolve) => (resolveAtlas = resolve)),
     ) as unknown as typeof fetch
     vi.stubGlobal('fetch', fetchMock)
-    render(<AtlasView />)
+    renderAtlas()
     expect(screen.getByText(/Загрузка Atlas/)).toBeInTheDocument()
     resolveAtlas!(new Response(JSON.stringify(makeAtlas()), { status: 200 }))
   })
@@ -226,7 +239,7 @@ describe('AtlasView', () => {
       Promise.reject(new Error('network down')),
     ) as unknown as typeof fetch
     vi.stubGlobal('fetch', fetchMock)
-    render(<AtlasView />)
+    renderAtlas()
     expect(await screen.findByText(/Atlas недоступен/)).toBeInTheDocument()
   })
 
@@ -234,13 +247,13 @@ describe('AtlasView', () => {
     const atlas = makeAtlas()
     atlas.nodes = []
     stubFetch(atlas)
-    render(<AtlasView />)
+    renderAtlas()
     expect(await screen.findByText(/Atlas пуст/)).toBeInTheDocument()
   })
 
   it('default mode is route: disconnected node is not rendered', async () => {
     stubFetch(makeAtlas())
-    render(<AtlasView />)
+    renderAtlas()
     await screen.findByRole('img', { name: /Атлас знаний/ })
     expect(screen.getByRole('button', { name: 'Decision Tree' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Orphan Concept' })).not.toBeInTheDocument()
@@ -251,7 +264,7 @@ describe('AtlasView', () => {
   it('switches to full atlas mode', async () => {
     const user = userEvent.setup()
     stubFetch(makeAtlas())
-    render(<AtlasView />)
+    renderAtlas()
     await screen.findByRole('img', { name: /Атлас знаний/ })
     await user.click(screen.getByRole('button', { name: 'Весь атлас' }))
     expect(screen.getByRole('button', { name: 'Весь атлас' })).toHaveAttribute(
@@ -265,7 +278,7 @@ describe('AtlasView', () => {
 
   it('renders nodes and edges from backend data in route mode', async () => {
     stubFetch(makeAtlas())
-    render(<AtlasView />)
+    renderAtlas()
     const graph = await screen.findByRole('img', { name: /Атлас знаний/ })
     expect(graph).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Decision Tree' })).toBeInTheDocument()
@@ -277,7 +290,7 @@ describe('AtlasView', () => {
 
   it('fit-to-content applies a readable scale in route mode', async () => {
     stubFetch(makeAtlas())
-    render(<AtlasView />)
+    renderAtlas()
     await screen.findByRole('img', { name: /Атлас знаний/ })
     const g = document.querySelector('svg g')
     const transform = g?.getAttribute('transform') ?? ''
@@ -289,7 +302,7 @@ describe('AtlasView', () => {
   it('reset view button re-fits the graph', async () => {
     const user = userEvent.setup()
     stubFetch(makeAtlas())
-    render(<AtlasView />)
+    renderAtlas()
     await screen.findByRole('img', { name: /Атлас знаний/ })
     const readScale = () => {
       const g = document.querySelector('svg g')
@@ -308,7 +321,7 @@ describe('AtlasView', () => {
   it('opens node info panel on click', async () => {
     const user = userEvent.setup()
     stubFetch(makeAtlas())
-    render(<AtlasView />)
+    renderAtlas()
     const node = await screen.findByRole('button', { name: 'Decision Tree' })
     await user.click(node)
     expect(await screen.findByText(/Decision Tree без магии/)).toBeInTheDocument()
@@ -319,7 +332,7 @@ describe('AtlasView', () => {
   it('closes node panel', async () => {
     const user = userEvent.setup()
     stubFetch(makeAtlas())
-    render(<AtlasView />)
+    renderAtlas()
     const node = await screen.findByRole('button', { name: 'Decision Tree' })
     await user.click(node)
     await screen.findByText(/Decision Tree без магии/)
@@ -327,5 +340,17 @@ describe('AtlasView', () => {
     await waitFor(() => {
       expect(screen.queryByText(/Decision Tree без магии/)).not.toBeInTheDocument()
     })
+  })
+
+  it('navigates from lesson node to /focus/:lessonId', async () => {
+    const user = userEvent.setup()
+    stubFetch(makeAtlas())
+    renderAtlas()
+    const node = await screen.findByRole('button', { name: 'Decision Tree' })
+    await user.click(node)
+    const openButton = await screen.findByRole('button', { name: /Открыть урок/ })
+    await user.click(openButton)
+    // заглушка /focus/:lessonId отрендерилась (переход произошёл)
+    expect(await screen.findByTestId('focus-route')).toBeInTheDocument()
   })
 })

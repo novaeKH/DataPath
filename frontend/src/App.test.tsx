@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
-import type { AtlasData, CourseSummary, SystemStatus } from './lib/api'
+import type { AtlasData, CourseDetail, CourseSummary, SystemStatus } from './lib/api'
 
 /**
  * Роутинг: маршруты /, /today, /atlas, /focus, /studio, /system.
@@ -31,6 +31,39 @@ const atlas: AtlasData = {
 
 const courses: CourseSummary[] = []
 
+const courseDetail: CourseDetail = {
+  id: 'course.classic-ml',
+  title: 'Классический ML',
+  slug: 'klassicheskij-ml',
+  area: 'ml',
+  difficulty: 'beginner-intermediate',
+  estimated_hours: 10,
+  accent: 'emerald',
+  icon: 'route',
+  modules: [
+    {
+      id: 'module.classic-ml.trees',
+      title: 'Деревья и ансамбли',
+      order: 3,
+      estimated_minutes: null,
+      lessons: [
+        {
+          id: 'lesson.classic-ml.trees.tree',
+          title: 'Decision Tree',
+          lesson_order: 1,
+          estimated_minutes: 45,
+          difficulty: 'core',
+          skills: ['ml.tree_ensembles'],
+          laboratory_ids: ['decision-tree-split-lab'],
+        },
+      ],
+    },
+  ],
+  cases: [],
+  first_lesson_id: 'lesson.classic-ml.trees.tree',
+  last_lesson_id: 'lesson.classic-ml.trees.tree',
+}
+
 function mockFetch() {
   return vi.fn((input: RequestInfo | URL) => {
     const url = String(input)
@@ -39,6 +72,9 @@ function mockFetch() {
     }
     if (url.includes('/api/atlas')) {
       return Promise.resolve(new Response(JSON.stringify(atlas), { status: 200 }))
+    }
+    if (url.includes('/api/content/courses/course.classic-ml')) {
+      return Promise.resolve(new Response(JSON.stringify(courseDetail), { status: 200 }))
     }
     if (url.includes('/api/content/courses')) {
       return Promise.resolve(new Response(JSON.stringify({ courses }), { status: 200 }))
@@ -78,9 +114,9 @@ describe('App routing', () => {
     expect(screen.getByRole('heading', { name: /Atlas знаний/i })).toBeInTheDocument()
   })
 
-  it('renders Focus at /focus', () => {
+  it('renders Focus at /focus', async () => {
     renderAt('/focus')
-    expect(screen.getByRole('heading', { name: /Focus/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Классический ML/ })).toBeInTheDocument()
   })
 
   it('renders Studio at /studio', () => {

@@ -83,8 +83,8 @@ SQLite), REST API, базовый Atlas, роутинг, темы light/dark. З
 - [x] `GET /api/content/courses` — список курсов с metadata
 - [x] `GET /api/content/items/{content_id}` — metadata материала + связи + issues
 - [x] `GET /api/atlas` (и `/api/content/atlas`) — узлы, рёбра, области, маршруты, prerequisites, детерминированная раскладка
-- [ ] `GET /api/content/courses/{id}` — курс с модулями и уроками (Фаза 3, нужен рендер уроков)
-- [ ] `GET /api/content/lessons/{id}` — урок со сценами и source-контентом (Фаза 3)
+- [x] `GET /api/content/courses/{id}` — курс с модулями и уроками (Фаза 3)
+- [x] `GET /api/content/lessons/{id}` — урок со сценами и лабораториями (Фаза 3)
 
 ### 2.2 Экран Today
 
@@ -100,8 +100,9 @@ SQLite), REST API, базовый Atlas, роутинг, темы light/dark. З
 - [x] Zoom/pan (детерминированная раскладка, позиции стабильны между перезагрузками)
 - [x] Клик по узлу → панель с информацией + детали с `/api/content/items/{id}`
 - [x] Состояния loading/empty/error
+- [x] Переход Atlas → Focus: кнопка «Открыть урок» для lesson-узлов,
+  связанные уроки для concept (Фаза 3); анимация «узел увеличивается» — полировка
 - [ ] Режимы: «Весь атлас», «Мой маршрут», «Слабые темы» — Фазы 4–7
-- [ ] Плавный переход Atlas → Focus (узел увеличивается) — Фаза 3
 
 ### 2.4 Визуальный стиль
 
@@ -117,39 +118,42 @@ SQLite), REST API, базовый Atlas, роутинг, темы light/dark. З
 
 ---
 
-## Фаза 3: Интерактивные уроки (~4–5 дней)
+## Фаза 3: Интерактивные уроки (~4–5 дней) — ✅ выполнено
 
-**Цель:** полноценный урок с интерактивными сценами.
+**Цель:** реализовать интерактивные уроки и лаборатории.
 
-### 3.1 Урок (Focus)
+### 3.1 Урок (Focus) — ✅
 
-- [ ] Загрузка сценария урока из `datapath` JSON
-- [ ] Сцена `hook` — текст + контекст
-- [ ] Сцена `content` — рендеринг Markdown (с формулами через KaTeX, код с подсветкой)
-- [ ] Сцена `retrieval` — поле ввода, отправка на AI-оценку
-- [ ] Сцена `interview` — вопрос + множественный выбор
-- [ ] Сцена `reflection` — итоги
-- [ ] Прогресс-бар урока
-- [ ] Анимации перехода между сценами
+- [x] Lesson API: `GET /api/content/lessons/{id}`, `GET /api/content/courses/{id}`
+- [x] Сцены урока: `markdown, formula, code, callout, checkpoint, interactive_lab`
+      (парсер `LessonContentService`; детали — `docs/lesson-system.md`)
+- [x] Focus: `/focus` (выбор урока) и `/focus/:lessonId` (урок со сценами)
+- [x] Рендер Markdown с формулами (KaTeX) и кодом; безопасный HTML (rehype-sanitize)
+- [x] Навигация по сценам (Назад/Далее) и по урокам (Пред./След.)
+- [x] Atlas → Focus: кнопка «Открыть урок», связанные уроки для concept
 
-### 3.2 Интерактивные лабы (3 из 5)
+Отложено (Фазы 4–6): сцены `retrieval/application/interview/reflection`,
+прогресс-бар урока с сохранением, анимации переходов.
 
-- [ ] `decision-tree-split-lab` — перетаскивание split point, визуализация Gini
-- [ ] `bootstrap-forest-lab` — слайдер количества деревьев, график train/val
-- [ ] `boosting-residuals-lab` — пошаговая визуализация исправления остатков
+### 3.2 Интерактивные лабы (реализовано 3) — ✅
 
-### 3.3 Контент: 5 полноценных уроков MVP-маршрута
+- [x] `decision-tree-split-lab` — разбиение пространства, Gini/Entropy, gain
+- [x] `tree-depth-overfitting-lab` — глубина/переобучение, train/val, boundary
+- [x] `ensemble-comparison-lab` — DT vs RF vs GB (+CatBoost), время, boundary
+- [x] API: `GET /api/labs/{id}`, `POST /api/labs/{id}/run`, Pydantic-валидация
 
-- [ ] Урок 07: Decision Tree (с лабом split-lab)
-- [ ] Урок 06 (повтор): Bias, variance и regularization (retrieval + interview)
-- [ ] Урок 08: Random Forest (с лабом bootstrap-forest-lab)
-- [ ] Урок 09: Gradient Boosting (с лабом boosting-residuals-lab)
-- [ ] Урок 10: CatBoost (retrieval + code micro-task)
+### 3.3 Контент: 5 уроков MVP-маршрута — ✅
+
+- [x] Урок 07: Decision Tree (с лабом split-lab)
+- [x] Урок 06 (повтор): Bias, variance и regularization (с лабом overfitting)
+- [x] Урок 08: Random Forest (с лабом ensemble-comparison)
+- [x] Урок 09: Gradient Boosting (с лабом ensemble-comparison)
+- [x] Урок 10: CatBoost (теория; в сравнении участвует при наличии CPU-пакета)
 
 **Результат фазы 3:**
-- Можно пройти 5 уроков с интерактивными сценами
-- Лабы реагируют на действия пользователя
-- AI оценивает free-recall
+- Можно пройти 5 уроков MVP-маршрута со сценами и 3 интерактивными лабораториями
+- Лабы реагируют на изменение параметров (детерминированные расчёты backend)
+- Оценка free-recall и сохранение прогресса — Фаза 4+ (не реализовано)
 
 ---
 

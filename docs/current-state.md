@@ -1,12 +1,13 @@
 # DataPath — текущее состояние (передача контекста)
 
-> **Stable baseline:** `phase-2-complete`
+> **Stable baseline:** `phase-3-complete`
 > Актуальный commit можно получить командой `git rev-parse HEAD`.
 
 ## Фаза и результат
 
-- Фаза 2 выполнена и принята. Контентный каталог, навигация и базовый Atlas работают.
-- Пайплайн: `content/vault → Python parser → валидация → SQLite → REST API → SVG Atlas`.
+- Фаза 3 выполнена и принята: интерактивные уроки, сцены, Focus,
+  3 интерактивные лаборатории, переход Atlas → Focus.
+- Пайплайн: `content/vault → Python parser → валидация → SQLite → REST API → Atlas/Focus`.
 
 ## Фактически реализованный стек
 
@@ -32,6 +33,8 @@
 - `content_validator.py` — ContentValidator, FileIndex (ошибки/предупреждения, циклы, slug).
 - `content_sync.py` — ContentSyncService (идемпотентный sync vault → SQLite, отчёт).
 - `content_catalog.py` — ContentCatalogService (чтение каталога для API).
+- `lesson_content.py` — LessonContentService (сцены урока, безопасное чтение vault).
+- `labs/` — LabRegistry и 3 лаборатории (decision-tree-split, tree-overfitting, ensemble-comparison).
 - `atlas.py` — AtlasBuilder + детерминированная раскладка.
 - CLI: `python -m app.cli.content {sync|validate|status}`.
 
@@ -39,7 +42,10 @@ API (все под `/api`, абсолютных путей в ответах н�
 - `GET /api/health`, `GET /api/system/status`
 - `GET /api/content/status` — счётчики каталога
 - `GET /api/content/courses` — опубликованные курсы
+- `GET /api/content/courses/{id}` — курс с модулями, уроками, кейсами (Фаза 3)
+- `GET /api/content/lessons/{id}` — урок со сценами и лабораториями (Фаза 3)
 - `GET /api/content/items/{content_id}` — metadata материала + связи + issues
+- `GET /api/labs/{lab_id}` и `POST /api/labs/{lab_id}/run` — лаборатории (Фаза 3)
 - `GET /api/atlas` и `GET /api/content/atlas` — nodes, edges, areas, routes, prerequisites, layout
 
 ## Контентный каталог (SQLite, миграция `a1b2c3d4e5f6`)
@@ -64,14 +70,31 @@ API (все под `/api`, абсолютных путей в ответах н�
 
 ## Frontend и Atlas
 
-- Маршруты: `/`, `/today`, `/atlas`, `/focus`, `/studio`, `/system`. Темы light/dark.
-- Экран Today/Focus/Studio — заглушки (реализация — следующие фазы).
-- Atlas (SVG): **100 узлов, 304 связи**, 8 областей, детерминированная раскладка.
-- Режим **«Маршрут»** — по умолчанию: только MVP-маршрут и непосредственно связанные
-  материалы, подписи читаемы без zoom.
-- Режим **«Весь атлас»** — для обзора и zoom; подписи появляются при приближении.
-- fit-to-content при открытии и по кнопке «Сбросить вид»; выбор узла не сбрасывает zoom/pan;
-  информационная панель узла справа.
+- Маршруты: `/`, `/today`, `/atlas`, `/focus`, `/focus/:lessonId`, `/studio`, `/system`. Темы light/dark.
+- **Focus** реализован (Фаза 3): уроки со сценами и лабораториями.
+- **Today/Studio** — заглушки (реализация — Фазы 4+).
+- Atlas (SVG): **100 узлов, 304 связи**, 8 областей, детерминированная раскладка,
+  режимы «Маршрут»/«Весь атлас», fit-to-content, информационная панель узла.
+
+## Фаза 3: интерактивные уроки и лаборатории
+
+Реализовано:
+
+- Lesson pipeline: `GET /api/content/courses/{id}`, `GET /api/content/lessons/{id}`.
+- Сцены: `markdown, formula, code, callout, checkpoint, interactive_lab`
+  (парсер — `LessonContentService`; полная модель — `docs/lesson-system.md`).
+- Focus: маршруты `/focus` и `/focus/:lessonId`, рендер Markdown
+  (react-markdown + KaTeX + sanitize), навигация по сценам и урокам.
+- Интерактивные лаборатории: `decision-tree-split-lab`,
+  `tree-depth-overfitting-lab`, `ensemble-comparison-lab`
+  (API: `GET /api/labs/{id}`, `POST /api/labs/{id}/run`; scikit-learn + CatBoost).
+- Atlas → Focus: кнопка «Открыть урок» для lesson, связанные уроки для concept.
+
+Показатели:
+
+- backend: **75 тестов** (pytest) — course/lesson API, сцены, безопасность, лабы;
+- frontend: **40 тестов** (Vitest) — Focus, сцены, навигация, лаборатории, Atlas→Focus;
+- лабораторий: **3**; уроков в курсе: 13 (MVP-маршрут: 07→06→08→09→10).
 
 ## Технический долг и что не реализовано
 
@@ -80,40 +103,26 @@ API (все под `/api`, абсолютных путей в ответах н�
 - `/api/atlas` и `/api/content/atlas` — два пути к одному обработчику (требование + старые доки).
 - Нет кастомной глобальной обработки ошибок FastAPI.
 - В vault нет поля `prerequisites` (VAULT_SPEC): порядок задаётся структурой уроков.
+- Frontend bundle ~800 kB (KaTeX + markdown-пайплайн) — код-сплит в Фазе 7.
 
-Ещё не реализовано (Фазы 3–6):
-- Модель знаний, прогресс (все узлы Atlas — `not_started`), повторение, RAG.
-- Интерактивные уроки и сцены, Today с планом, режимы Atlas «Мой маршрут»/«Слабые темы».
+Ещё не реализовано (Фазы 4–6):
+- Модель знаний, пользовательский прогресс (все узлы Atlas — `not_started`),
+  skill assessment, spaced repetition, AI-наставник, RAG.
+- Today с планом, режимы Atlas «Мой маршрут»/«Слабые темы».
+- Сцены retrieval/application/interview/reflection (AI-оценка, прогресс).
 
-## Цель Фазы 3
+## Следующая фаза (4)
 
-Интерактивные уроки: сценарий урока из `datapath`-JSON, сцены hook/content/interactive/
-retrieval/reflection, рендер Markdown, первые интерактивные лабы, переход Atlas → Focus.
+Модель знаний и прогресс: сохранение результатов пользователя, обновление
+состояния узлов Atlas, мини-кейсы. Подробнее — `docs/roadmap.md`.
 
-## Файлы, относящиеся к Фазе 3
-
-- `frontend/src/views/FocusView.tsx` — экран урока (заглушка).
-- `frontend/src/components/lesson/`, `interactive/` — папки для сцен и лабов.
-- `backend/app/api/content.py` — добавить `GET /api/content/lessons/{id}` и сценарий урока.
-- `backend/app/services/` — разбор `datapath`-блоков и source-контента.
-- `docs/roadmap.md` — раздел «Фаза 3».
-
-## Команды запуска и проверок
+## Команды
 
 ```bash
-# Backend (порт 8000)
 cd backend && PYTHONPATH= uv run python -m alembic upgrade head
-PYTHONPATH= uv run python -m app.cli.content sync        # vault → SQLite
+PYTHONPATH= uv run python -m app.cli.content sync
 PYTHONPATH= uv run python -m uvicorn app.main:app --reload
-
-# Frontend (порт 5173)
 cd frontend && npm install && npm run dev
-
-# Makefile
-make dev-backend | dev-frontend | sync-content | validate-content
-make test | lint | build | check
-
-# Docker
-docker compose build && docker compose up -d
-docker compose exec backend uv run python -m app.cli.content sync
+# Makefile: dev-backend | dev-frontend | sync-content | test | lint | build | check
+# Docker: docker compose build && docker compose up -d
 ```

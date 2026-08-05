@@ -13,11 +13,11 @@ def test_api_content_status(make_client, sync_service: ContentSyncService) -> No
     response = client.get("/api/content/status")
     assert response.status_code == 200
     data = response.json()
-    assert data["vault_files"] >= 8
-    assert data["total_catalogued"] == 7
-    assert data["published"] == 5  # course + module + 2 lessons + case
+    assert data["vault_files"] >= 12
+    assert data["total_catalogued"] == 11
+    assert data["published"] == 9  # course + 2 modules + 4 lessons + 2 cases
     assert data["by_type"]["concept"] == 2
-    assert data["by_type"]["lesson"] == 2
+    assert data["by_type"]["lesson"] == 4
     assert data["last_sync_at"] is not None
     assert data["errors"] == 0
 
@@ -31,9 +31,9 @@ def test_api_content_courses(make_client, sync_service: ContentSyncService) -> N
     assert len(courses) == 1
     course = courses[0]
     assert course["id"] == "course.classic-ml"
-    assert course["module_count"] == 1
-    assert course["lesson_count"] == 2
-    assert course["practice_count"] == 1
+    assert course["module_count"] == 2
+    assert course["lesson_count"] == 4
+    assert course["practice_count"] == 2
 
 
 def test_api_content_item(make_client, sync_service: ContentSyncService) -> None:
@@ -66,17 +66,21 @@ def test_api_atlas_structure(make_client, sync_service: ContentSyncService) -> N
     response = client.get("/api/atlas")
     assert response.status_code == 200
     data = response.json()
-    assert len(data["nodes"]) >= 7
+    assert len(data["nodes"]) >= 11
     assert len(data["edges"]) > 0
     assert data["layout"]["mode"] == "deterministic"
     assert data["node_types"] == ["concept", "course", "lesson", "module", "practice"]
     assert "ml" in data["areas"]
     # маршрут курса
     route = data["routes"]["course.classic-ml"]
-    assert route["modules"] == ["module.classic-ml.one"]
+    assert route["modules"] == ["module.classic-ml.one", "module.classic-ml.two"]
     assert route["lessons"]["module.classic-ml.one"] == [
         "lesson.classic-ml.one.one",
         "lesson.classic-ml.one.two",
+    ]
+    assert route["lessons"]["module.classic-ml.two"] == [
+        "lesson.classic-ml.two.one",
+        "lesson.classic-ml.two.two",
     ]
     # узлы имеют координаты и backend-статус
     for node in data["nodes"]:

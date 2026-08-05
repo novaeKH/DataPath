@@ -136,7 +136,7 @@ CatBoost (урок 10)
 
 ## Интерактивные компоненты урока
 
-Каждый урок определяет сцены через fenced-блок `datapath`:
+Каждый урок определяет сцены через fenced-блок `datapath` (план):
 
 ```json
 {
@@ -156,25 +156,28 @@ CatBoost (урок 10)
 }
 ```
 
-**Типы сцен:**
+**Реализованная модель сцен (Фаза 3)** — фактическое состояние, отличается от
+плановых `datapath`-типов (см. `docs/lesson-system.md`):
 
-| Тип | Описание | Данные |
-|---|---|---|
-| `hook` | Введение, мотивация | title |
-| `content` | Канонический контент из source-заметки | source_heading |
-| `interactive` | Интерактивный лабораторный компонент | component (ID лаба) |
-| `retrieval` | Свободное воспроизведение (free-recall) | mode, prompt |
-| `application` | Микро-задача на применение | mode |
-| `interview` | Вопрос в стиле собеседования | mode |
-| `reflection` | Итог, обновление evidence | action |
+- `markdown`, `formula`, `code`, `callout`, `checkpoint`, `interactive_lab`.
+- Сцены строит backend (`LessonContentService`): hook из datapath/summary-callout,
+  контент — секции source-заметки по `content_path`, лабы — из registry,
+  checkpoint — из раздела «Проверка понимания».
+- Если `source_heading` из datapath не существует в source-заметке (в текущем
+  vault уроки ссылаются на `"Коротко"`/`"Интуиция"`, которых нет) — берутся все
+  секции заметки по порядку.
+- `retrieval/application/interview/reflection` — не реализованы (Фазы 4–6).
 
-**Интерактивные лабы MVP:**
+**Интерактивные лабы (реализовано — 3):**
 
-1. `decision-tree-split-lab` — визуализация разделения пространства
-2. `bootstrap-forest-lab` — влияние bootstrap и количества деревьев
-3. `boosting-residuals-lab` — последовательное исправление ошибок
-4. `threshold-cost-explorer` — выбор порога по цене ошибок
-5. `regularization-path` — эффект регуляризации
+1. `decision-tree-split-lab` — разбиение пространства, impurity/gain
+2. `tree-depth-overfitting-lab` — глубина дерева и переобучение (train/val)
+3. `ensemble-comparison-lab` — Decision Tree vs Random Forest vs Gradient Boosting
+   (+ CatBoost при наличии CPU-пакета)
+
+Плановые `bootstrap-forest-lab`, `boosting-residuals-lab`, `threshold-cost-explorer`,
+`regularization-path`, `categorical-encoding-lab` — не реализованы в Фазе 3;
+их ID остаются в frontmatter уроков как метаданные.
 
 ## Связь тем с упражнениями и кейсами
 

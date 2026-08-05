@@ -38,8 +38,8 @@ def test_valid_fixture_vault_has_no_errors(tmp_path: Path) -> None:
     vault = make_vault(tmp_path)
     result = _validate(vault)
     assert result.errors == 0
-    # 6 каталогизируемых: course, module, 2 lessons, case, 2 concepts = 7
-    assert len(result.candidates) == 7
+    # 11 каталогизируемых: course, 2 modules, 4 lessons, 2 cases, 2 concepts
+    assert len(result.candidates) == 11
     # no-frontmatter.md — предупреждение, moc/meta/router — исключены молча
     assert "no_frontmatter" in _codes(result, "warning")
 
@@ -240,7 +240,7 @@ def test_link_edges_created(tmp_path: Path) -> None:
     result = _validate(vault)
     lesson_one = next(c for c in result.candidates if c.item_id == "lesson.classic-ml.one.one")
     edge_targets = {e[1] for e in lesson_one.edges if e[2] == "link"}
-    assert "concept.ml.a" in edge_targets
-    assert "concept.ml.b" in edge_targets
+    # wiki-ссылка тела урока → Concept B; Concept A подключается через content_path
+    assert edge_targets == {"concept.ml.b"}
     applied = [e for e in lesson_one.edges if e[2] == "applied_in"]
     assert ("lesson.classic-ml.one.one", "concept.ml.a", "applied_in", "content_path") in applied

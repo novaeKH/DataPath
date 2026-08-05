@@ -11,6 +11,7 @@ const ROUTES = [
   { path: '/today', element: <TodayView /> },
   { path: '/atlas', element: <AtlasView /> },
   { path: '/focus', element: <FocusView /> },
+  { path: '/focus/:lessonId', element: <FocusView /> },
   { path: '/studio', element: <StudioView /> },
   { path: '/system', element: <SystemStatusView /> },
 ]

@@ -3,7 +3,7 @@
 Локальная платформа для структурированного изучения Data Science: интерактивные
 уроки, атлас знаний, интервальное повторение и AI-наставник на базе RAG.
 
-**Статус: Фаза 2 — контентный каталог, навигация и базовый Atlas.**
+**Статус: Фаза 3 — интерактивные уроки, сцены и лаборатории.**
 
 > Решения по архитектуре и стеку зафиксированы в [`docs/decisions.md`](docs/decisions.md)
 > и [`docs/architecture.md`](docs/architecture.md). Правила работы агента — в [`.hermes.md`](.hermes.md).
@@ -33,7 +33,7 @@ ds-learning-rag/
 │   │   ├── db/           #   engine/session, Base, модели каталога
 │   │   ├── services/     #   parser, validator, sync, catalog, atlas
 │   │   └── main.py       #   FastAPI entry point
-│   ├── tests/            # pytest (55 тестов)
+│   ├── tests/            # pytest (75 тестов)
 │   ├── alembic/          # Миграции (content catalog — Фаза 2)
 │   └── pyproject.toml    # Зависимости и инструменты (uv)
 ├── frontend/             # React 18 + TypeScript + Vite + Tailwind v4 + React Router
@@ -100,11 +100,25 @@ PYTHONPATH= uv run python -m app.cli.content status    # состояние ка
 | `GET /api/system/status` | Технический статус backend/SQLite/vault |
 | `GET /api/content/status` | Счётчики каталога: файлы vault, published, по типам, ошибки/предупреждения, время синка |
 | `GET /api/content/courses` | Опубликованные курсы с metadata и количеством модулей/уроков/кейсов |
+| `GET /api/content/courses/{id}` | Курс: модули по порядку, уроки, кейсы, первый/последний урок (Фаза 3) |
+| `GET /api/content/lessons/{id}` | Урок: metadata, сцены, prev/next, лаборатории, материалы (Фаза 3) |
 | `GET /api/content/items/{content_id}` | Metadata одного материала + связи + issues |
+| `GET /api/labs/{lab_id}` | Метаданные лаборатории: параметры, диапазоны, дефолты, initial result (Фаза 3) |
+| `POST /api/labs/{lab_id}/run` | Расчёт лаборатории по валидированным параметрам (Фаза 3) |
 | `GET /api/atlas` (и `GET /api/content/atlas`) | Готовые данные Atlas: nodes, edges, areas, routes, prerequisites, детерминированная раскладка |
 
 Ответы не содержат абсолютных путей файловой системы. Полный Markdown-текст
 через Atlas endpoint не отдаётся.
+
+## Уроки и лаборатории (Фаза 3)
+
+- Модель сцен: `markdown, formula, code, callout, checkpoint, interactive_lab`;
+  парсер — `LessonContentService` (детали — [`docs/lesson-system.md`](docs/lesson-system.md)).
+- Frontend: `/focus` (выбор урока) и `/focus/:lessonId` (урок со сценами),
+  безопасный рендер Markdown (react-markdown + KaTeX + sanitize).
+- Лаборатории: `decision-tree-split-lab`, `tree-depth-overfitting-lab`,
+  `ensemble-comparison-lab` (scikit-learn; CatBoost — при наличии CPU-пакета).
+- Atlas → Focus: кнопка «Открыть урок» для lesson-узлов, связанные уроки для concept.
 
 ## Локальный запуск
 
@@ -187,7 +201,7 @@ Compose запускает **только** backend и frontend. Ollama, ChromaD
 cd backend
 uv run ruff format .          # форматирование
 uv run ruff check .           # линт (Ruff)
-uv run pytest                 # тесты (55 шт.)
+uv run pytest                 # тесты (75 шт.)
 ```
 
 ### Frontend
@@ -197,7 +211,7 @@ cd frontend
 npm run lint                  # ESLint
 npx tsc -b                    # TypeScript check
 npm run format:check          # Prettier check
-npm run test                  # Vitest (14 шт.)
+npm run test                  # Vitest (40 шт.)
 npm run build                 # production build (tsc -b && vite build)
 ```
 
@@ -213,12 +227,14 @@ npm run build                 # production build (tsc -b && vite build)
 (курс + 5 модулей + 13 уроков + 7 кейсов). Atlas содержит 100 узлов,
 296 связей и 8 областей знаний.
 
-## Текущие ограничения (Фаза 2)
+## Текущие ограничения (Фаза 3)
 
 - **RAG не реализован**: нет embeddings, ChromaDB, Ollama, чанкинга, retrieval.
 - **Прогресс пользователя не реализован**: все узлы Atlas имеют backend-статус
   `not_started`; состояния тем вычисляются только на backend (Фаза 4).
-- **Focus/Studio/Today** — заглушки; сценарии уроков и кейсов — Фаза 3+.
+- **Studio/Today** — заглушки; кейсы и план дня — Фаза 4+.
+- **Сцены retrieval/application/interview/reflection** из `datapath`-сценариев
+  не реализованы (нужны AI-оценка и прогресс — Фазы 4–6).
 - **Prerequisites** в vault не заданы полем frontmatter (VAULT_SPEC):
   явное поле поддерживается и валидируется, для уроков порядок внутри модуля
   даёт неявные рёбра `prerequisite` (детали — в docs/content-system.md).

@@ -10,13 +10,19 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from app.api.content import get_catalog_service
+from app.api.content import get_catalog_service, get_lesson_service
+from app.api.labs import get_lab_registry
 from app.api.system import get_system_service
 from app.core.config import Settings
 from app.db.base import Base
 from app.main import create_app
 from app.services.content_catalog import ContentCatalogService
 from app.services.content_sync import ContentSyncService
+from app.services.labs.decision_tree_split import DecisionTreeSplitLab
+from app.services.labs.ensemble_comparison import EnsembleComparisonLab
+from app.services.labs.registry import LabRegistry
+from app.services.labs.tree_overfitting import TreeOverfittingLab
+from app.services.lesson_content import LessonContentService
 from app.services.system import SystemStatusService
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -77,10 +83,37 @@ def catalog_service(tmp_path, fixture_vault: Path, db_session_factory) -> Conten
 
 
 @pytest.fixture
+def lab_registry() -> LabRegistry:
+    """Registry лабораторий, привязанный к fixture-урокам."""
+    return LabRegistry(
+        [
+            DecisionTreeSplitLab(lesson_ids=["lesson.classic-ml.one.one"]),
+            TreeOverfittingLab(lesson_ids=["lesson.classic-ml.one.one"]),
+            EnsembleComparisonLab(lesson_ids=["lesson.classic-ml.one.two"]),
+        ]
+    )
+
+
+@pytest.fixture
+def lesson_service(
+    tmp_path, fixture_vault: Path, db_session_factory, lab_registry: LabRegistry
+) -> LessonContentService:
+    settings = Settings(
+        environment="test",
+        database_url=f"sqlite:///{tmp_path / 'test.db'}",
+        vault_path=str(fixture_vault),
+    )
+    return LessonContentService(
+        settings=settings, session_factory=db_session_factory, registry=lab_registry
+    )
+
+
+@pytest.fixture
 def make_client(
     tmp_path,
     fixture_vault: Path,
     db_session_factory,
+    lab_registry: LabRegistry,
 ) -> Callable[[], TestClient]:
     """Фабрика TestClient с подменёнными сервисами на временной БД."""
 
@@ -97,6 +130,10 @@ def make_client(
         app.dependency_overrides[get_catalog_service] = lambda: ContentCatalogService(
             settings=settings, session_factory=db_session_factory
         )
+        app.dependency_overrides[get_lesson_service] = lambda: LessonContentService(
+            settings=settings, session_factory=db_session_factory, registry=lab_registry
+        )
+        app.dependency_overrides[get_lab_registry] = lambda: lab_registry
         return TestClient(app)
 
     return _make

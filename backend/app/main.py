@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import content, health, system
+from app.api import content, health, labs, system
 from app.core.config import Settings, get_settings
 from app.core.logging import setup_logging
 from app.db.session import ensure_database_ready
@@ -51,6 +51,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(system.router, prefix="/api")
     app.include_router(content.router, prefix="/api")
     app.include_router(content.atlas_router, prefix="/api")
+    app.include_router(labs.router, prefix="/api")
     return app
 
 

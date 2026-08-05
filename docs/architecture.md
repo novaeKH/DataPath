@@ -305,7 +305,8 @@ ds-learning-rag/
 │   │   ├── api/
 │   │   │   ├── health.py      # /health
 │   │   │   ├── system.py      # /system/status
-│   │   │   └── content.py     # /content/status, /courses, /items/{id}, /atlas (Фаза 2)
+│   │   │   ├── content.py     # /content/status, /courses, /courses/{id}, /lessons/{id}, /items/{id}, /atlas
+│   │   │   ├── labs.py        # /labs/{id}, /labs/{id}/run (Фаза 3)
 │   │   │   # progress.py, review.py — Фазы 4–5; ai.py (SSE) — Фаза 6
 │   │   ├── cli/
 │   │   │   └── content.py     # python -m app.cli.content {sync|validate|status} (Фаза 2)
@@ -316,6 +317,8 @@ ds-learning-rag/
 │   │   │   ├── content_sync.py      # ContentSyncService (Фаза 2)
 │   │   │   ├── content_catalog.py   # ContentCatalogService — чтение каталога (Фаза 2)
 │   │   │   ├── atlas.py             # AtlasBuilder + детерминированная раскладка (Фаза 2)
+│   │   │   ├── lesson_content.py    # LessonContentService — сцены урока (Фаза 3)
+│   │   │   └── labs/                # LabRegistry + 3 лаборатории (Фаза 3)
 │   │   │   # progress.py, review.py — Фазы 4–5; rag.py — Фаза 6
 │   │   ├── db/
 │   │   │   ├── session.py     # engine + session management
@@ -329,6 +332,7 @@ ds-learning-rag/
 │       ├── conftest.py
 │       ├── fixture_vault.py   # сборка временного vault для тестов
 │       ├── test_parser.py / test_validator.py / test_sync.py / test_api.py
+│       ├── test_lesson_api.py / test_labs.py          # Фаза 3
 │       ├── test_health.py
 │       ├── test_system_status.py
 │       └── test_config.py
@@ -347,15 +351,15 @@ ds-learning-rag/
 │   │   ├── views/
 │   │   │   ├── SystemStatusView.tsx  # техническая страница статуса (Фаза 1)
 │   │   │   ├── Today.tsx             # Экран «Сегодня» (заглушка, Фаза 2)
-│   │   │   ├── Atlas.tsx             # Атлас знаний (заглушка, Фаза 2)
-│   │   │   ├── Focus.tsx             # Уроки и повторение (заглушка, Фаза 2)
+│   │   │   ├── Atlas.tsx             # Атлас знаний (Фаза 2)
+│   │   │   ├── Focus.tsx             # Уроки: /focus, /focus/:lessonId (Фаза 3)
 │   │   │   ├── Studio.tsx            # Кейсы и проекты (заглушка, Фаза 2)
 │   │   │   └── PlaceholderView.tsx   # общий placeholder
 │   │   ├── components/
 │   │   │   ├── Sidebar.tsx     # боковая панель навигации
 │   │   │   ├── atlas/          # Компоненты атласа (Фаза 2)
-│   │   │   ├── lesson/         # Сцены урока (Фаза 2)
-│   │   │   ├── interactive/    # Интерактивные лабы (Фаза 2)
+│   │   │   ├── lesson/         # Сцены урока: MarkdownContent, SceneView, LessonOutline (Фаза 3)
+│   │   │   ├── interactive/    # Лабы: LabHost, LabFrame, SVG-графики (Фаза 3)
 │   │   │   ├── ai/             # AI-наставник (чат, SSE; Фаза 6)
 │   │   │   └── ui/             # Общие UI-компоненты
 │   │   ├── hooks/              # (Фаза 2)
@@ -389,24 +393,29 @@ ds-learning-rag/
    d. Рендерит экран «Сегодня»
 ```
 
-### Интерактивный урок
+### Интерактивный урок (Фаза 3 — реализовано)
 
+```text
+1. Пользователь выбирает урок в Atlas → кнопка «Открыть урок» → /focus/{lessonId}
+2. GET /api/content/lessons/{id} → урок: metadata, сцены, prev/next, лаборатории
+3. Сцены рендерятся во frontend:
+   - markdown/formula/code/callout — безопасный Markdown (react-markdown + KaTeX + sanitize)
+   - checkpoint — самопроверка (локально, без сохранения)
+   - interactive_lab — LabHost → GET /api/labs/{lab_id} (metadata + initial result)
+4. Пользователь меняет параметры → POST /api/labs/{lab_id}/run → результат и объяснение
+5. Навигация: сцены (Назад/Далее) и уроки (Пред./След. по порядку курса)
 ```
-1. Пользователь выбирает урок в Atlas → переход в Focus
-2. GET /api/content/lessons/{id} → сценарий урока (сцены)
-3. GET /api/content/source/{path} → канонический контент для сцен
-4. Сцена interactive:
-   a. POST /api/interactive/{component-id}/state → начальное состояние
-   b. Пользователь взаимодействует → фронт обновляет локально
-   c. POST /api/progress/evidence → сохраняет результат сцены
-5. Сцена retrieval (free-recall):
+
+Сцены `retrieval/application/interview/reflection` (AI-оценка и прогресс)
+отложены на Фазы 4–6. Схема сцен — [`docs/lesson-system.md`](lesson-system.md).
+
+```text
+# Фаза 4+ (целевой поток, не реализовано)
+1. Сцена retrieval (free-recall):
    a. Пользователь пишет объяснение
-   b. POST /api/ai/assess → AI оценивает:
-      - понял ли пользователь суть
-      - какие аспекты пропущены
-      - какую типичную ошибку воспроизвёл
+   b. POST /api/ai/assess → AI оценивает
    c. PATCH /api/progress/skills/{skill_id} → обновление оценки
-6. Финальная сцена reflection:
+2. Финальная сцена reflection:
    a. Обновление skill_assessment по всем evidence сцены
    b. Добавление в review_queue
    c. Обновление состояния узла в Atlas (заполнение, цвет кольца)

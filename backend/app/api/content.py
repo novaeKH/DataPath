@@ -1,7 +1,12 @@
-"""Content API: GET /api/content/status, /courses, /items/{id}, /api/atlas.
+"""Content API: GET /api/content/status, /courses, /courses/{id}, /items/{id},
+/lessons/{id}, /api/atlas.
 
 Ответы содержат только относительные пути vault и готовые данные для UI.
 Абсолютные пути файловой системы не возвращаются.
+
+Фаза 3 добавляет:
+- GET /api/content/courses/{course_id} — курс с модулями, уроками и кейсами;
+- GET /api/content/lessons/{lesson_id} — урок с нормализованными сценами.
 """
 
 from __future__ import annotations
@@ -12,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.services.content_catalog import ContentCatalogService
+from app.services.lesson_content import LessonContentService
 
 router = APIRouter(prefix="/content", tags=["content"])
 
@@ -129,7 +135,12 @@ def get_catalog_service() -> ContentCatalogService:
     return ContentCatalogService()
 
 
+def get_lesson_service() -> LessonContentService:
+    return LessonContentService()
+
+
 CatalogDep = Annotated[ContentCatalogService, Depends(get_catalog_service)]
+LessonDep = Annotated[LessonContentService, Depends(get_lesson_service)]
 
 
 @router.get("/status", response_model=ContentStatusResponse)
@@ -148,6 +159,120 @@ def content_item(content_id: str, service: CatalogDep) -> ContentItemResponse:
     if data is None:
         raise HTTPException(status_code=404, detail=f"Content item {content_id!r} не найден")
     return ContentItemResponse(**data)
+
+
+# --- Фаза 3: курс и урок со сценами ---
+
+
+class LessonRef(BaseModel):
+    id: str
+    title: str
+    lesson_order: int | None = None
+    estimated_minutes: int | None = None
+    difficulty: str | None = None
+    skills: list[str] = Field(default_factory=list)
+    laboratory_ids: list[str] = Field(default_factory=list)
+
+
+class CourseModule(BaseModel):
+    id: str
+    title: str
+    order: int | None = None
+    estimated_minutes: int | None = None
+    lessons: list[LessonRef] = Field(default_factory=list)
+
+
+class CourseCaseRef(BaseModel):
+    id: str
+    title: str
+    practice_kind: str | None = None
+    estimated_minutes: int | None = None
+    difficulty: str | None = None
+
+
+class CourseDetailResponse(BaseModel):
+    id: str
+    title: str
+    slug: str
+    area: str | None = None
+    difficulty: str | None = None
+    estimated_hours: float | None = None
+    accent: str | None = None
+    icon: str | None = None
+    modules: list[CourseModule] = Field(default_factory=list)
+    cases: list[CourseCaseRef] = Field(default_factory=list)
+    first_lesson_id: str | None = None
+    last_lesson_id: str | None = None
+
+
+class LessonScene(BaseModel):
+    id: str
+    type: str
+    title: str | None = None
+    markdown: str | None = None
+    formula: str | None = None
+    explanation: str | None = None
+    language: str | None = None
+    code: str | None = None
+    caption: str | None = None
+    callout_type: str | None = None
+    question: str | None = None
+    lab_id: str | None = None
+    lab_title: str | None = None
+
+
+class LessonMaterialRef(BaseModel):
+    id: str
+    title: str
+    type: str
+    path: str
+
+
+class ModuleRef(BaseModel):
+    id: str
+    title: str
+    order: int | None = None
+
+
+class CourseRef(BaseModel):
+    id: str
+    title: str
+
+
+class LessonDetailResponse(BaseModel):
+    id: str
+    title: str
+    slug: str
+    module: ModuleRef | None = None
+    course: CourseRef | None = None
+    estimated_minutes: int | None = None
+    difficulty: str | None = None
+    skills: list[str] = Field(default_factory=list)
+    previous_lesson_id: str | None = None
+    next_lesson_id: str | None = None
+    scenes: list[LessonScene] = Field(default_factory=list)
+    laboratory_ids: list[str] = Field(default_factory=list)
+    materials: list[LessonMaterialRef] = Field(default_factory=list)
+
+
+@router.get("/courses/{course_id}", response_model=CourseDetailResponse)
+def content_course_detail(course_id: str, service: LessonDep) -> CourseDetailResponse:
+    data = service.course_detail(course_id)
+    if data is None:
+        raise HTTPException(
+            status_code=404, detail=f"Курс {course_id!r} не найден или не опубликован"
+        )
+    return CourseDetailResponse(**data)
+
+
+@router.get("/lessons/{lesson_id}", response_model=LessonDetailResponse)
+def content_lesson_detail(lesson_id: str, service: LessonDep) -> LessonDetailResponse:
+    data = service.lesson(lesson_id)
+    if data is None:
+        raise HTTPException(
+            status_code=404, detail=f"Урок {lesson_id!r} не найден или не опубликован"
+        )
+    return LessonDetailResponse(**data)
 
 
 @router.get("/atlas", response_model=AtlasResponse)

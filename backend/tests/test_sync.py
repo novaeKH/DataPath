@@ -23,11 +23,11 @@ def _counts(sync_service) -> dict[str, int]:
 
 def test_sync_creates_catalog(tmp_path: Path, sync_service: ContentSyncService) -> None:
     report = sync_service.sync()
-    assert report.scanned >= 8
-    assert report.created == 7
+    assert report.scanned >= 12
+    assert report.created == 11
     assert report.errors == 0
     counts = _counts(sync_service)
-    assert counts["items"] == 7
+    assert counts["items"] == 11
     assert counts["links"] > 0
     assert counts["runs"] == 1
 
@@ -39,7 +39,7 @@ def test_sync_is_idempotent(tmp_path: Path, sync_service: ContentSyncService) ->
     assert second.updated == 0
     assert second.unchanged == first.created
     assert second.removed == 0
-    assert _counts(sync_service)["items"] == 7
+    assert _counts(sync_service)["items"] == 11
     # второй запуск не плодит рёбра и issues
     counts = _counts(sync_service)
     assert counts["runs"] == 2
@@ -62,8 +62,8 @@ def test_sync_adds_new_file(tmp_path: Path, sync_service: ContentSyncService) ->
     )
     report = sync_service.sync()
     assert report.created == 1
-    assert report.unchanged == 7
-    assert _counts(sync_service)["items"] == 8
+    assert report.unchanged == 11
+    assert _counts(sync_service)["items"] == 12
 
 
 def test_sync_updates_modified_file(tmp_path: Path, sync_service: ContentSyncService) -> None:
@@ -73,7 +73,7 @@ def test_sync_updates_modified_file(tmp_path: Path, sync_service: ContentSyncSer
     path.write_text(original + "\nДополнение.\n", encoding="utf-8")
     report = sync_service.sync()
     assert report.updated == 1
-    assert report.unchanged == 6
+    assert report.unchanged == 10
     with sync_service.session_factory() as db:
         item = db.get(ContentItem, "concept.ml.a")
         assert item is not None
@@ -81,19 +81,21 @@ def test_sync_updates_modified_file(tmp_path: Path, sync_service: ContentSyncSer
     # повторный запуск после обновления — unchanged
     third = sync_service.sync()
     assert third.updated == 0
-    assert third.unchanged == 7
+    assert third.unchanged == 11
 
 
 def test_sync_removes_deleted_file(tmp_path: Path, sync_service: ContentSyncService) -> None:
     sync_service.sync()
     (tmp_path / "vault/10 Знания/ML/Concept B.md").unlink()
     report = sync_service.sync()
-    # Удаление концепции каскадно ломает content_path урока 2 → урок 2 тоже уходит из каталога.
-    assert report.removed == 2
-    assert report.errors == 1  # missing_content_path у урока 2
+    # Удаление концепции каскадно ломает content_path уроков 2 и 4 →
+    # оба урока уходят из каталога вместе с концепцией.
+    assert report.removed == 3
+    assert report.errors == 2  # missing_content_path у уроков 2 и 4
     with sync_service.session_factory() as db:
         assert db.get(ContentItem, "concept.ml.b") is None
         assert db.get(ContentItem, "lesson.classic-ml.one.two") is None
+        assert db.get(ContentItem, "lesson.classic-ml.two.two") is None
         # рёбра на удалённые узлы тоже удалены
         dangling = db.scalar(
             select(func.count())
@@ -103,6 +105,8 @@ def test_sync_removes_deleted_file(tmp_path: Path, sync_service: ContentSyncServ
                 | (ContentLink.target_id == "concept.ml.b")
                 | (ContentLink.source_id == "lesson.classic-ml.one.two")
                 | (ContentLink.target_id == "lesson.classic-ml.one.two")
+                | (ContentLink.source_id == "lesson.classic-ml.two.two")
+                | (ContentLink.target_id == "lesson.classic-ml.two.two")
             )
         )
         assert dangling == 0
