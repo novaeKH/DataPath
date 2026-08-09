@@ -49,6 +49,25 @@ export function FocusIcon(props: IconProps) {
   )
 }
 
+export function RoadmapIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M5 5h9M5 12h14M5 19h9" />
+      <circle cx="17" cy="5" r="2" />
+      <circle cx="16" cy="19" r="2" />
+    </svg>
+  )
+}
+
+export function LearnIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" />
+      <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5v-16Z" />
+    </svg>
+  )
+}
+
 export function ReviewIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

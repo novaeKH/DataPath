@@ -4,10 +4,10 @@ id: lesson.python-ds.06
 schema_version: 2
 type: lesson
 area: python-ds
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.python-ds
 module_id: module.python-ds.structure
 module_order: 2
@@ -40,33 +40,9 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Базовая модель"
-    },
-    {
-      "type": "content",
-      "source_heading": "Наследование и композиция"
-    },
-    {
-      "type": "content",
-      "source_heading": "`classmethod`, `staticmethod`, `property`"
-    },
-    {
-      "type": "content",
-      "source_heading": "Один класс, много dunder-протоколов"
-    },
-    {
-      "type": "content",
-      "source_heading": "Context manager как класс"
-    },
-    {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Где OOP полезно в ML"
     },
     {
       "type": "application",
@@ -85,7 +61,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

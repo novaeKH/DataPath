@@ -45,6 +45,12 @@ LSTM вводит cell state и gates:
 
 Gates используют sigmoid и позволяют gradient проходить по более стабильному пути.
 
+На одном timestep forget gate может дать $f_t=0.9$, input gate $i_t=0.2$, old
+cell $c_{t-1}=1.0$, candidate $\tilde c_t=0.5$. Тогда новый state
+$c_t=0.9\cdot1.0+0.2\cdot0.5=1.0$: почти вся память сохранена, но добавлена
+новая информация. Если $f_t$ близок к нулю, прошлое стирается. Именно этот
+управляемый additive path делает длинные зависимости устойчивее vanilla RNN.
+
 ## GRU
 
 GRU объединяет часть LSTM gates и не имеет отдельного cell state. Обычно проще и быстрее, но superiority зависит от task.
@@ -103,6 +109,16 @@ Transformers лучше parallelize training и захватывают long-rang
 - data leakage в temporal windows;
 - random split time series;
 - сравнивать RNN/Transformer без одинаковой validation.
+
+## Self-check и практика
+
+- Почему repeated multiplication в vanilla RNN приводит к vanishing gradient?
+- Чем cell state LSTM отличается от hidden state?
+- Почему брать последний padded timestep неверно?
+- В какой streaming-задаче RNN может быть практичнее Transformer?
+
+Практика: создайте batch из последовательностей разной длины, примените mask или
+`pack_padded_sequence` и сравните representation с наивным выбором `output[:, -1]`.
 
 ## Связи
 

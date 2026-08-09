@@ -135,3 +135,23 @@ Training loss LoRA падает, а validation answers становятся ху
 - [[Transformer and Language Modeling]]
 - [[Training Evaluation and Inference in PyTorch]]
 - [[Optimization and Regularization in Deep Learning]]
+
+## Код: staged fine-tuning
+
+```python
+for parameter in model.backbone.parameters():
+    parameter.requires_grad = False
+
+optimizer = torch.optim.AdamW(model.head.parameters(), lr=1e-3)
+# train head, validate, затем разморозить последние blocks
+for parameter in model.backbone[-2:].parameters():
+    parameter.requires_grad = True
+
+optimizer = torch.optim.AdamW([
+    {"params": model.backbone[-2:].parameters(), "lr": 1e-5},
+    {"params": model.head.parameters(), "lr": 1e-4},
+])
+```
+
+Backbone получает меньший learning rate, чтобы не разрушить pretrained features;
+новая head обучается быстрее. После разморозки optimizer создаётся заново.

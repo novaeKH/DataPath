@@ -4,10 +4,10 @@ id: lesson.python-ds.04
 schema_version: 2
 type: lesson
 area: python-ds
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.python-ds
 module_id: module.python-ds.structure
 module_order: 2
@@ -40,37 +40,9 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Сигнатура и способы передачи аргументов"
-    },
-    {
-      "type": "content",
-      "source_heading": "Изменяемое значение по умолчанию"
-    },
-    {
-      "type": "content",
-      "source_heading": "Функции — объекты"
-    },
-    {
-      "type": "content",
-      "source_heading": "LEGB"
-    },
-    {
-      "type": "content",
-      "source_heading": "Замыкание и late binding"
-    },
-    {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Docstring и type hints"
-    },
-    {
-      "type": "content",
-      "source_heading": "Предскажите результат"
     },
     {
       "type": "application",
@@ -89,7 +61,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

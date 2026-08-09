@@ -7,9 +7,10 @@ const TYPE_META: Record<string, { label: string; dot: string }> = {
   callout: { label: 'Важно', dot: 'bg-amber-400' },
   checkpoint: { label: 'Проверка', dot: 'bg-indigo-400' },
   interactive_lab: { label: 'Лаборатория', dot: 'bg-emerald-400' },
+  visual_demo: { label: 'Визуализация', dot: 'bg-violet-400' },
 }
 
-/** Компактный outline сцен урока с навигацией и прогрессом. */
+/** Компактное содержание разделов урока с навигацией и прогрессом. */
 export function LessonOutline({
   scenes,
   currentIndex,
@@ -24,7 +25,7 @@ export function LessonOutline({
   const completed = new Set(completedScenes ?? [])
   let checkpointNumber = 0
   return (
-    <nav aria-label="Сцены урока" className="flex flex-col gap-1">
+    <nav aria-label="Разделы урока" className="flex flex-col gap-1">
       {scenes.map((scene, index) => {
         const meta = TYPE_META[scene.type] ?? { label: scene.type, dot: 'bg-slate-400' }
         const active = index === currentIndex
@@ -32,15 +33,18 @@ export function LessonOutline({
         const label =
           scene.type === 'interactive_lab'
             ? (scene.lab_title ?? 'Лаборатория')
-            : scene.type === 'checkpoint'
-              ? `Проверка ${++checkpointNumber}`
-              : (scene.display_title ?? scene.title ?? meta.label)
+            : scene.type === 'visual_demo'
+              ? (scene.title ?? 'Интерактивная визуализация')
+              : scene.type === 'checkpoint'
+                ? `Проверка ${++checkpointNumber}`
+                : (scene.display_title ?? scene.title ?? meta.label)
         return (
           <button
             key={scene.id}
             onClick={() => onSelect(index)}
+            title={label}
             aria-current={active ? 'step' : undefined}
-            className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition ${
+            className={`flex min-h-11 w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition ${
               active
                 ? 'bg-slate-200 font-semibold text-slate-900 dark:bg-slate-800 dark:text-slate-100'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200'
@@ -49,7 +53,9 @@ export function LessonOutline({
             <span
               className={`h-2 w-2 shrink-0 rounded-full ${done ? 'bg-emerald-500' : meta.dot}`}
             />
-            <span className={`truncate ${done ? 'text-emerald-700 dark:text-emerald-300' : ''}`}>
+            <span
+              className={`line-clamp-2 min-w-0 leading-snug ${done ? 'text-emerald-700 dark:text-emerald-300' : ''}`}
+            >
               {label}
             </span>
             {done && <span className="ml-auto text-[10px] text-emerald-500">✓</span>}

@@ -4,10 +4,10 @@ id: lesson.data-analysis.04
 schema_version: 2
 type: lesson
 area: data-analysis
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.data-analysis
 module_id: module.data-analysis.pandas
 module_order: 2
@@ -40,53 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Принцип"
-    },
-    {
-      "type": "content",
-      "source_heading": "Пропуски"
-    },
-    {
-      "type": "content",
-      "source_heading": "Удаление и заполнение"
-    },
-    {
       "type": "interactive",
       "component": "data-cleaning-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Dtype"
-    },
-    {
-      "type": "content",
-      "source_heading": "Категории"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Строки"
-    },
-    {
-      "type": "content",
-      "source_heading": "Дубликаты"
-    },
-    {
-      "type": "content",
-      "source_heading": "Диапазоны и контракты"
-    },
-    {
-      "type": "content",
-      "source_heading": "Outliers"
-    },
-    {
-      "type": "content",
-      "source_heading": "Проверка после очистки"
     },
     {
       "type": "application",
@@ -105,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

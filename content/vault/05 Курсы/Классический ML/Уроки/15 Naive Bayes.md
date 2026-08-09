@@ -4,10 +4,10 @@ id: lesson.classic-ml.expansion.15
 schema_version: 2
 type: lesson
 area: classic-ml
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.classic-ml
 module_id: module.classic-ml.additional-models
 module_order: 6
@@ -18,7 +18,7 @@ skill_ids:
 estimated_minutes: 45
 difficulty: beginner-core
 tags:
-- datapath/draft-lesson
+- datapath/lesson
 ---
 
 # 15 Naive Bayes
@@ -40,53 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Идея"
-    },
-    {
-      "type": "content",
-      "source_heading": "Пошаговый пример"
-    },
-    {
-      "type": "content",
-      "source_heading": "Варианты"
-    },
-    {
       "type": "interactive",
       "component": "naive-bayes-evidence-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Smoothing"
-    },
-    {
-      "type": "content",
-      "source_heading": "Почему работает"
-    },
-    {
-      "type": "content",
-      "source_heading": "Частые ошибки"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Priors и imbalance"
-    },
-    {
-      "type": "content",
-      "source_heading": "Text pipeline"
-    },
-    {
-      "type": "content",
-      "source_heading": "Calibration"
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
     },
     {
       "type": "application",
@@ -105,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

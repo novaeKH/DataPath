@@ -4,10 +4,10 @@ id: lesson.data-analysis.08
 schema_version: 2
 type: lesson
 area: data-analysis
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.data-analysis
 module_id: module.data-analysis.visualization
 module_order: 3
@@ -40,45 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Зачем Seaborn"
-    },
-    {
-      "type": "content",
-      "source_heading": "Tidy data"
-    },
-    {
-      "type": "content",
-      "source_heading": "Distribution plots"
-    },
-    {
       "type": "interactive",
       "component": "seaborn-plot-selector"
-    },
-    {
-      "type": "content",
-      "source_heading": "Categorical plots"
-    },
-    {
-      "type": "content",
-      "source_heading": "Statistical estimation"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Relational plots"
-    },
-    {
-      "type": "content",
-      "source_heading": "FacetGrid"
-    },
-    {
-      "type": "content",
-      "source_heading": "Heatmap"
     },
     {
       "type": "application",
@@ -97,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

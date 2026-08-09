@@ -19,147 +19,219 @@ tags:
 math_depth: 2
 ---
 
-# K-Means
 
-## Что решает K-Means
+**Рекомендуемое время:** 50–65 минут.
 
-K-Means делит numerical points на $K$ групп так, чтобы объекты были близки к centroid своей группы. Он не знает бизнес-смысл и target: мы сами задаём features, scaling и число clusters.
+## Результаты обучения
+- понимать локальное голосование/усреднение
+- выбирать distance и K
+- объяснять необходимость scaling
+- понимать curse of dimensionality и стоимость inference
 
-## Objective
+## Вход в тему
+
+KNN почти ничего не «обучает»: он хранит train и ищет похожие объекты во время prediction. Поэтому вся сила и все проблемы алгоритма находятся в определении сходства.
+
+## Полная теория
+
+## Интуиция
+
+Чтобы предсказать ответ для нового объекта, найдём $K$ наиболее похожих train-объектов. Для classification используем голосование, для regression — среднее или weighted mean.
+
+KNN почти не строит параметрическую модель во время fit: основная работа происходит при prediction.
+
+## Алгоритм
+
+Для объекта $x$:
+
+1. вычислить distance до train points;
+2. выбрать $K$ smallest distances;
+3. агрегировать их targets.
+
+Classification:
 
 $$
-J=\sum_{i=1}^{n}\lVert x_i-\mu_{c_i}\rVert_2^2.
+\widehat y=\operatorname{mode}\{y_i:i\in N_K(x)\}.
 $$
 
-$c_i$ — cluster объекта, $\mu_k$ — mean points кластера. Objective называется inertia/within-cluster sum of squares.
-
-## Lloyd algorithm
-
-1. Инициализировать $K$ centroids.
-2. Назначить каждый point ближайшему centroid.
-3. Пересчитать centroid как mean assigned points.
-4. Повторять до stability.
-
-Assignment:
+Regression:
 
 $$
-c_i=\arg\min_k\lVert x_i-\mu_k\rVert^2.
+\widehat y=\frac{1}{K}\sum_{i\in N_K(x)}y_i.
 $$
 
-Update:
+Weighted variant даёт больший вес близким neighbors.
+
+## Distance
+
+Euclidean:
 
 $$
-\mu_k=\frac{1}{|C_k|}\sum_{i:c_i=k}x_i.
+d(x,z)=\sqrt{\sum_j(x_j-z_j)^2}.
 $$
 
-Каждый шаг не увеличивает objective, но convergence идёт к local optimum.
+Manhattan:
 
-## Числовой пример
+$$
+d_1(x,z)=\sum_j|x_j-z_j|.
+$$
 
-Points на линии: `1, 2, 3, 10, 11, 12`, $K=2$.
+Выбор distance определяет понятие сходства. Для text cosine часто полезнее Euclidean raw counts. Для mixed data нужна осознанная representation.
 
-После разумной initialization первый centroid окажется около `2`, второй около `11`. Assignment стабилен, means равны центрам двух compact groups.
+## Почему scaling критичен
 
-Если добавить outlier `100`, второй centroid сильно сместится, потому что mean чувствителен к outliers.
+Если income измеряется тысячами, а age десятками, income доминирует distance. StandardScaler/RobustScaler fit только на train.
 
-## Initialization
+Scaling не решает проблему бессмысленного feature: шумовая колонка всё равно портит соседство.
 
-K-Means++ выбирает новые centers с большей probability для далёких points. Запускают несколько initializations и оставляют solution с меньшей inertia.
+## Выбор K
 
-## Scaling и representation
+- малое $K$ → гибкая boundary, low bias, high variance;
+- большое $K$ → smoother prediction, выше bias;
+- $K$ выбирают по CV;
+- odd $K$ может уменьшить ties в binary classification, но не является обязательным правилом.
 
-Distance зависит от units. Standardization часто обязательна, но equal scaling не всегда отражает domain importance. Category codes не подходят: разница между кодами не является distance.
+## Curse of dimensionality
 
-## Geometry assumptions
+С ростом dimensions distances становятся похожими: ближайший и дальний объект различаются меньше. Data становится sparse, нужно экспоненциально больше observations.
 
-Метод лучше работает для clusters:
+Помогают:
 
-- compact;
-- convex/spherical;
-- похожего size и density;
-- разделимых Euclidean distance.
+- feature selection;
+- PCA/embedding;
+- domain metric;
+- больше данных;
+- другая model family.
 
-Он плохо описывает moons, nested rings, varying density и сильные outliers.
+## Categorical и missing values
 
-## Как выбрать K
+Raw KNN не понимает категории. OHE увеличивает dimension; ordinal integer encoding создаёт ложный порядок. Missing values требуют imputation или distance, умеющей их учитывать.
 
-- elbow inertia;
-- silhouette;
-- stability по samples/seeds;
-- domain interpretability;
-- downstream utility;
-- минимальный support.
+## Classification probabilities
 
-Inertia всегда уменьшается при росте K, поэтому просто минимум бессмысленен.
+Доля positive among neighbours может использоваться как score, но имеет discrete steps и не обязательно calibrated. Weighting и K влияют на smoothness.
 
-## Оценка без labels
+## Complexity
 
-Internal metrics измеряют geometry, которую метод уже оптимизирует. Хороший silhouette не гарантирует полезные бизнес-сегменты. Нужны profiling, stability и external outcome, не использованный для создания clusters.
+Naive prediction:
 
-## Prediction новых points
+- memory $O(nd)$;
+- time на один query $O(nd)$.
 
-Новый объект относится к ближайшему centroid. Cluster IDs не имеют порядка и могут переставиться между runs. Для использования сохраняйте fitted pipeline и отдельное mapping semantics.
+KD-tree/ball-tree помогают в low/moderate dimensions, но теряют преимущество в high-dimensional data. Approximate nearest neighbours используют для больших embedding collections.
 
-## Когда использовать
+## Визуальная демонстрация
 
-- кластеризация «шарообразных» групп примерно равного размера;
-- большое число объектов, нужен быстрый и масштабируемый алгоритм;
-- сегментация клиентов, сжатие представления (кодбуки), предобработка;
-- НЕ использовать при кластерах сложной формы, разном размере/плотности, наличии шума — тогда DBSCAN/hierarchical.
+Компонент `knn-neighbourhood-lab`:
 
-## Визуализация
-
-Компонент `kmeans-canvas`:
-
-- добавление/перемещение points;
-- выбор K;
-- step-by-step assignment/update;
-- K-Means++ vs random;
+- draggable query point;
+- slider $K$;
+- Euclidean/Manhattan;
 - scaling toggle;
-- outlier;
-- inertia и silhouette.
+- highlighted neighbours;
+- decision background;
+- noisy feature toggle.
 
-## sklearn пример
+## sklearn pipeline
 
 ```python
-from sklearn.cluster import KMeans
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-pipeline = Pipeline([
+model = Pipeline([
     ("scale", StandardScaler()),
-    ("cluster", KMeans(n_clusters=4, n_init="auto", random_state=42)),
+    ("knn", KNeighborsClassifier(n_neighbors=7, weights="distance")),
 ])
 ```
-
-## Ответ для собеседования
-
-> K-Means минимизирует сумму квадратов расстояний до центроидов (inertia) итеративным Lloyd-алгоритмом: назначение точек ближайшему центру, затем пересчёт центров. K задаётся заранее (elbow/silhouette), результат чувствителен к инициализации и масштабу признаков. Ограничение — геометрическое предположение о форме кластеров.
 
 ## Частые ошибки
 
 - не scaling;
-- интерпретировать ID как ordinal;
-- выбирать K по красивому 2D PCA plot;
-- давать clusters человеческие labels без profiling;
-- оценивать stability на тех же объектах одним seed;
-- игнорировать outliers;
-- включать post-outcome features.
+- выбирать K на test;
+- добавлять десятки irrelevant features;
+- использовать integer category codes;
+- считать KNN «обучением без параметров» и забывать про preprocessing;
+- ожидать быстрый inference на миллионах объектов;
+- интерпретировать neighbors без проверки distance semantics.
 
-## Сравнение с DBSCAN и hierarchical
+## Обязательная визуальная демонстрация
 
-| | K-Means | DBSCAN | Hierarchical |
-|---|---|---|---|
-| Форма кластеров | сферическая | произвольная | произвольная |
-| Число кластеров | задаётся | из eps | из дендрограммы |
-| Шум | нет | есть | нет |
-| Масштаб | большой | средний | малый/средний |
+2D-точки, query point, K, metric и scaling toggle; подсвечиваются соседи и меняется boundary.
 
-Если кластеры плотные и «шарообразные» — K-Means быстр и прост; если есть шум и сложные формы — DBSCAN; если нужна иерархия — hierarchical.
+## Практика
 
-## Связи
+#### Задание 1. Scaling
 
-- [[DBSCAN and Hierarchical Clustering]]
-- [[Principal Component Analysis]]
-- [[EDA Relationships Time and Groups]]
-- [[Data Preprocessing and Feature Engineering]]
+Почему признаки age=[18,80] и income=[20 000,500 000] нельзя напрямую использовать в Euclidean distance?
+
+#### Задание 2. K
+
+Что произойдёт с bias и variance при увеличении K?
+
+#### Задание 3. Distance
+
+Когда cosine distance уместнее Euclidean?
+
+#### Задание 4. Python lab
+
+Pipeline StandardScaler + KNN; подбери K по CV и построй curve.
+
+## Разбор практики
+
+**1.** Income доминирует из-за масштаба, даже если age важнее по смыслу.
+
+**2.** Boundary сглаживается: variance снижается, bias растёт.
+
+**3.** Для направлений/разреженных text vectors, где magnitude менее важна, чем orientation.
+
+**4.** Scaler fit внутри fold; K выбирается по validation, не test.
+
+## Checkpoint для приложения
+
+#### Checkpoint 1
+
+**Вопрос:** Почему KNN страдает в high dimensions?
+
+- A. Нет labels
+- B. Distances становятся менее различимыми
+- C. Не поддерживает числа
+- D. Всегда linear
+
+**Правильный ответ:** B
+
+**Объяснение:** Пространство разрежается, а близость теряет информативность.
+
+#### Checkpoint 2
+
+**Вопрос:** Малое K обычно означает...
+
+- A. High bias, low variance
+- B. Low bias, high variance
+- C. Нет decision boundary
+- D. Обязательную calibration
+
+**Правильный ответ:** B
+
+**Объяснение:** Модель становится локальной и чувствительной к noise.
+
+#### Checkpoint 3
+
+**Вопрос:** Где происходит основная вычислительная стоимость KNN?
+
+- A. Только fit
+- B. Prediction
+- C. YAML parsing
+- D. Calibration
+
+**Правильный ответ:** B
+
+**Объяснение:** Нужно искать соседей среди train objects.
+
+## Мини-проект / применение
+
+Используй небольшой воспроизводимый dataset и оформи результат как карточку эксперимента: постановка задачи, split, baseline, pipeline, metric, результат, error analysis и ограничения. Код должен запускаться сверху вниз без ручных скрытых шагов.
+
+## Критерий завершения урока
+
+Ученик может своими словами объяснить механизм, решить хотя бы одно числовое задание, написать минимальный sklearn pipeline, назвать две типичные ошибки и обосновать, когда метод применять не стоит.

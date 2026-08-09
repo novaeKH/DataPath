@@ -50,44 +50,8 @@ cssclasses:
       "title": "Зачем это нужно и какой результат получим"
     },
     {
-      "type": "content",
-      "source_heading": "Идея за 30 секунд"
-    },
-    {
-      "type": "content",
-      "source_heading": "Bootstrap"
-    },
-    {
-      "type": "content",
-      "source_heading": "Bagging prediction"
-    },
-    {
       "type": "interactive",
       "component": "bootstrap-forest-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Random Forest"
-    },
-    {
-      "type": "content",
-      "source_heading": "Bias и variance"
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
-    },
-    {
-      "type": "content",
-      "source_heading": "Сравнение с Gradient Boosting"
-    },
-    {
-      "type": "content",
-      "source_heading": "Простой пример"
-    },
-    {
-      "type": "content",
-      "source_heading": "Пример кода"
     },
     {
       "type": "retrieval",
@@ -95,37 +59,9 @@ cssclasses:
       "prompt": "Почему усреднение одинаково коррелированных trees почти не снижает variance?"
     },
     {
-      "type": "content",
-      "source_heading": "Out-of-bag estimate"
-    },
-    {
-      "type": "content",
-      "source_heading": "Probability quality"
-    },
-    {
-      "type": "content",
-      "source_heading": "Feature importance и uncertainty"
-    },
-    {
-      "type": "content",
-      "source_heading": "Extra Trees"
-    },
-    {
       "type": "application",
       "mode": "micro-task",
       "prompt": "Выбери max_features, depth и число trees для noisy tabular baseline и объясни порядок tuning."
-    },
-    {
-      "type": "content",
-      "source_heading": "Когда использовать"
-    },
-    {
-      "type": "content",
-      "source_heading": "Failure modes"
-    },
-    {
-      "type": "content",
-      "source_heading": "Ответ для собеседования"
     },
     {
       "type": "interview",

@@ -2,6 +2,48 @@
   "schema_version": 2,
   "courses": [
     {
+      "id": "course.deep-learning",
+      "title": "Deep Learning — от tensor до Transformer",
+      "type": "course",
+      "area": "dl",
+      "path": "05 Курсы/Deep Learning/00 Курс — Deep Learning.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": null,
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": null
+    },
+    {
+      "id": "course.python-ds",
+      "title": "Python для Data Science — с нуля до рабочего кода",
+      "type": "course",
+      "area": "python",
+      "path": "05 Курсы/Python для Data Science/00 Курс — Python для Data Science.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": null,
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": null
+    },
+    {
+      "id": "course.data-analysis",
+      "title": "Анализ данных — NumPy, pandas, визуализация и EDA",
+      "type": "course",
+      "area": "data",
+      "path": "05 Курсы/Анализ данных/00 Курс — Анализ данных.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": null,
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": null
+    },
+    {
       "id": "course.classic-ml",
       "title": "Классический ML — от задачи до сильного baseline",
       "type": "course",
@@ -17,6 +59,160 @@
     }
   ],
   "modules": [
+    {
+      "id": "module.dl.foundations",
+      "title": "01 Foundations",
+      "type": "module",
+      "area": "dl",
+      "path": "05 Курсы/Deep Learning/Модули/01 Foundations.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 260
+    },
+    {
+      "id": "module.dl.architectures",
+      "title": "02 Architectures",
+      "type": "module",
+      "area": "dl",
+      "path": "05 Курсы/Deep Learning/Модули/02 Architectures.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 180
+    },
+    {
+      "id": "module.dl.transformers",
+      "title": "03 Attention and Transformers",
+      "type": "module",
+      "area": "dl",
+      "path": "05 Курсы/Deep Learning/Модули/03 Attention and Transformers.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 200
+    },
+    {
+      "id": "module.dl.training",
+      "title": "04 Training and Fine-tuning",
+      "type": "module",
+      "area": "dl",
+      "path": "05 Курсы/Deep Learning/Модули/04 Training and Fine-tuning.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 220
+    },
+    {
+      "id": "module.python-ds.basics",
+      "title": "01 Синтаксис и объекты",
+      "type": "module",
+      "area": "python",
+      "path": "05 Курсы/Python для Data Science/Модули/01 Синтаксис и объекты.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 240
+    },
+    {
+      "id": "module.python-ds.structure",
+      "title": "02 Функции и архитектура кода",
+      "type": "module",
+      "area": "python",
+      "path": "05 Курсы/Python для Data Science/Модули/02 Функции и архитектура кода.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 260
+    },
+    {
+      "id": "module.python-ds.quality",
+      "title": "03 Надёжный Python для Data Science",
+      "type": "module",
+      "area": "python",
+      "path": "05 Курсы/Python для Data Science/Модули/03 Надёжный Python для Data Science.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 260
+    },
+    {
+      "id": "module.data-analysis.numpy",
+      "title": "01 NumPy",
+      "type": "module",
+      "area": "data",
+      "path": "05 Курсы/Анализ данных/Модули/01 NumPy.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 150
+    },
+    {
+      "id": "module.data-analysis.pandas",
+      "title": "02 pandas",
+      "type": "module",
+      "area": "data",
+      "path": "05 Курсы/Анализ данных/Модули/02 pandas.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 260
+    },
+    {
+      "id": "module.data-analysis.visualization",
+      "title": "03 Matplotlib и Seaborn",
+      "type": "module",
+      "area": "data",
+      "path": "05 Курсы/Анализ данных/Модули/03 Matplotlib и Seaborn.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 140
+    },
+    {
+      "id": "module.data-analysis.eda",
+      "title": "04 EDA",
+      "type": "module",
+      "area": "data",
+      "path": "05 Курсы/Анализ данных/Модули/04 EDA.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 220
+    },
     {
       "id": "module.classic-ml.framing",
       "title": "Постановка задачи и честная оценка",
@@ -86,9 +282,611 @@
       "module_id": null,
       "skill_ids": [],
       "estimated_minutes": 60
+    },
+    {
+      "id": "module.classic-ml.additional-models",
+      "title": "Дополнительные модели",
+      "type": "module",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Модули/06 Дополнительные модели.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 240
+    },
+    {
+      "id": "module.classic-ml.production",
+      "title": "Production ML decisions",
+      "type": "module",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Модули/07 Production ML decisions.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 240
+    },
+    {
+      "id": "module.classic-ml.unsupervised-advanced",
+      "title": "Advanced Unsupervised",
+      "type": "module",
+      "area": "ml",
+      "path": "05 Курсы/Классический ML/Модули/08 Advanced Unsupervised.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": null,
+      "skill_ids": [],
+      "estimated_minutes": 240
     }
   ],
   "lessons": [
+    {
+      "id": "lesson.deep-learning.01",
+      "title": "01 Tensors shapes linear layers",
+      "type": "lesson",
+      "area": "deep-learning",
+      "path": "05 Курсы/Deep Learning/Уроки/01 01 Tensors shapes linear layers.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": "module.dl.foundations",
+      "skill_ids": [
+        "dl.foundations"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.deep-learning.02",
+      "title": "02 Activations and losses",
+      "type": "lesson",
+      "area": "deep-learning",
+      "path": "05 Курсы/Deep Learning/Уроки/02 02 Activations and losses.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": "module.dl.foundations",
+      "skill_ids": [
+        "dl.foundations"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.deep-learning.03",
+      "title": "03 Backpropagation",
+      "type": "lesson",
+      "area": "deep-learning",
+      "path": "05 Курсы/Deep Learning/Уроки/03 03 Backpropagation.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": "module.dl.foundations",
+      "skill_ids": [
+        "dl.foundations"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.deep-learning.04",
+      "title": "04 Optimization and regularization",
+      "type": "lesson",
+      "area": "deep-learning",
+      "path": "05 Курсы/Deep Learning/Уроки/04 04 Optimization and regularization.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": "module.dl.foundations",
+      "skill_ids": [
+        "dl.foundations"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.deep-learning.05",
+      "title": "05 CNN",
+      "type": "lesson",
+      "area": "deep-learning",
+      "path": "05 Курсы/Deep Learning/Уроки/05 05 CNN.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": "module.dl.architectures",
+      "skill_ids": [
+        "dl.foundations"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.deep-learning.06",
+      "title": "06 RNN LSTM GRU",
+      "type": "lesson",
+      "area": "deep-learning",
+      "path": "05 Курсы/Deep Learning/Уроки/06 06 RNN LSTM GRU.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": "module.dl.architectures",
+      "skill_ids": [
+        "dl.foundations"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.deep-learning.07",
+      "title": "07 Embeddings and attention",
+      "type": "lesson",
+      "area": "deep-learning",
+      "path": "05 Курсы/Deep Learning/Уроки/07 07 Embeddings and attention.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": "module.dl.transformers",
+      "skill_ids": [
+        "dl.foundations"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.deep-learning.08",
+      "title": "08 Transformer and language modeling",
+      "type": "lesson",
+      "area": "deep-learning",
+      "path": "05 Курсы/Deep Learning/Уроки/08 08 Transformer and language modeling.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": "module.dl.transformers",
+      "skill_ids": [
+        "dl.foundations"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.deep-learning.09",
+      "title": "09 PyTorch training evaluation inference",
+      "type": "lesson",
+      "area": "deep-learning",
+      "path": "05 Курсы/Deep Learning/Уроки/09 09 PyTorch training evaluation inference.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": "module.dl.training",
+      "skill_ids": [
+        "dl.foundations"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.deep-learning.10",
+      "title": "10 Fine-tuning and PEFT",
+      "type": "lesson",
+      "area": "deep-learning",
+      "path": "05 Курсы/Deep Learning/Уроки/10 10 Fine-tuning and PEFT.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": "module.dl.training",
+      "skill_ids": [
+        "dl.foundations"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.deep-learning.11",
+      "title": "11 Debugging and experiments",
+      "type": "lesson",
+      "area": "deep-learning",
+      "path": "05 Курсы/Deep Learning/Уроки/11 11 Debugging and experiments.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.deep-learning",
+      "module_id": "module.dl.training",
+      "skill_ids": [
+        "dl.foundations"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.python-ds.01",
+      "title": "01 Основы синтаксиса",
+      "type": "lesson",
+      "area": "python-ds",
+      "path": "05 Курсы/Python для Data Science/Уроки/01 01 Основы синтаксиса.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": "module.python-ds.basics",
+      "skill_ids": [
+        "python.00-basics-control-flow"
+      ],
+      "estimated_minutes": 35
+    },
+    {
+      "id": "lesson.python-ds.02",
+      "title": "02 Объекты ссылки и изменяемость",
+      "type": "lesson",
+      "area": "python-ds",
+      "path": "05 Курсы/Python для Data Science/Уроки/02 02 Объекты ссылки и изменяемость.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": "module.python-ds.basics",
+      "skill_ids": [
+        "python.01-ob-ekty-ssylki-i-izmeniaemost"
+      ],
+      "estimated_minutes": 35
+    },
+    {
+      "id": "lesson.python-ds.03",
+      "title": "03 Коллекции Python",
+      "type": "lesson",
+      "area": "python-ds",
+      "path": "05 Курсы/Python для Data Science/Уроки/03 03 Коллекции Python.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": "module.python-ds.basics",
+      "skill_ids": [
+        "python.03-dict-set-i-hash-map"
+      ],
+      "estimated_minutes": 35
+    },
+    {
+      "id": "lesson.python-ds.04",
+      "title": "04 Функции и scope",
+      "type": "lesson",
+      "area": "python-ds",
+      "path": "05 Курсы/Python для Data Science/Уроки/04 04 Функции и scope.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": "module.python-ds.structure",
+      "skill_ids": [
+        "python.04-funktsii-i-oblasti-vidimosti"
+      ],
+      "estimated_minutes": 35
+    },
+    {
+      "id": "lesson.python-ds.05",
+      "title": "05 Iterators и generators",
+      "type": "lesson",
+      "area": "python-ds",
+      "path": "05 Курсы/Python для Data Science/Уроки/05 05 Iterators и generators.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": "module.python-ds.structure",
+      "skill_ids": [
+        "python.05-iterable-iterator-i-generator"
+      ],
+      "estimated_minutes": 35
+    },
+    {
+      "id": "lesson.python-ds.06",
+      "title": "06 OOP и datamodel",
+      "type": "lesson",
+      "area": "python-ds",
+      "path": "05 Курсы/Python для Data Science/Уроки/06 06 OOP и datamodel.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": "module.python-ds.structure",
+      "skill_ids": [
+        "python.06-oop-i-magicheskie-metody"
+      ],
+      "estimated_minutes": 35
+    },
+    {
+      "id": "lesson.python-ds.07",
+      "title": "07 Exceptions и context manager",
+      "type": "lesson",
+      "area": "python-ds",
+      "path": "05 Курсы/Python для Data Science/Уроки/07 07 Exceptions и context manager.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": "module.python-ds.quality",
+      "skill_ids": [
+        "python.07-iskliucheniia-i-context-manager"
+      ],
+      "estimated_minutes": 35
+    },
+    {
+      "id": "lesson.python-ds.08",
+      "title": "08 Decorators и closures",
+      "type": "lesson",
+      "area": "python-ds",
+      "path": "05 Курсы/Python для Data Science/Уроки/08 08 Decorators и closures.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": "module.python-ds.structure",
+      "skill_ids": [
+        "python.08-dekoratory-i-zamykaniia"
+      ],
+      "estimated_minutes": 35
+    },
+    {
+      "id": "lesson.python-ds.09",
+      "title": "09 Memory GC и GIL",
+      "type": "lesson",
+      "area": "python-ds",
+      "path": "05 Курсы/Python для Data Science/Уроки/09 09 Memory GC и GIL.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": "module.python-ds.quality",
+      "skill_ids": [
+        "python.09-pamiat-gc-i-gil"
+      ],
+      "estimated_minutes": 35
+    },
+    {
+      "id": "lesson.python-ds.10",
+      "title": "10 Modules files and environments",
+      "type": "lesson",
+      "area": "python-ds",
+      "path": "05 Курсы/Python для Data Science/Уроки/10 10 Modules files and environments.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": "module.python-ds.quality",
+      "skill_ids": [
+        "python.12-modules-files-pathlib-environments"
+      ],
+      "estimated_minutes": 35
+    },
+    {
+      "id": "lesson.python-ds.11",
+      "title": "11 Typing testing quality",
+      "type": "lesson",
+      "area": "python-ds",
+      "path": "05 Курсы/Python для Data Science/Уроки/11 11 Typing testing quality.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": "module.python-ds.quality",
+      "skill_ids": [
+        "python.11-typing-testing-i-kachestvo-koda"
+      ],
+      "estimated_minutes": 35
+    },
+    {
+      "id": "lesson.python-ds.12",
+      "title": "12 Python for Data Science workflow",
+      "type": "lesson",
+      "area": "python-ds",
+      "path": "05 Курсы/Python для Data Science/Уроки/12 12 Python for Data Science workflow.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.python-ds",
+      "module_id": "module.python-ds.quality",
+      "skill_ids": [
+        "python.10-python-dlia-data-science"
+      ],
+      "estimated_minutes": 35
+    },
+    {
+      "id": "lesson.data-analysis.01",
+      "title": "01 NumPy foundations",
+      "type": "lesson",
+      "area": "data-analysis",
+      "path": "05 Курсы/Анализ данных/Уроки/01 01 NumPy foundations.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": "module.data-analysis.numpy",
+      "skill_ids": [
+        "data.analysis"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.data-analysis.02",
+      "title": "02 Broadcasting and vectorization",
+      "type": "lesson",
+      "area": "data-analysis",
+      "path": "05 Курсы/Анализ данных/Уроки/02 02 Broadcasting and vectorization.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": "module.data-analysis.numpy",
+      "skill_ids": [
+        "data.analysis"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.data-analysis.03",
+      "title": "03 pandas foundations",
+      "type": "lesson",
+      "area": "data-analysis",
+      "path": "05 Курсы/Анализ данных/Уроки/03 03 pandas foundations.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": "module.data-analysis.pandas",
+      "skill_ids": [
+        "data.analysis"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.data-analysis.04",
+      "title": "04 Cleaning and dtypes",
+      "type": "lesson",
+      "area": "data-analysis",
+      "path": "05 Курсы/Анализ данных/Уроки/04 04 Cleaning and dtypes.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": "module.data-analysis.pandas",
+      "skill_ids": [
+        "data.analysis"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.data-analysis.05",
+      "title": "05 GroupBy merge reshape",
+      "type": "lesson",
+      "area": "data-analysis",
+      "path": "05 Курсы/Анализ данных/Уроки/05 05 GroupBy merge reshape.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": "module.data-analysis.pandas",
+      "skill_ids": [
+        "data.analysis"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.data-analysis.06",
+      "title": "06 Time series and windows",
+      "type": "lesson",
+      "area": "data-analysis",
+      "path": "05 Курсы/Анализ данных/Уроки/06 06 Time series and windows.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": "module.data-analysis.pandas",
+      "skill_ids": [
+        "data.analysis"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.data-analysis.07",
+      "title": "07 Matplotlib",
+      "type": "lesson",
+      "area": "data-analysis",
+      "path": "05 Курсы/Анализ данных/Уроки/07 07 Matplotlib.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": "module.data-analysis.visualization",
+      "skill_ids": [
+        "data.analysis"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.data-analysis.08",
+      "title": "08 Seaborn",
+      "type": "lesson",
+      "area": "data-analysis",
+      "path": "05 Курсы/Анализ данных/Уроки/08 08 Seaborn.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": "module.data-analysis.visualization",
+      "skill_ids": [
+        "data.analysis"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.data-analysis.09",
+      "title": "09 EDA workflow",
+      "type": "lesson",
+      "area": "data-analysis",
+      "path": "05 Курсы/Анализ данных/Уроки/09 09 EDA workflow.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": "module.data-analysis.eda",
+      "skill_ids": [
+        "data.analysis"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.data-analysis.10",
+      "title": "10 Missing and outliers",
+      "type": "lesson",
+      "area": "data-analysis",
+      "path": "05 Курсы/Анализ данных/Уроки/10 10 Missing and outliers.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": "module.data-analysis.eda",
+      "skill_ids": [
+        "data.analysis"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.data-analysis.11",
+      "title": "11 Relationships time groups",
+      "type": "lesson",
+      "area": "data-analysis",
+      "path": "05 Курсы/Анализ данных/Уроки/11 11 Relationships time groups.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": "module.data-analysis.eda",
+      "skill_ids": [
+        "data.analysis"
+      ],
+      "estimated_minutes": 40
+    },
+    {
+      "id": "lesson.data-analysis.12",
+      "title": "12 EDA to ML pipeline",
+      "type": "lesson",
+      "area": "data-analysis",
+      "path": "05 Курсы/Анализ данных/Уроки/12 12 EDA to ML pipeline.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.data-analysis",
+      "module_id": "module.data-analysis.eda",
+      "skill_ids": [
+        "data.analysis"
+      ],
+      "estimated_minutes": 40
+    },
     {
       "id": "lesson.classic-ml.framing.problem",
       "title": "Как поставить ML-задачу",
@@ -306,6 +1104,182 @@
         "ml.error_analysis"
       ],
       "estimated_minutes": 60
+    },
+    {
+      "id": "lesson.classic-ml.expansion.14",
+      "title": "14 K-Nearest Neighbors",
+      "type": "lesson",
+      "area": "classic-ml",
+      "path": "05 Курсы/Классический ML/Уроки/14 K-Nearest Neighbors.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.additional-models",
+      "skill_ids": [
+        "ml.classic.expansion"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.classic-ml.expansion.15",
+      "title": "15 Naive Bayes",
+      "type": "lesson",
+      "area": "classic-ml",
+      "path": "05 Курсы/Классический ML/Уроки/15 Naive Bayes.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.additional-models",
+      "skill_ids": [
+        "ml.classic.expansion"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.classic-ml.expansion.16",
+      "title": "16 Support Vector Machines",
+      "type": "lesson",
+      "area": "classic-ml",
+      "path": "05 Курсы/Классический ML/Уроки/16 Support Vector Machines.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.additional-models",
+      "skill_ids": [
+        "ml.classic.expansion"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.classic-ml.expansion.17",
+      "title": "17 Preprocessing and Feature Engineering",
+      "type": "lesson",
+      "area": "classic-ml",
+      "path": "05 Курсы/Классический ML/Уроки/17 Preprocessing and Feature Engineering.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.production",
+      "skill_ids": [
+        "ml.classic.expansion"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.classic-ml.expansion.18",
+      "title": "18 Categorical Features",
+      "type": "lesson",
+      "area": "classic-ml",
+      "path": "05 Курсы/Классический ML/Уроки/18 Categorical Features.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.production",
+      "skill_ids": [
+        "ml.classic.expansion"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.classic-ml.expansion.19",
+      "title": "19 Class Imbalance",
+      "type": "lesson",
+      "area": "classic-ml",
+      "path": "05 Курсы/Классический ML/Уроки/19 Class Imbalance.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.production",
+      "skill_ids": [
+        "ml.classic.expansion"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.classic-ml.expansion.20",
+      "title": "20 Probability Calibration",
+      "type": "lesson",
+      "area": "classic-ml",
+      "path": "05 Курсы/Классический ML/Уроки/20 Probability Calibration.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.production",
+      "skill_ids": [
+        "ml.classic.expansion"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.classic-ml.expansion.21",
+      "title": "21 Model Selection and Tuning",
+      "type": "lesson",
+      "area": "classic-ml",
+      "path": "05 Курсы/Классический ML/Уроки/21 Model Selection and Tuning.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.production",
+      "skill_ids": [
+        "ml.classic.expansion"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.classic-ml.expansion.22",
+      "title": "22 Model Interpretation",
+      "type": "lesson",
+      "area": "classic-ml",
+      "path": "05 Курсы/Классический ML/Уроки/22 Model Interpretation.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.production",
+      "skill_ids": [
+        "ml.classic.expansion"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.classic-ml.expansion.23",
+      "title": "23 DBSCAN and Hierarchical Clustering",
+      "type": "lesson",
+      "area": "classic-ml",
+      "path": "05 Курсы/Классический ML/Уроки/23 DBSCAN and Hierarchical Clustering.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.unsupervised-advanced",
+      "skill_ids": [
+        "ml.classic.expansion"
+      ],
+      "estimated_minutes": 45
+    },
+    {
+      "id": "lesson.classic-ml.expansion.24",
+      "title": "24 Anomaly Detection",
+      "type": "lesson",
+      "area": "classic-ml",
+      "path": "05 Курсы/Классический ML/Уроки/24 Anomaly Detection.md",
+      "rag": "exclude",
+      "rag_collection": null,
+      "app": "include",
+      "course_id": "course.classic-ml",
+      "module_id": "module.classic-ml.unsupervised-advanced",
+      "skill_ids": [
+        "ml.classic.expansion"
+      ],
+      "estimated_minutes": 45
     }
   ],
   "cases": [

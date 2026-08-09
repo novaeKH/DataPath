@@ -4,10 +4,10 @@ id: lesson.classic-ml.expansion.16
 schema_version: 2
 type: lesson
 area: classic-ml
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.classic-ml
 module_id: module.classic-ml.additional-models
 module_order: 6
@@ -18,7 +18,7 @@ skill_ids:
 estimated_minutes: 45
 difficulty: beginner-core
 tags:
-- datapath/draft-lesson
+- datapath/lesson
 ---
 
 # 16 Support Vector Machines
@@ -40,57 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Интуиция"
-    },
-    {
-      "type": "content",
-      "source_heading": "Linear hard-margin SVM"
-    },
-    {
-      "type": "content",
-      "source_heading": "Soft margin"
-    },
-    {
       "type": "interactive",
       "component": "svm-margin-kernel-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Hinge loss"
-    },
-    {
-      "type": "content",
-      "source_heading": "Kernel trick"
-    },
-    {
-      "type": "content",
-      "source_heading": "Частые ошибки"
-    },
-    {
-      "type": "content",
-      "source_heading": "sklearn пример"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Scaling"
-    },
-    {
-      "type": "content",
-      "source_heading": "Probability"
-    },
-    {
-      "type": "content",
-      "source_heading": "Complexity"
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
     },
     {
       "type": "application",
@@ -109,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

@@ -165,12 +165,8 @@ export function MarkdownContent({ markdown }: { markdown: string }) {
           },
           // Tailwind v4 preflight сбрасывает list-style: none — маркеры
           // списков возвращаем явными классами.
-          ul: (props) => (
-            <ul {...props} className="my-3 list-disc space-y-1 pl-6" />
-          ),
-          ol: (props) => (
-            <ol {...props} className="my-3 list-decimal space-y-1 pl-6" />
-          ),
+          ul: (props) => <ul {...props} className="my-3 list-disc space-y-1 pl-6" />,
+          ol: (props) => <ol {...props} className="my-3 list-decimal space-y-1 pl-6" />,
           li: (props) => <li {...props} className="leading-relaxed" />,
           table: (props) => (
             <div className="overflow-x-auto">

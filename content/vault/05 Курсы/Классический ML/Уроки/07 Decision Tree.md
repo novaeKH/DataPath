@@ -49,36 +49,8 @@ cssclasses:
       "title": "Зачем это нужно и какой результат получим"
     },
     {
-      "type": "content",
-      "source_heading": "Идея за 30 секунд"
-    },
-    {
-      "type": "content",
-      "source_heading": "Как строится prediction"
-    },
-    {
-      "type": "content",
-      "source_heading": "Split gain"
-    },
-    {
       "type": "interactive",
       "component": "decision-tree-split-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Classification criteria"
-    },
-    {
-      "type": "content",
-      "source_heading": "Пример расчёта Gain"
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
-    },
-    {
-      "type": "content",
-      "source_heading": "Сравнение с линейными моделями и ансамблями"
     },
     {
       "type": "retrieval",
@@ -86,33 +58,9 @@ cssclasses:
       "prompt": "Почему дерево выбирает split жадно и как считается weighted child impurity?"
     },
     {
-      "type": "content",
-      "source_heading": "Regression tree"
-    },
-    {
-      "type": "content",
-      "source_heading": "Почему дерево overfit"
-    },
-    {
-      "type": "content",
-      "source_heading": "Scaling, missing values и categories"
-    },
-    {
       "type": "application",
       "mode": "micro-task",
       "prompt": "Посчитай Gini и Gain для маленького candidate split и реши, полезен ли он."
-    },
-    {
-      "type": "content",
-      "source_heading": "Feature importance"
-    },
-    {
-      "type": "content",
-      "source_heading": "Что если предположения нарушены"
-    },
-    {
-      "type": "content",
-      "source_heading": "Ответ для собеседования"
     },
     {
       "type": "interview",

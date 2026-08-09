@@ -53,49 +53,13 @@ cssclasses:
       "title": "Зачем это нужно и какой результат получим"
     },
     {
-      "type": "content",
-      "source_heading": "Цель"
-    },
-    {
-      "type": "content",
-      "source_heading": "Полная прямая реализация"
-    },
-    {
-      "type": "content",
-      "source_heading": "Threshold по constraint"
-    },
-    {
       "type": "interactive",
       "component": "pipeline-builder-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Проверки и инварианты"
-    },
-    {
-      "type": "content",
-      "source_heading": "Что добавить в реальном проекте"
-    },
-    {
-      "type": "content",
-      "source_heading": "Пример"
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
-    },
-    {
-      "type": "content",
-      "source_heading": "Сравнение"
     },
     {
       "type": "retrieval",
       "mode": "single-choice-or-free-recall",
       "prompt": "Какие transformations должны fit только на train и почему estimator без preprocessing не является полным объектом оценки?"
-    },
-    {
-      "type": "content",
-      "source_heading": "Типичные ошибки"
     },
     {
       "type": "application",

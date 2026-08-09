@@ -11,14 +11,15 @@
   color-scheme: light;
 
   /* Background hierarchy — calm neutrals */
-  --dp-app-bg: #f8fafc;
-  --dp-surface: #ffffff;
+  --dp-app-bg: #f5f6f3;
+  --dp-sidebar-bg: #eef0eb;
+  --dp-surface: #fbfcfa;
   --dp-surface-elevated: #ffffff;
-  --dp-surface-interactive: #f1f5f9;
+  --dp-surface-interactive: #e9ede8;
 
   /* Borders */
-  --dp-border-subtle: #e2e8f0;
-  --dp-border-strong: #cbd5e1;
+  --dp-border-subtle: #dfe4dd;
+  --dp-border-strong: #c7cec5;
 
   /* Text */
   --dp-text-primary: #0f172a;
@@ -55,22 +56,23 @@
 .dark {
   color-scheme: dark;
 
-  --dp-app-bg: #020617;
-  --dp-surface: #0f172a;
-  --dp-surface-elevated: #1e293b;
-  --dp-surface-interactive: #1e293b;
+  --dp-app-bg: #0b0f14;
+  --dp-sidebar-bg: #0e131a;
+  --dp-surface: #111821;
+  --dp-surface-elevated: #151e29;
+  --dp-surface-interactive: #19232e;
 
-  --dp-border-subtle: #1e293b;
-  --dp-border-strong: #334155;
+  --dp-border-subtle: #202b36;
+  --dp-border-strong: #334250;
 
-  --dp-text-primary: #f1f5f9;
-  --dp-text-secondary: #94a3b8;
-  --dp-text-muted: #64748b;
+  --dp-text-primary: #edf2f0;
+  --dp-text-secondary: #a5b0b6;
+  --dp-text-muted: #6f7e87;
 
-  --dp-accent: #34d399;
-  --dp-accent-hover: #6ee7b7;
-  --dp-accent-subtle: #022c22;
-  --dp-accent-border: #064e3b;
+  --dp-accent: #62c7a6;
+  --dp-accent-hover: #82d8bc;
+  --dp-accent-subtle: #102a25;
+  --dp-accent-border: #235346;
 
   --dp-success: #34d399;
   --dp-success-subtle: #022c22;
@@ -131,14 +133,19 @@ html.theme-transition * {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--dp-text-muted) 40%, transparent) transparent;
 }
-*::-webkit-scrollbar { height: 8px; width: 8px; }
+*::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
 *::-webkit-scrollbar-thumb {
   border-radius: 9999px;
   background-color: color-mix(in srgb, var(--dp-text-muted) 40%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -201,12 +208,41 @@ html.theme-transition * {
   margin: 0;
 }
 
+.dp-connectivity-banner,
+.dp-install-card {
+  position: sticky;
+  top: 0;
+  z-index: 35;
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: -0.25rem auto 1rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--dp-accent-border);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--dp-accent-subtle) 94%, transparent);
+  color: var(--dp-text-secondary);
+  font-size: 0.75rem;
+  backdrop-filter: blur(12px);
+}
+
+.dp-connectivity-banner button,
+.dp-install-card button {
+  min-height: 2rem;
+  padding: 0 0.625rem;
+  border-radius: 0.5rem;
+  color: var(--dp-accent);
+  font-weight: 650;
+}
+
 /* ============================================================
    TYPOGRAPHY
    ============================================================ */
 
 .dp-page-title {
-  font-size: 1.5rem;
+  font-size: clamp(1.65rem, 2.4vw, 2.05rem);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--dp-text-primary);
@@ -241,7 +277,9 @@ html.theme-transition * {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--dp-text-secondary);
-  transition: background-color 0.12s ease, color 0.12s ease;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
   text-decoration: none;
 }
 .dp-nav-link:hover {
@@ -255,13 +293,44 @@ html.theme-transition * {
   font-weight: 600;
 }
 
+.dp-sidebar-link {
+  display: flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.7rem;
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  color: var(--dp-text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+.dp-sidebar-link:hover {
+  background: var(--dp-surface-interactive);
+  color: var(--dp-text-primary);
+}
+.dp-sidebar-link.is-active {
+  background: var(--dp-accent-subtle);
+  color: var(--dp-accent);
+}
+.dp-sidebar-group {
+  margin: 0 0.75rem 0.45rem;
+  color: var(--dp-text-muted);
+  font-size: 0.625rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
 /* ============================================================
    MARKDOWN CONTENT — scoped to NOT affect KaTeX
    ============================================================ */
 
 .dp-content {
-  font-size: 15px;
-  line-height: 1.7;
+  font-size: 16px;
+  line-height: 1.78;
   color: var(--dp-text-secondary);
 }
 
@@ -280,7 +349,9 @@ html.theme-transition * {
   color: var(--dp-text-primary);
   margin: 2rem 0 0.75rem;
 }
-.dp-content h2:first-child { margin-top: 0; }
+.dp-content h2:first-child {
+  margin-top: 0;
+}
 
 .dp-content h3 {
   font-size: 1.1rem;
@@ -294,7 +365,9 @@ html.theme-transition * {
   margin: 0 0 1rem;
   color: var(--dp-text-secondary);
 }
-.dp-content p:last-child { margin-bottom: 0; }
+.dp-content p:last-child {
+  margin-bottom: 0;
+}
 
 /* Lists */
 .dp-content ul,
@@ -355,7 +428,9 @@ html.theme-transition * {
   border-radius: 0 6px 6px 0;
   color: var(--dp-text-secondary);
 }
-.dp-content blockquote p { margin: 0; }
+.dp-content blockquote p {
+  margin: 0;
+}
 
 /* Tables */
 .dp-content table {
@@ -389,9 +464,39 @@ html.theme-transition * {
    ============================================================ */
 
 @media (max-width: 767px) {
-  .dp-scene { padding: 20px 0; }
-  .dp-page-title { font-size: 1.25rem; }
-  .dp-page-subtitle { font-size: 0.8125rem; }
+  .dp-mobile-header {
+    height: calc(3rem + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+  }
+  .dp-mobile-nav {
+    height: calc(3.5rem + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .dp-mobile-more {
+    bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+  .dp-app-main {
+    padding-top: calc(4rem + env(safe-area-inset-top));
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+  nav[aria-label='Мобильная навигация'] .dp-sidebar-link {
+    min-height: 3.5rem;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.1rem;
+    border-radius: 0;
+    padding: 0.25rem;
+    font-size: 0.625rem;
+  }
+  .dp-scene {
+    padding: 20px 0;
+  }
+  .dp-page-title {
+    font-size: 1.25rem;
+  }
+  .dp-page-subtitle {
+    font-size: 0.8125rem;
+  }
 
   .dp-content {
     font-size: 15px;
@@ -424,5 +529,16 @@ html.theme-transition * {
     white-space: nowrap;
     font-size: 0.8125rem;
   }
-  .dp-reading { max-width: 100%; }
+  .dp-reading {
+    max-width: 100%;
+  }
+  button,
+  a {
+    touch-action: manipulation;
+  }
+  .dp-install-card,
+  .dp-connectivity-banner {
+    top: 0.25rem;
+    margin-top: 0;
+  }
 }

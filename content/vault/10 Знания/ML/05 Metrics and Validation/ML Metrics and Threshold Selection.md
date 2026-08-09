@@ -17,7 +17,21 @@ rag: include
 rag_collection: knowledge
 app: source
 ---
-# ML Metrics and Threshold Selection
+
+
+**Рекомендуемое время:** 60–75 минут.
+
+## Результаты обучения
+- считать confusion matrix и понимать Precision/Recall/F1
+- различать ROC-AUC, PR-AUC, LogLoss и calibration
+- выбирать threshold по стоимости ошибок и capacity
+- понимать top-K, lift и сегментную оценку
+
+## Вход в тему
+
+Модель редко принимает бизнес-решение сама: она выдаёт score, а продукт выбирает, кого проверить, кому отказать или кому показать оффер. Поэтому качество ranking, качество вероятностей и качество конкретного threshold — три разные задачи.
+
+## Полная теория
 
 ## Идея за 30 секунд
 
@@ -162,7 +176,7 @@ Threshold $0.5$ не является универсальным. После cla
 
 ## Regression metrics
 
-### MAE
+#### MAE
 
 $$
 \operatorname{MAE}
@@ -171,7 +185,7 @@ $$
 
 Устойчива к крупным errors относительно MSE; в population ориентирована на conditional median.
 
-### MSE и RMSE
+#### MSE и RMSE
 
 $$
 \operatorname{MSE}
@@ -184,7 +198,7 @@ $$
 
 Крупные residuals доминируют. RMSE возвращает units target.
 
-### $R^2$
+#### $R^2$
 
 $$
 R^2
@@ -195,7 +209,7 @@ $$
 
 В приведённой формуле $\bar{y}$ — mean именно evaluation targets. Поэтому на test $R^2<0$ означает результат хуже constant prediction, равного mean этого evaluation set. Production baseline с train/reference mean нужно считать отдельно, не подменяя denominator стандартного $R^2$. Метрика не измеряет causal fit и плохо сравнима между datasets с разной target variability.
 
-### Percentage metrics
+#### Percentage metrics
 
 MAPE unstable при $y\approx0$, asymmetric и undefined при zero. Рассмотреть MAE/RMSE, WAPE, SMAPE или domain-specific normalized error, называя denominator.
 
@@ -243,52 +257,99 @@ Offline metric зависит от candidate set, negative sampling и exposure 
 
 Metric без decision context легко оптимизировать в неверную сторону.
 
-## Визуализация
+## Обязательная визуальная демонстрация
 
-Confusion matrix показывает ошибки по классам; ROC-кривая — trade-off TPR/FPR по threshold; PR-кривая — precision/recall при дисбалансе. Интерактивный «порог» (slider) помогает увидеть, как меняются precision, recall и число объектов по классам при сдвиге threshold.
+Один набор score и интерактивный threshold: одновременно меняются confusion matrix, Precision, Recall, F1, число действий и expected cost.
 
-## Частые ошибки
+## Практика
 
-- accuracy при сильном дисбалансе классов;
-- выбор метрики «как все», без стоимости ошибок бизнеса;
-- PR-AUC вместо ROC-AUC для редкого позитивного класса (и наоборот);
-- threshold, подобранный на test и выданный за «обобщение»;
-- усреднение multiclass метрик без понимания averaging scheme;
-- сравнивать модели по метрике, не соответствующей решению.
+#### Задание 1. Confusion matrix
 
-## Сравнение метрик
+В выборке 10 000 объектов, 100 положительных. Recall=0.8, FPR=0.03. Посчитай TP, FN, FP, TN и Precision.
 
-| Метрика | Спрашивает | Когда использовать |
-|---|---|---|
-| Accuracy | доля верных | баланс классов |
-| Precision | сколько из предсказанных — верные | дорогие ложные срабатывания |
-| Recall | сколько из истинных нашли | дорогие пропуски |
-| ROC-AUC | разделение классов | сравнение моделей, баланс |
-| PR-AUC | качество на редком классе | сильный дисбаланс |
-| LogLoss | уверенность вероятностей | нужны вероятности |
+#### Задание 2. Выбор метрики
 
-## Простой пример
+Fraud встречается в 0.2% случаев. Что информативнее для сравнения моделей: Accuracy, ROC-AUC или PR-AUC?
 
-Кредитный скор: 2% дефолтов. Accuracy ≈ 98% у «всегда не дефолт» — бесполезна. PR-AUC и threshold по стоимости ошибок дают осмысленную оценку.
+#### Задание 3. Threshold
 
-## Пример кода
+Цена FN в 8 раз выше FP. Как это должно влиять на threshold?
+
+#### Задание 4. Top-K
+
+Операторы могут обработать 500 из 50 000 клиентов. Какие метрики использовать?
+
+## Разбор практики
+
+**1.** TP=80, FN=20, FP=0.03×9900=297, TN=9603; Precision=80/(80+297)≈0.212.
+
+**2.** Accuracy почти бесполезна. PR-AUC лучше отражает редкий positive; ROC-AUC можно оставить как дополнительную ranking-метрику.
+
+**3.** Threshold обычно снижают, повышая Recall, но окончательно выбирают по expected cost на validation.
+
+**4.** Precision@500, Recall@500, Lift@1%, cumulative gain и business value top-500.
+
+## Checkpoint для приложения
+
+#### Checkpoint 1
+
+**Вопрос:** Что измеряет ROC-AUC?
+
+- A. Calibration
+- B. Вероятность, что positive получит больший score, чем negative
+- C. Accuracy при 0.5
+- D. Среднюю стоимость
+
+**Правильный ответ:** B
+
+**Объяснение:** ROC-AUC оценивает ranking по случайной positive-negative паре.
+
+#### Checkpoint 2
+
+**Вопрос:** Когда PR-AUC особенно полезна?
+
+- A. При сильном дисбалансе
+- B. Только для регрессии
+- C. Когда нет target
+- D. Только после calibration
+
+**Правильный ответ:** A
+
+**Объяснение:** Она фокусируется на качестве positive-класса.
+
+#### Checkpoint 3
+
+**Вопрос:** Threshold 0.5 является...
+
+- A. универсально оптимальным
+- B. обязательным для Logistic Regression
+- C. одной из возможных рабочих точек
+- D. эквивалентом ROC-AUC
+
+**Правильный ответ:** C
+
+**Объяснение:** Threshold должен выбираться по цели и ограничениям.
+
+## Мини-проект / применение
+
+Используй небольшой воспроизводимый dataset и оформи результат как карточку эксперимента: постановка задачи, split, baseline, pipeline, metric, результат, error analysis и ограничения. Код должен запускаться сверху вниз без ручных скрытых шагов.
+
+## Критерий завершения урока
+
+Ученик может своими словами объяснить механизм, решить хотя бы одно числовое задание, написать минимальный sklearn pipeline, назвать две типичные ошибки и обосновать, когда метод применять не стоит.
+
+## Код: threshold как часть решения
 
 ```python
-from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score,
-    roc_auc_score, log_loss, confusion_matrix,
-)
+import numpy as np
+from sklearn.metrics import precision_recall_curve
 
-print(confusion_matrix(y_val, y_pred))
-print(precision_score(y_val, y_pred), recall_score(y_val, y_pred))
-print(roc_auc_score(y_val, y_proba), log_loss(y_val, y_proba))
+precision, recall, thresholds = precision_recall_curve(y_valid, probability)
+valid = np.flatnonzero(precision[:-1] >= 0.70)
+best = valid[np.argmax(recall[:-1][valid])]
+threshold = thresholds[best]
+prediction = (probability >= threshold).astype(int)
 ```
 
-## Связи
-
-- [[Validation Splits and Data Leakage]] — metric считается на честном split; threshold не выбирают на test.
-- [[Logistic Regression]] — LogLoss и probability interpretation.
-- [[Likelihood MLE and MAP]] — proper probabilistic losses.
-- [[Recommendation Systems]] — candidate generation и ranking evaluation.
-- [[A-B Testing]] — online causal effect и guardrails.
-- [[Validation and Metrics — Interview]] — короткий формат.
+Порог выбирают на validation и фиксируют до test. Здесь constraint — precision
+не ниже 0.70, а среди допустимых точек максимизируется recall.

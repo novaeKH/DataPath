@@ -50,40 +50,8 @@ cssclasses:
       "title": "Зачем это нужно и какой результат получим"
     },
     {
-      "type": "content",
-      "source_heading": "Зачем нужна regularization"
-    },
-    {
-      "type": "content",
-      "source_heading": "L2 / Ridge"
-    },
-    {
-      "type": "content",
-      "source_heading": "L1 / Lasso"
-    },
-    {
       "type": "interactive",
       "component": "regularization-path-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Elastic Net"
-    },
-    {
-      "type": "content",
-      "source_heading": "Почему scaling обязателен"
-    },
-    {
-      "type": "content",
-      "source_heading": "Сравнение: L1 vs L2 vs Elastic Net"
-    },
-    {
-      "type": "content",
-      "source_heading": "Простой пример"
-    },
-    {
-      "type": "content",
-      "source_heading": "Пример кода"
     },
     {
       "type": "retrieval",
@@ -91,33 +59,9 @@ cssclasses:
       "prompt": "Какая картина train/validation errors указывает на high bias, а какая — на high variance?"
     },
     {
-      "type": "content",
-      "source_heading": "Structural regularization"
-    },
-    {
-      "type": "content",
-      "source_heading": "Early stopping"
-    },
-    {
-      "type": "content",
-      "source_heading": "Bias–variance diagnostics"
-    },
-    {
       "type": "application",
       "mode": "micro-task",
       "prompt": "Для linear model с correlated features выбери Ridge, Lasso или Elastic Net и объясни trade-off."
-    },
-    {
-      "type": "content",
-      "source_heading": "Выбор strength"
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
-    },
-    {
-      "type": "content",
-      "source_heading": "Частые ошибки"
     },
     {
       "type": "interview",

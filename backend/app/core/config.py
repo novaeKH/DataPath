@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "DataPath"
-    app_version: str = "0.1.0"
+    app_version: str = "1.0.0"
     environment: str = "development"
     host: str = "0.0.0.0"
     port: int = 8000

@@ -50,44 +50,8 @@ cssclasses:
       "title": "Зачем это нужно и какой результат получим"
     },
     {
-      "type": "content",
-      "source_heading": "Идея за 30 секунд"
-    },
-    {
-      "type": "content",
-      "source_heading": "Сначала определить prediction contract"
-    },
-    {
-      "type": "content",
-      "source_heading": "Роли train, validation и test"
-    },
-    {
       "type": "interactive",
       "component": "validation-split-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Random split"
-    },
-    {
-      "type": "content",
-      "source_heading": "Group split и GroupKFold"
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
-    },
-    {
-      "type": "content",
-      "source_heading": "Частые ошибки"
-    },
-    {
-      "type": "content",
-      "source_heading": "Сравнение стратегий split"
-    },
-    {
-      "type": "content",
-      "source_heading": "Простой пример"
     },
     {
       "type": "retrieval",
@@ -95,29 +59,9 @@ cssclasses:
       "prompt": "Почему случайный split опасен, если у одного пользователя много транзакций?"
     },
     {
-      "type": "content",
-      "source_heading": "Time split"
-    },
-    {
-      "type": "content",
-      "source_heading": "Cross-validation"
-    },
-    {
       "type": "application",
       "mode": "micro-task",
       "prompt": "Для таблицы событий пользователей выбери split и перечисли три операции, которые нужно fit только внутри train fold."
-    },
-    {
-      "type": "content",
-      "source_heading": "Preprocessing внутри folds"
-    },
-    {
-      "type": "content",
-      "source_heading": "Виды leakage"
-    },
-    {
-      "type": "content",
-      "source_heading": "Early stopping, calibration и threshold"
     },
     {
       "type": "interview",

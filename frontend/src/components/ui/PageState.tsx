@@ -7,10 +7,12 @@ import { Button } from './Button'
  */
 
 export function PageHeader({
+  eyebrow,
   title,
   subtitle,
   actions,
 }: {
+  eyebrow?: string
   title: string
   subtitle?: ReactNode
   actions?: ReactNode
@@ -18,6 +20,14 @@ export function PageHeader({
   return (
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
+        {eyebrow && (
+          <p
+            className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em]"
+            style={{ color: 'var(--dp-accent)' }}
+          >
+            {eyebrow}
+          </p>
+        )}
         <h1 className="dp-page-title">{title}</h1>
         {subtitle && <p className="dp-page-subtitle mt-1">{subtitle}</p>}
       </div>
@@ -81,7 +91,10 @@ export function EmptyState({
         {title}
       </div>
       {description && (
-        <div className="max-w-md text-sm leading-relaxed" style={{ color: 'var(--dp-text-secondary)' }}>
+        <div
+          className="max-w-md text-sm leading-relaxed"
+          style={{ color: 'var(--dp-text-secondary)' }}
+        >
           {description}
         </div>
       )}

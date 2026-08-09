@@ -4,10 +4,10 @@ id: lesson.data-analysis.02
 schema_version: 2
 type: lesson
 area: data-analysis
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.data-analysis
 module_id: module.data-analysis.numpy
 module_order: 1
@@ -40,45 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Basic, fancy и boolean indexing"
-    },
-    {
-      "type": "content",
-      "source_heading": "Broadcasting"
-    },
-    {
-      "type": "content",
-      "source_heading": "Векторизация"
-    },
-    {
       "type": "interactive",
       "component": "numpy-broadcasting-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Условные выражения"
-    },
-    {
-      "type": "content",
-      "source_heading": "Pairwise computations"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Matrix multiplication"
-    },
-    {
-      "type": "content",
-      "source_heading": "Производительность"
-    },
-    {
-      "type": "content",
-      "source_heading": "Численная устойчивость"
     },
     {
       "type": "application",
@@ -97,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

@@ -50,44 +50,8 @@ cssclasses:
       "title": "Зачем это нужно и какой результат получим"
     },
     {
-      "type": "content",
-      "source_heading": "Идея за 30 секунд"
-    },
-    {
-      "type": "content",
-      "source_heading": "Общая основа"
-    },
-    {
-      "type": "content",
-      "source_heading": "XGBoost: second-order objective"
-    },
-    {
       "type": "interactive",
       "component": "categorical-encoding-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "LightGBM: histograms и leaf-wise growth"
-    },
-    {
-      "type": "content",
-      "source_heading": "CatBoost: ordered categories и ordered boosting"
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
-    },
-    {
-      "type": "content",
-      "source_heading": "Простой пример"
-    },
-    {
-      "type": "content",
-      "source_heading": "Пример"
-    },
-    {
-      "type": "content",
-      "source_heading": "Частые ошибки"
     },
     {
       "type": "retrieval",
@@ -95,21 +59,9 @@ cssclasses:
       "prompt": "Как ordered target statistics CatBoost снижают leakage и чем это отличается от ordered boosting?"
     },
     {
-      "type": "content",
-      "source_heading": "Сравнение"
-    },
-    {
       "type": "application",
       "mode": "micro-task",
       "prompt": "Для таблицы с большим числом категорий и 500 тысяч строк выбери стартовую библиотеку и план честного сравнения."
-    },
-    {
-      "type": "content",
-      "source_heading": "Практический tuning order"
-    },
-    {
-      "type": "content",
-      "source_heading": "Ответ для собеседования"
     },
     {
       "type": "interview",

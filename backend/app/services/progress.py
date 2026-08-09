@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -28,6 +28,7 @@ from app.db.models import (
     LabAttempt,
     LearningEvent,
     LessonProgress,
+    ReviewItem,
     SkillAssessment,
 )
 from app.db.session import SessionLocal
@@ -36,9 +37,22 @@ from app.services.knowledge_model import (
     is_weak_skill,
 )
 from app.services.labs.registry import LabRegistry, get_default_registry
+from app.services.reviews.dynamic import template_id
 
-# Порядок MVP-маршрута для «следующего урока».
-DEFAULT_COURSE_ID = "course.classic-ml"
+# Порядок ежедневного маршрута: фундамент прежде моделей, затем специализации.
+# Неизвестные курсы остаются доступны и идут после явно заданных направлений.
+COURSE_PRIORITY = (
+    "course.python-ds",
+    "course.data-analysis",
+    "course.math-ds",
+    "course.data-tools",
+    "course.classic-ml",
+    "course.deep-learning",
+    "course.nlp",
+    "course.llm-rag",
+    "course.mlops",
+    "course.algorithms",
+)
 
 
 def _stable_hash(*parts: Any) -> str:
@@ -77,6 +91,44 @@ class ProgressService:
 
     # --- Сцены и уроки ---
 
+    @staticmethod
+    def _schedule_self_assessment_review(db, lesson: ContentItem, outcome: str, now: str) -> None:
+        intervals = {"self_confident": 4.0, "self_review": 1.0, "self_uncertain": 0.25}
+        interval = intervals.get(outcome)
+        if interval is None:
+            return
+        dynamic_id = template_id(lesson.id, "concept")
+        item = db.scalar(select(ReviewItem).where(ReviewItem.template_id == dynamic_id))
+        due_at = (datetime.fromisoformat(now) + timedelta(days=interval)).isoformat(
+            timespec="seconds"
+        )
+        if item is None:
+            skill_id = next(iter(lesson.skill_ids or []), f"course.{lesson.course_id or 'general'}")
+            db.add(
+                ReviewItem(
+                    template_id=dynamic_id,
+                    primary_skill_id=skill_id,
+                    source_type="lesson",
+                    source_id=lesson.id,
+                    stage="relearning" if outcome == "self_uncertain" else "learning",
+                    status="active",
+                    due_at=due_at,
+                    interval_days=interval,
+                    ease_factor=2.5,
+                    repetitions=0,
+                    lapses=0,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            return
+        if item.due_at > due_at:
+            item.due_at = due_at
+            item.interval_days = interval
+        if outcome == "self_uncertain":
+            item.stage = "relearning"
+        item.updated_at = now
+
     def complete_scene(
         self,
         lesson_id: str,
@@ -93,8 +145,6 @@ class ProgressService:
         """
         with self.session_factory() as db:
             progress = db.get(LessonProgress, lesson_id)
-            from datetime import datetime
-
             now = datetime.now(UTC).isoformat(timespec="seconds")
             if progress is None:
                 progress = LessonProgress(
@@ -110,6 +160,14 @@ class ProgressService:
                 progress.completed_scenes = [*(progress.completed_scenes or []), scene_id]
             progress.updated_at = now
 
+            lesson = self._lesson(db, lesson_id)
+            if lesson is not None:
+                self._schedule_self_assessment_review(db, lesson, outcome, now)
+
+            dedup_key = f"scene:{lesson_id}:{scene_id}"
+            existing_event = db.scalar(
+                select(LearningEvent).where(LearningEvent.dedup_key == dedup_key)
+            )
             event = self.knowledge.record_event(
                 db,
                 event_type="scene_complete",
@@ -119,14 +177,21 @@ class ProgressService:
                 axis="theory",
                 outcome=outcome,
                 metadata={"scene_id": scene_id, "scene_type": scene_type},
-                dedup_key=f"scene:{lesson_id}:{scene_id}",
+                dedup_key=dedup_key,
             )
-            if skill_id:
+            if skill_id and existing_event is None:
                 self.knowledge.apply_event_evidence(
                     db,
                     event_type="scene_complete",
                     skill_id=skill_id,
-                    success=1.0,
+                    success={
+                        "correct": 1.0,
+                        "incorrect": 0.0,
+                        "self_confident": 0.7,
+                        "self_review": 0.45,
+                        "self_uncertain": 0.25,
+                        "reflection": 0.5,
+                    }.get(outcome, 0.6),
                 )
             db.commit()
             return {
@@ -149,8 +214,6 @@ class ProgressService:
             item = self._lesson(db, lesson_id)
             if item is None:
                 raise ValueError(f"Урок {lesson_id!r} не найден")
-            from datetime import datetime
-
             now = datetime.now(UTC).isoformat(timespec="seconds")
             progress = db.get(LessonProgress, lesson_id)
             if progress is None:
@@ -389,26 +452,61 @@ class ProgressService:
         return {"action": "explore", "message": "Изучите Atlas или выберите кейс в Studio."}
 
     def next_lesson(self) -> dict[str, Any] | None:
-        """Следующий не начатый урок MVP-маршрута (по порядку курса)."""
+        """Следующий доступный урок общего DataPath-маршрута."""
         with self.session_factory() as db:
-            lessons = db.scalars(
-                select(ContentItem)
-                .where(
-                    ContentItem.course_id == DEFAULT_COURSE_ID,
-                    ContentItem.type == "lesson",
-                    ContentItem.publish.is_(True),
+            lessons = list(
+                db.scalars(
+                    select(ContentItem).where(
+                        ContentItem.type == "lesson",
+                        ContentItem.publish.is_(True),
+                    )
+                ).all()
+            )
+            course_order = {course_id: index for index, course_id in enumerate(COURSE_PRIORITY)}
+            lessons.sort(
+                key=lambda lesson: (
+                    course_order.get(lesson.course_id or "", len(COURSE_PRIORITY)),
+                    lesson.course_id or "",
+                    lesson.module_order if lesson.module_order is not None else 10**6,
+                    lesson.lesson_order if lesson.lesson_order is not None else 10**6,
+                    lesson.path,
                 )
-                .order_by(ContentItem.module_order, ContentItem.lesson_order, ContentItem.path)
-            ).all()
+            )
             progresses = {p.lesson_id: p for p in db.scalars(select(LessonProgress)).all()}
+            unfinished: list[ContentItem] = []
             for lesson in lessons:
                 progress = progresses.get(lesson.id)
-                if progress is None or progress.completed_at is None:
+                if progress is not None and progress.completed_at is not None:
+                    continue
+                unfinished.append(lesson)
+                lesson_prerequisites = [
+                    prerequisite
+                    for prerequisite in (lesson.prerequisites or [])
+                    if isinstance(prerequisite, str) and prerequisite.startswith("lesson.")
+                ]
+                if all(
+                    progresses.get(prerequisite) is not None
+                    and progresses[prerequisite].completed_at is not None
+                    for prerequisite in lesson_prerequisites
+                ):
                     return {
                         "id": lesson.id,
                         "title": lesson.title,
                         "skills": list(lesson.skill_ids or []),
+                        "estimated_minutes": lesson.estimated_minutes,
+                        "course_id": lesson.course_id,
                     }
+            # Защита от циклических или устаревших prerequisite-ссылок: маршрут
+            # не должен полностью исчезать из Today.
+            if unfinished:
+                lesson = unfinished[0]
+                return {
+                    "id": lesson.id,
+                    "title": lesson.title,
+                    "skills": list(lesson.skill_ids or []),
+                    "estimated_minutes": lesson.estimated_minutes,
+                    "course_id": lesson.course_id,
+                }
             return None
 
     def weak_skills(self, limit: int = 3) -> list[dict[str, Any]]:
@@ -448,6 +546,7 @@ class ProgressService:
                 "typical_errors": self.knowledge.typical_errors(db, skill_id),
                 "recent_events": self.knowledge.recent_events(db, skill_id),
                 "weak": is_weak_skill(assessment.axes, assessment.evidence_count, repeated),
+                "mastery_percent": self._mastery_percent(assessment.axes),
             }
 
     def skills_overview(self) -> list[dict[str, Any]]:
@@ -466,9 +565,19 @@ class ProgressService:
                         "evidence_count": assessment.evidence_count,
                         "axes": assessment.axes,
                         "weak": is_weak_skill(assessment.axes, assessment.evidence_count, repeated),
+                        "mastery_percent": self._mastery_percent(assessment.axes),
                     }
                 )
             return result
+
+    @staticmethod
+    def _mastery_percent(axes: dict[str, Any]) -> int:
+        scores = [
+            float(axis.get("score", 0.0))
+            for axis in (axes or {}).values()
+            if axis.get("evidence_count", 0) > 0
+        ]
+        return round(100 * sum(scores) / len(scores)) if scores else 0
 
     def today(self) -> dict[str, Any]:
         """Экран Today: главная карточка, маршрут, слабые темы, активность."""
@@ -488,6 +597,7 @@ class ProgressService:
                     "current_scene_id": progress.current_scene_id,
                     "completed_scenes": progress.completed_scenes or [],
                     "started_at": progress.started_at,
+                    "estimated_minutes": item.estimated_minutes if item else None,
                 }
 
             # 2. Следующий урок маршрута.

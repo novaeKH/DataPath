@@ -160,11 +160,13 @@ class ContentSyncService:
                         )
 
             # Ошибки/предупреждения последнего прогона.
+            # Для элементов, не попавших в keep_ids (не прошли валидацию),
+            # item_id = None — FK ondelete=SET NULL позволяет orphan issues.
             db.execute(delete(ContentIssue))
             for issue in validation.issues:
                 db.add(
                     ContentIssue(
-                        item_id=issue.item_id,
+                        item_id=issue.item_id if issue.item_id in keep_ids else None,
                         path=issue.path,
                         severity=issue.severity,
                         code=issue.code,

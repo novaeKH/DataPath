@@ -35,7 +35,9 @@ Stack возвращает последний добавленный элеме�
 
 ## 5. Необходимый Python
 
-Stack: `list.append/pop`. Queue: `collections.deque.append/popleft`.
+Stack: `list.append/pop`. Queue: `collections.deque.append/popleft`. Эти операции
+работают с концами контейнеров за амортизированное O(1); `list.pop(0)` сдвигает
+остальные элементы и поэтому даёт O(n).
 
 ## 6. Универсальные шаблоны
 

@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from sqlalchemy.orm import sessionmaker
@@ -25,7 +26,26 @@ from app.db.models import ContentItem
 from app.db.session import SessionLocal
 from app.services.lesson_content import (
     META_SECTION_TITLES,
+    VISUAL_DEMO_IDS,
     LessonContentService,
+)
+
+KEY_LESSON_PREFIXES = (
+    "lesson.classic-ml.linear.regression",
+    "lesson.classic-ml.linear.logistic",
+    "lesson.classic-ml.trees",
+    "lesson.classic-ml.unsupervised.pca",
+    "lesson.deep-learning",
+    "lesson.llm-rag",
+)
+
+PLACEHOLDER_MARKERS = (
+    "lorem ipsum",
+    "todo:",
+    "tbd",
+    "draft route",
+    "контент готов как draft",
+    "включать в приложение после реализации",
 )
 
 
@@ -100,6 +120,9 @@ class ContentQualityAuditor:
 
             scenes = lesson_data.get("scenes", [])
             skills = lesson_data.get("skills", [])
+            lesson_body = self.lesson_service._read_lesson_body(lesson_item)
+            source_body = self.lesson_service._read_source(lesson_item.content_path) or ""
+            combined_body = f"{lesson_body}\n{source_body}".lower()
 
             # --- Errors ---
 
@@ -139,7 +162,99 @@ class ContentQualityAuditor:
                     }
                 )
 
+            # Broken visualizer references are product errors: Focus would render
+            # a dead block even though the lesson manifest itself is valid JSON.
+            for scene in scenes:
+                if scene.get("type") != "visual_demo":
+                    continue
+                demo_id = scene.get("demo_id")
+                if not demo_id or demo_id not in VISUAL_DEMO_IDS:
+                    errors.append(
+                        {
+                            "lesson_id": lid,
+                            "scene_id": scene.get("id"),
+                            "code": "broken_visualizer_reference",
+                            "message": f"Неизвестный visualizer id: {demo_id or '—'}",
+                        }
+                    )
+
+            # Assessment semantics are part of content integrity. Reflective/self-rating
+            # prompts never require a correct answer; objective quizzes always do.
+            valid_assessment_types = {
+                "self_assessment",
+                "single_choice_quiz",
+                "multiple_choice_quiz",
+                "free_response",
+                "reflection",
+            }
+            for scene in scenes:
+                if scene.get("type") != "checkpoint":
+                    continue
+                assessment_type = scene.get("assessment_type")
+                if assessment_type not in valid_assessment_types:
+                    errors.append(
+                        {
+                            "lesson_id": lid,
+                            "scene_id": scene.get("id"),
+                            "code": "invalid_assessment_type",
+                            "message": f"Неизвестный assessment_type: {assessment_type or '—'}",
+                        }
+                    )
+                    continue
+                if assessment_type not in {"single_choice_quiz", "multiple_choice_quiz"}:
+                    continue
+                correct_count = len(
+                    re.findall(
+                        r"^[-*]\s*\[[xX]\]\s+.+$",
+                        scene.get("question") or "",
+                        flags=re.MULTILINE,
+                    )
+                )
+                expected = 1 if assessment_type == "single_choice_quiz" else 2
+                if correct_count < expected:
+                    errors.append(
+                        {
+                            "lesson_id": lid,
+                            "scene_id": scene.get("id"),
+                            "code": "objective_assessment_without_answer",
+                            "message": "Objective quiz не содержит корректно размеченный ответ",
+                        }
+                    )
+
+            for marker in PLACEHOLDER_MARKERS:
+                if marker in combined_body:
+                    errors.append(
+                        {
+                            "lesson_id": lid,
+                            "code": "placeholder_content",
+                            "message": f"Найден служебный placeholder marker: {marker}",
+                        }
+                    )
+                    break
+
             # --- Warnings ---
+
+            # Repeated level-2 headings usually indicate a mechanical merge or
+            # duplicated section. Check each canonical file independently so
+            # shared names between the lesson wrapper and source are not noise.
+            for source_name, body in (("lesson", lesson_body), ("source", source_body)):
+                headings = [
+                    match.group(1).strip().casefold()
+                    for match in re.finditer(r"^##\s+(.+?)\s*$", body, flags=re.MULTILINE)
+                ]
+                duplicates = sorted(
+                    {heading for heading in headings if headings.count(heading) > 1}
+                )
+                if duplicates:
+                    warnings.append(
+                        {
+                            "lesson_id": lid,
+                            "code": "duplicate_section",
+                            "message": (
+                                f"Повторяющиеся разделы в {source_name}: " + ", ".join(duplicates)
+                            ),
+                        }
+                    )
 
             # source_heading resolution: fallback/missing → warning (Фаза 6A).
             # Внимание: все пять уроков MVP настраивают «Коротко»/«Интуиция»,
@@ -180,31 +295,11 @@ class ContentQualityAuditor:
                         }
                     )
 
-            # Проверка source_heading (hook-сцены не от source — ок)
-            for scene in scenes:
-                stype = scene.get("type", "")
-                if stype in ("markdown", "formula", "code", "callout", "visual", "table"):
-                    # Hook сцены (первая сцена, title из datapath)
-                    # не обязаны иметь source_heading
-                    if (
-                        scene.get("source_content_id") is None
-                        and scene.get("source_heading") is None
-                    ):
-                        continue
-                    if not scene.get("source_heading"):
-                        warnings.append(
-                            {
-                                "lesson_id": lid,
-                                "scene_id": scene.get("id"),
-                                "code": "missing_source_heading",
-                                "message": "Сцена без source_heading",
-                            }
-                        )
-
             # Пустые сцены
             for scene in scenes:
                 if scene.get("word_count", 0) == 0 and scene.get("type") not in (
                     "interactive_lab",
+                    "visual_demo",
                     "checkpoint",
                     "code",
                     "formula",
@@ -253,6 +348,37 @@ class ContentQualityAuditor:
                     }
                 )
 
+            if not any(
+                heading in lesson_body
+                for heading in ("## Результат урока", "## Результат", "## Цели урока")
+            ):
+                warnings.append(
+                    {
+                        "lesson_id": lid,
+                        "code": "missing_learning_objectives",
+                        "message": "Урок без learning objectives",
+                    }
+                )
+
+            total_words = sum(int(scene.get("word_count") or 0) for scene in content_scenes)
+            total_words += sum(
+                len(str(scene.get("code") or "").split())
+                for scene in content_scenes
+                if scene.get("type") == "code"
+            )
+            minimum_words = 300 if lid.startswith(KEY_LESSON_PREFIXES) else 180
+            if total_words < minimum_words:
+                warnings.append(
+                    {
+                        "lesson_id": lid,
+                        "code": "lesson_too_short",
+                        "message": (
+                            f"Учебный материал содержит около {total_words} слов; "
+                            f"минимум для этого типа урока — {minimum_words}"
+                        ),
+                    }
+                )
+
             # Урок без checkpoint
             checkpoints = [s for s in scenes if s.get("type") == "checkpoint"]
             if not checkpoints:
@@ -281,7 +407,11 @@ class ContentQualityAuditor:
 
             semantic_roles = {s.get("semantic_role") for s in scenes}
 
-            if "example" not in semantic_roles:
+            has_example = "example" in semantic_roles or any(
+                marker in combined_body
+                for marker in ("пример", "например", "example", "mini-case", "мини-кейс")
+            )
+            if not has_example:
                 suggestions.append(
                     {
                         "lesson_id": lid,
@@ -289,7 +419,9 @@ class ContentQualityAuditor:
                         "message": "Урок без сцены с примером",
                     }
                 )
-            has_visual = "visual" in {s.get("type") for s in scenes}
+            has_visual = bool(
+                {"visual", "visual_demo", "interactive_lab"} & {s.get("type") for s in scenes}
+            )
             if "visualization" not in semantic_roles and not has_visual:
                 suggestions.append(
                     {
@@ -298,7 +430,10 @@ class ContentQualityAuditor:
                         "message": "Урок без визуализации",
                     }
                 )
-            if "code" not in semantic_roles:
+            has_code = "code" in semantic_roles or any(
+                scene.get("type") == "code" for scene in scenes
+            )
+            if not has_code:
                 suggestions.append(
                     {
                         "lesson_id": lid,
@@ -306,7 +441,11 @@ class ContentQualityAuditor:
                         "message": "Урок без кода",
                     }
                 )
-            if "pitfalls" not in semantic_roles:
+            has_pitfalls = "pitfalls" in semantic_roles or any(
+                marker in combined_body
+                for marker in ("частые ошибки", "типичные ошибки", "pitfall")
+            )
+            if not has_pitfalls:
                 suggestions.append(
                     {
                         "lesson_id": lid,
@@ -314,15 +453,6 @@ class ContentQualityAuditor:
                         "message": "Урок без блока типичных ошибок",
                     }
                 )
-            if "comparison" not in semantic_roles:
-                suggestions.append(
-                    {
-                        "lesson_id": lid,
-                        "code": "no_comparison",
-                        "message": "Урок без сравнения",
-                    }
-                )
-
         return {
             "lessons_checked": len(lessons),
             "errors": errors,

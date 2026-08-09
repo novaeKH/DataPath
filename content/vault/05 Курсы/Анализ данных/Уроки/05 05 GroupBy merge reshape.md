@@ -4,10 +4,10 @@ id: lesson.data-analysis.05
 schema_version: 2
 type: lesson
 area: data-analysis
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.data-analysis
 module_id: module.data-analysis.pandas
 module_order: 2
@@ -40,45 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "GroupBy: split–apply–combine"
-    },
-    {
-      "type": "content",
-      "source_heading": "`agg` и `transform`"
-    },
-    {
-      "type": "content",
-      "source_heading": "Merge"
-    },
-    {
       "type": "interactive",
       "component": "groupby-merge-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Диагностика join"
-    },
-    {
-      "type": "content",
-      "source_heading": "Опасность many-to-many"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "`concat`"
-    },
-    {
-      "type": "content",
-      "source_heading": "Pivot и melt"
-    },
-    {
-      "type": "content",
-      "source_heading": "Cumulative и rolling признаки"
     },
     {
       "type": "application",
@@ -97,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

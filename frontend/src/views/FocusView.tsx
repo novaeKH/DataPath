@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   completeLesson,
@@ -13,6 +13,8 @@ import {
   type LessonProgressDetail,
 } from '../lib/api'
 import { SceneView } from '../components/lesson/SceneView'
+import type { AssessmentAttempt } from '../components/lesson/CheckpointScene'
+import { LessonNotes } from '../components/lesson/LessonNotes'
 import { LessonOutline } from '../components/lesson/LessonOutline'
 import { EmptyState, ErrorState, LoadingBlock } from '../components/ui/PageState'
 import { Button } from '../components/ui/Button'
@@ -31,11 +33,17 @@ type LessonLoadState =
 export function FocusView() {
   const { lessonId } = useParams<{ lessonId: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   if (lessonId) {
     return <LessonView key={lessonId} lessonId={lessonId} onNavigate={navigate} />
   }
-  return <CoursePicker onNavigate={navigate} />
+  return (
+    <CoursePicker
+      courseId={searchParams.get('course') ?? DEFAULT_COURSE_ID}
+      onNavigate={navigate}
+    />
+  )
 }
 
 /* ================================================================
@@ -44,42 +52,52 @@ export function FocusView() {
 
 type LessonProgressMap = Record<string, { completed: boolean; current: boolean }>
 
-function CoursePicker({ onNavigate }: { onNavigate: (path: string) => void }) {
+function CoursePicker({
+  courseId,
+  onNavigate,
+}: {
+  courseId: string
+  onNavigate: (path: string) => void
+}) {
   const [state, setState] = useState<
     | { kind: 'loading' }
     | { kind: 'error'; message: string }
     | { kind: 'ready'; course: CourseDetail; progress: LessonProgressMap }
   >({ kind: 'loading' })
 
-  const load = useCallback(async (signal?: AbortSignal) => {
-    setState({ kind: 'loading' })
-    try {
-      const course = await fetchCourseDetail(DEFAULT_COURSE_ID, signal)
-      // Build lightweight progress map (started/completed) for all lessons
-      const progress: LessonProgressMap = {}
-      const allLessons = course.modules.flatMap((m) => m.lessons)
-      await Promise.all(
-        allLessons.map(async (lesson) => {
-          try {
-            const p = await fetchLessonProgress(lesson.id, signal)
-            progress[lesson.id] = {
-              completed: !!p?.completed_at,
-              current: !!p && !p.completed_at && (p.completed_scenes?.length ?? 0) > 0,
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      setState({ kind: 'loading' })
+      try {
+        const course = await fetchCourseDetail(courseId, signal)
+        // Build lightweight progress map (started/completed) for all lessons
+        const progress: LessonProgressMap = {}
+        const allLessons = course.modules.flatMap((m) => m.lessons)
+        await Promise.all(
+          allLessons.map(async (lesson) => {
+            try {
+              const p = await fetchLessonProgress(lesson.id, signal)
+              progress[lesson.id] = {
+                completed: !!p?.completed_at,
+                current: !!p && !p.completed_at && (p.completed_scenes?.length ?? 0) > 0,
+              }
+            } catch {
+              progress[lesson.id] = { completed: false, current: false }
             }
-          } catch {
-            progress[lesson.id] = { completed: false, current: false }
-          }
-        }),
-      )
-      setState({ kind: 'ready', course, progress })
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
-      setState({
-        kind: 'error',
-        message: 'Не удалось загрузить курс. Проверьте, что backend запущен и каталог синхронизирован.',
-      })
-    }
-  }, [])
+          }),
+        )
+        setState({ kind: 'ready', course, progress })
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        setState({
+          kind: 'error',
+          message:
+            'Не удалось загрузить курс. Проверьте, что backend запущен и каталог синхронизирован.',
+        })
+      }
+    },
+    [courseId],
+  )
 
   useEffect(() => {
     const controller = new AbortController()
@@ -91,7 +109,9 @@ function CoursePicker({ onNavigate }: { onNavigate: (path: string) => void }) {
     return <LoadingBlock label="Загрузка курса…" rows={5} />
   }
   if (state.kind === 'error') {
-    return <ErrorState title="Курс недоступен" message={state.message} onRetry={() => void load()} />
+    return (
+      <ErrorState title="Курс недоступен" message={state.message} onRetry={() => void load()} />
+    )
   }
 
   const { course, progress } = state
@@ -110,11 +130,11 @@ function CoursePicker({ onNavigate }: { onNavigate: (path: string) => void }) {
         <header className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Link
-              to="/atlas"
+              to="/learn"
               className="text-sm hover:underline"
               style={{ color: 'var(--dp-text-muted)' }}
             >
-              ← Atlas
+              ← Все курсы
             </Link>
             <span className="text-sm" style={{ color: 'var(--dp-text-muted)' }}>
               ·
@@ -131,14 +151,16 @@ function CoursePicker({ onNavigate }: { onNavigate: (path: string) => void }) {
           </div>
           <h1 className="dp-page-title">{course.title}</h1>
           <p className="dp-page-subtitle mt-2">
-            {formatCount(
-              allLessons.length,
-              'урок',
-              'урока',
-              'уроков',
-            )}{' '}
-            · {course.estimated_hours ?? '—'} часов · {completedCount} завершено
+            {formatCount(allLessons.length, 'урок', 'урока', 'уроков')} ·{' '}
+            {course.estimated_hours ?? '—'} часов · {completedCount} завершено
           </p>
+          <Link
+            to="/learn"
+            className="mt-5 inline-flex text-xs font-medium hover:underline"
+            style={{ color: 'var(--dp-accent)' }}
+          >
+            Сменить направление →
+          </Link>
         </header>
 
         {/* Learning route */}
@@ -209,9 +231,12 @@ function ModuleSection({
   )
 
   return (
-    <div>
+    <section
+      className="rounded-2xl p-4 sm:p-5"
+      style={{ background: 'var(--dp-surface)', border: '1px solid var(--dp-border-subtle)' }}
+    >
       {/* Module header */}
-      <div className="flex items-center gap-3 mb-2 pl-12">
+      <div className="mb-3 flex items-center gap-3 pl-12">
         <h3 className="text-sm font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
           {module.title}
         </h3>
@@ -286,7 +311,13 @@ function ModuleSection({
               >
                 {isCompleted && (
                   <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                    <path d="M1.5 4L3.5 6L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M1.5 4L3.5 6L6.5 2"
+                      stroke="white"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 )}
                 {isCurrent && (
@@ -355,7 +386,7 @@ function ModuleSection({
           )
         })}
       </div>
-    </div>
+    </section>
   )
 }
 
@@ -440,7 +471,7 @@ function ExistingLessonView({
   }, [load])
 
   const saveScene = useCallback(
-    async (index: number) => {
+    async (index: number, outcome = 'completed') => {
       if (state.kind !== 'ready') return
       const scene = state.lesson.scenes[index]
       if (!scene) return
@@ -449,6 +480,7 @@ function ExistingLessonView({
         const updated = await completeScene(lessonId, scene.id, {
           scene_type: scene.type,
           skill_id: state.lesson.skills[0] ?? undefined,
+          outcome,
         })
         setProgress((prev) => ({
           lesson_id: updated.lesson_id,
@@ -475,14 +507,23 @@ function ExistingLessonView({
   }, [])
 
   const handleSelectScene = (index: number) => {
+    void saveScene(sceneIndex)
     setSceneIndex(index)
-    void saveScene(index)
   }
+
+  const handleAssessmentAttempt = useCallback(
+    async (attempt: AssessmentAttempt) => {
+      if (state.kind !== 'ready') return
+      const index = state.lesson.scenes.findIndex((scene) => scene.id === attempt.sceneId)
+      if (index >= 0) await saveScene(index, attempt.outcome)
+    },
+    [saveScene, state],
+  )
 
   const handleNext = () => {
     setSceneIndex((index) => {
       const next = Math.min(state.kind === 'ready' ? state.lesson.scenes.length - 1 : 0, index + 1)
-      void saveScene(next)
+      void saveScene(index)
       return next
     })
   }
@@ -490,7 +531,7 @@ function ExistingLessonView({
   const handlePrev = () => {
     setSceneIndex((index) => {
       const next = Math.max(0, index - 1)
-      void saveScene(next)
+      void saveScene(index)
       return next
     })
   }
@@ -498,6 +539,7 @@ function ExistingLessonView({
   const handleCompleteLesson = async () => {
     setCompleting(true)
     try {
+      await saveScene(sceneIndex)
       await completeLesson(lessonId)
       setCompletedFlash(true)
       fetchReviewSummary(lessonId)
@@ -552,6 +594,9 @@ function ExistingLessonView({
   }
 
   const lesson = state.lesson
+  const canComplete = scenes.every(
+    (scene, index) => index === sceneIndex || progress?.completed_scenes.includes(scene.id),
+  )
   const goToLesson = (id: string | null) => {
     if (id) onNavigate(`/focus/${id}`)
   }
@@ -566,12 +611,18 @@ function ExistingLessonView({
       >
         {/* Lesson header — separated: breadcrumbs, title, purpose, metadata */}
         <header>
-          <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--dp-text-muted)' }}>
-            <Link to="/atlas" className="hover:underline">
-              Atlas
+          <div
+            className="flex flex-wrap items-center gap-2 text-xs"
+            style={{ color: 'var(--dp-text-muted)' }}
+          >
+            <Link to="/learn" className="hover:underline">
+              Курсы
             </Link>
             <span>/</span>
-            <Link to="/focus" className="hover:underline">
+            <Link
+              to={`/focus?course=${encodeURIComponent(lesson.course?.id ?? DEFAULT_COURSE_ID)}`}
+              className="hover:underline"
+            >
               {lesson.course?.title ?? 'Курс'}
             </Link>
             {lesson.module && (
@@ -617,7 +668,29 @@ function ExistingLessonView({
           </div>
         </header>
 
-        {/* Content area: outline rail + scenes */}
+        <div
+          className="mt-6 flex items-center gap-3 text-xs"
+          style={{ color: 'var(--dp-text-muted)' }}
+        >
+          <span>
+            Раздел {sceneIndex + 1} из {scenes.length}
+          </span>
+          <div
+            className="h-1 flex-1 overflow-hidden rounded-full"
+            style={{ background: 'var(--dp-border-subtle)' }}
+          >
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{
+                width: `${scenes.length ? ((sceneIndex + 1) / scenes.length) * 100 : 0}%`,
+                background: 'var(--dp-accent)',
+              }}
+            />
+          </div>
+          <span>{Math.round(scenes.length ? ((sceneIndex + 1) / scenes.length) * 100 : 0)}%</span>
+        </div>
+
+        {/* Content area: reading column + sticky outline */}
         {scenes.length === 0 ? (
           <div
             className="mt-8 rounded-xl border border-dashed p-10 text-center text-sm"
@@ -626,9 +699,109 @@ function ExistingLessonView({
             В уроке пока нет сцен.
           </div>
         ) : (
-          <div className="mt-8 flex flex-col gap-6 lg:flex-row lg:items-start">
-            {/* Outline rail — compact, on the side */}
-            <aside className="lg:sticky lg:top-6 lg:w-56 lg:shrink-0">
+          <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-start">
+            <details className="rounded-xl lg:hidden dp-surface">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 py-3">
+                <span className="dp-section-title">Содержание урока</span>
+                <span className="text-xs" style={{ color: 'var(--dp-text-muted)' }}>
+                  {sceneIndex + 1}/{scenes.length} · открыть
+                </span>
+              </summary>
+              <div className="border-t p-3" style={{ borderColor: 'var(--dp-border-subtle)' }}>
+                <LessonOutline
+                  scenes={scenes}
+                  currentIndex={sceneIndex}
+                  completedScenes={progress?.completed_scenes}
+                  onSelect={handleSelectScene}
+                />
+              </div>
+            </details>
+            {/* Main reading area */}
+            <div className="min-w-0 flex-1 dp-reading">
+              {currentScene && (
+                <SceneView scene={currentScene} onAssessmentAttempt={handleAssessmentAttempt} />
+              )}
+
+              <LessonNotes lessonId={lesson.id} />
+
+              {/* Navigation */}
+              <div className="mt-8 flex items-center justify-between gap-3">
+                <button
+                  onClick={handlePrev}
+                  disabled={sceneIndex === 0}
+                  className={buttonClassNames('outline', 'md', 'disabled:opacity-30')}
+                >
+                  ← Назад
+                </button>
+
+                <div className="flex items-center gap-3">
+                  <SaveIndicator saveState={saveState} />
+                  {sceneIndex < scenes.length - 1 ? (
+                    <button onClick={handleNext} className={buttonClassNames('primary', 'md')}>
+                      Далее →
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => void handleCompleteLesson()}
+                      disabled={completing || progress?.completed_at != null || !canComplete}
+                      className={buttonClassNames('primary', 'md')}
+                    >
+                      {progress?.completed_at
+                        ? '✓ Урок завершён'
+                        : completing
+                          ? 'Завершаем…'
+                          : canComplete
+                            ? 'Завершить урок'
+                            : 'Пройдите все сцены'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {completedFlash && (
+                <div
+                  className="mt-4 rounded-lg px-3 py-2 text-center text-xs font-medium"
+                  style={{ background: 'var(--dp-success-subtle)', color: 'var(--dp-success)' }}
+                >
+                  ✓ Урок завершён — навыки обновлены, материал добавлен в расписание повторений.
+                </div>
+              )}
+
+              <div
+                className="mt-6 flex flex-wrap items-center gap-3 pt-4"
+                style={{ borderTop: '1px solid var(--dp-border-subtle)' }}
+              >
+                <button
+                  onClick={() => goToLesson(lesson.previous_lesson_id)}
+                  disabled={!lesson.previous_lesson_id}
+                  className="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-30 dp-hover-interactive"
+                  style={{ color: 'var(--dp-text-secondary)' }}
+                >
+                  ← Предыдущий урок
+                </button>
+                <button
+                  onClick={() => goToLesson(lesson.next_lesson_id)}
+                  disabled={!lesson.next_lesson_id}
+                  className="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-30 dp-hover-interactive"
+                  style={{ color: 'var(--dp-text-secondary)' }}
+                >
+                  Следующий урок →
+                </button>
+                <div className="flex-1" />
+                {reviewCount != null && reviewCount > 0 && (
+                  <Link
+                    to="/review"
+                    className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                    style={{ color: 'var(--dp-accent)', background: 'var(--dp-accent-subtle)' }}
+                  >
+                    Повторить тему ({reviewCount}) →
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            {/* Outline rail — a quiet right-hand TOC */}
+            <aside className="hidden lg:order-last lg:sticky lg:top-6 lg:block lg:w-72 lg:shrink-0">
               <div
                 className="rounded-xl p-4"
                 style={{
@@ -652,104 +825,6 @@ function ExistingLessonView({
                 />
               </div>
             </aside>
-
-            {/* Main reading area */}
-            <div className="min-w-0 flex-1 dp-reading">
-              {/* Progress bar */}
-              <div className="mb-6 flex items-center gap-3 text-xs" style={{ color: 'var(--dp-text-muted)' }}>
-                <span>
-                  Сцена {sceneIndex + 1} из {scenes.length}
-                </span>
-                <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'var(--dp-border-subtle)' }}>
-                  <div
-                    className="h-full rounded-full transition-all duration-300"
-                    style={{
-                      width: `${((sceneIndex + 1) / scenes.length) * 100}%`,
-                      background: 'var(--dp-accent)',
-                    }}
-                  />
-                </div>
-              </div>
-
-              {currentScene && <SceneView scene={currentScene} />}
-
-              {/* Navigation */}
-              <div className="mt-8 flex items-center justify-between gap-3">
-                <button
-                  onClick={handlePrev}
-                  disabled={sceneIndex === 0}
-                  className={buttonClassNames('outline', 'md', 'disabled:opacity-30')}
-                >
-                  ← Назад
-                </button>
-
-                <div className="flex items-center gap-3">
-                  <SaveIndicator saveState={saveState} />
-                  {sceneIndex < scenes.length - 1 ? (
-                    <button onClick={handleNext} className={buttonClassNames('primary', 'md')}>
-                      Далее →
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => void handleCompleteLesson()}
-                      disabled={completing || progress?.completed_at != null}
-                      className={buttonClassNames('primary', 'md')}
-                    >
-                      {progress?.completed_at
-                        ? '✓ Урок завершён'
-                        : completing
-                          ? 'Завершаем…'
-                          : 'Завершить урок'}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {completedFlash && (
-                <div
-                  className="mt-4 rounded-lg px-3 py-2 text-center text-xs font-medium"
-                  style={{
-                    background: 'var(--dp-success-subtle)',
-                    color: 'var(--dp-success)',
-                  }}
-                >
-                  ✓ Урок завершён — навыки обновлены, материал добавлен в расписание повторений.
-                </div>
-              )}
-
-              {/* Course navigation + Review link */}
-              <div className="mt-6 flex flex-wrap items-center gap-3 pt-4" style={{ borderTop: '1px solid var(--dp-border-subtle)' }}>
-                <button
-                  onClick={() => goToLesson(lesson.previous_lesson_id)}
-                  disabled={!lesson.previous_lesson_id}
-                  className="text-xs font-medium disabled:opacity-30 dp-hover-interactive rounded-lg px-3 py-1.5"
-                  style={{ color: 'var(--dp-text-secondary)' }}
-                >
-                  ← Предыдущий урок
-                </button>
-                <button
-                  onClick={() => goToLesson(lesson.next_lesson_id)}
-                  disabled={!lesson.next_lesson_id}
-                  className="text-xs font-medium disabled:opacity-30 dp-hover-interactive rounded-lg px-3 py-1.5"
-                  style={{ color: 'var(--dp-text-secondary)' }}
-                >
-                  Следующий урок →
-                </button>
-                <div className="flex-1" />
-                {reviewCount != null && reviewCount > 0 && (
-                  <Link
-                    to="/review"
-                    className="text-xs font-medium rounded-lg px-3 py-1.5 transition-colors"
-                    style={{
-                      color: 'var(--dp-accent)',
-                      background: 'var(--dp-accent-subtle)',
-                    }}
-                  >
-                    Повторить тему ({reviewCount}) →
-                  </Link>
-                )}
-              </div>
-            </div>
           </div>
         )}
       </motion.div>
@@ -759,13 +834,25 @@ function ExistingLessonView({
 
 function SaveIndicator({ saveState }: { saveState: string }) {
   if (saveState === 'saving') {
-    return <span className="text-xs" style={{ color: 'var(--dp-text-muted)' }}>Сохранение…</span>
+    return (
+      <span className="text-xs" style={{ color: 'var(--dp-text-muted)' }}>
+        Сохранение…
+      </span>
+    )
   }
   if (saveState === 'saved') {
-    return <span className="text-xs" style={{ color: 'var(--dp-success)' }}>✓ Сохранено</span>
+    return (
+      <span className="text-xs" style={{ color: 'var(--dp-success)' }}>
+        ✓ сохранено
+      </span>
+    )
   }
   if (saveState === 'error') {
-    return <span className="text-xs" style={{ color: 'var(--dp-error)' }}>Ошибка сохранения</span>
+    return (
+      <span className="text-xs" style={{ color: 'var(--dp-error)' }}>
+        Ошибка сохранения
+      </span>
+    )
   }
   return null
 }

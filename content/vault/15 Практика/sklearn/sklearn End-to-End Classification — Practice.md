@@ -15,209 +15,218 @@ language: ru
 rag_collection: practice
 app: source
 ---
-# sklearn End-to-End Classification — Practice
 
-## Цель
 
-Построить leakage-safe binary baseline: split, fold-safe preprocessing, Logistic Regression, probability metrics и validation threshold. Код остаётся небольшим и runnable.
+**Рекомендуемое время:** 60–75 минут.
 
-## Полная прямая реализация
+## Результаты обучения
+- понимать maximum margin и support vectors
+- объяснять soft margin, C и hinge loss
+- понимать kernel trick и gamma
+- оценивать scaling и вычислительные ограничения
+
+## Вход в тему
+
+SVM ищет не просто разделяющую линию, а линию с максимально широким безопасным коридором между классами. Решение определяется объектами, которые ближе всего к границе — support vectors.
+
+## Полная теория
+
+## Интуиция
+
+Для binary classification SVM ищет boundary с максимальным margin — расстоянием до ближайших train points разных классов. Эти ближайшие points называются support vectors и определяют решение.
+
+## Linear hard-margin SVM
+
+Для labels $y_i\in\{-1,+1\}$:
+
+$$
+\min_{w,b}\frac12\lVert w\rVert^2
+$$
+
+при ограничениях:
+
+$$
+y_i(w^\top x_i+b)\ge1.
+$$
+
+Margin обратно пропорционален $\lVert w\rVert$. Hard margin требует идеально separable data и чувствителен к outliers.
+
+## Soft margin
+
+Добавляются slack variables $\xi_i$:
+
+$$
+\min_{w,b,\xi}
+\frac12\lVert w\rVert^2+C\sum_i\xi_i,
+$$
+
+$$
+y_i(w^\top x_i+b)\ge1-\xi_i,\quad \xi_i\ge0.
+$$
+
+Большое `C` сильнее штрафует ошибки и делает boundary гибче; малое `C` усиливает regularization и допускает violations.
+
+## Hinge loss
+
+Equivalent unconstrained idea:
+
+$$
+\max(0,1-yf(x)).
+$$
+
+Correct point outside margin имеет zero loss. Point внутри margin или ошибочный — positive loss.
+
+## Kernel trick
+
+Kernel вычисляет inner product в feature space:
+
+$$
+K(x,z)=\langle\phi(x),\phi(z)\rangle.
+$$
+
+RBF:
+
+$$
+K(x,z)=\exp(-\gamma\lVert x-z\rVert^2).
+$$
+
+Большое $\gamma$ создаёт локальное влияние и сложную boundary; малое — smooth boundary.
+
+## Scaling
+
+SVM основан на distances/dot products, поэтому scaling критичен. `C` и `gamma` имеют смысл только относительно scale features.
+
+## Probability
+
+Обычный SVM выдаёт decision score, не probability. `probability=True` добавляет calibration-like fit и увеличивает стоимость обучения. Часто лучше отдельно calibrate на held-out/OOF predictions.
+
+## Multiclass
+
+Используются One-vs-Rest или One-vs-One стратегии. Implementation определяет детали.
+
+## Complexity
+
+Kernel SVM может быть дорогим по memory/time на больших $n$, потому что работает с pairwise similarities. Linear SVM подходит для high-dimensional sparse features.
+
+## Визуальная демонстрация
+
+Компонент `svm-margin-kernel-lab`:
+
+- points и support vectors;
+- margin lines;
+- sliders `C` и `gamma`;
+- linear/RBF toggle;
+- outlier toggle;
+- scaling toggle.
+
+## sklearn пример
 
 ```python
-import numpy as np
-import pandas as pd
-
-from sklearn.compose import ColumnTransformer
-from sklearn.datasets import make_classification
-from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (
-    average_precision_score,
-    classification_report,
-    log_loss,
-)
-from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
 
-
-RANDOM_STATE = 42
-
-numeric_data, target = make_classification(
-    n_samples=800,
-    n_features=4,
-    n_informative=3,
-    n_redundant=0,
-    weights=[0.75, 0.25],
-    random_state=RANDOM_STATE,
-)
-
-features = pd.DataFrame(
-    numeric_data,
-    columns=["age_signal", "income_signal", "activity", "tenure"],
-)
-
-features["channel"] = np.where(
-    features["activity"] > 0,
-    "mobile",
-    "web",
-)
-
-X_train, X_valid, y_train, y_valid = train_test_split(
-    features,
-    target,
-    test_size=0.25,
-    stratify=target,
-    random_state=RANDOM_STATE,
-)
-
-numeric_features = [
-    "age_signal",
-    "income_signal",
-    "activity",
-    "tenure",
-]
-categorical_features = ["channel"]
-
-numeric_pipeline = Pipeline(
-    steps=[
-        ("imputer", SimpleImputer(strategy="median")),
-        ("scaler", StandardScaler()),
-    ]
-)
-
-categorical_pipeline = Pipeline(
-    steps=[
-        ("imputer", SimpleImputer(strategy="most_frequent")),
-        (
-            "one_hot",
-            OneHotEncoder(handle_unknown="ignore"),
-        ),
-    ]
-)
-
-preprocessor = ColumnTransformer(
-    transformers=[
-        ("numeric", numeric_pipeline, numeric_features),
-        ("categorical", categorical_pipeline, categorical_features),
-    ]
-)
-
-model = Pipeline(
-    steps=[
-        ("preprocessor", preprocessor),
-        (
-            "classifier",
-            LogisticRegression(
-                max_iter=1000,
-                random_state=RANDOM_STATE,
-            ),
-        ),
-    ]
-)
-
-model.fit(X_train, y_train)
-
-valid_probability = model.predict_proba(X_valid)[:, 1]
-
-print(
-    "PR-AUC:",
-    round(average_precision_score(y_valid, valid_probability), 3),
-)
-print(
-    "LogLoss:",
-    round(log_loss(y_valid, valid_probability), 3),
-)
+pipeline = Pipeline([
+    ("scale", StandardScaler()),
+    ("model", SVC(C=1.0, kernel="rbf", gamma="scale")),
+])
 ```
 
-Preprocessor fit происходит только внутри `model.fit(X_train, y_train)`. Validation statistics не участвуют.
+## Когда использовать
 
-## Threshold по constraint
+- medium-size dataset;
+- high-dimensional sparse text с linear kernel;
+- сложная smooth boundary при не слишком большом n;
+- когда inference по support vectors приемлем.
 
-Найдём самый высокий recall среди thresholds с precision не ниже $0.60$.
+Для больших tabular datasets tree boosting часто проще и быстрее.
 
-```python
-from sklearn.metrics import precision_recall_curve
+## Частые ошибки
 
+- не scaling;
+- путать `C` с regularization strength напрямую: большое C = слабее regularization;
+- считать score probability;
+- подбирать C/gamma на test;
+- использовать RBF на огромном dataset без оценки complexity;
+- интерпретировать все train points как одинаково важные.
 
-precision, recall, thresholds = precision_recall_curve(
-    y_valid,
-    valid_probability,
-)
+## Обязательная визуальная демонстрация
 
-selected_threshold = None
-selected_recall = -1.0
+Точки, boundary, margin и support vectors; C, gamma, outlier и kernel toggles.
 
-for index, threshold in enumerate(thresholds):
-    current_precision = precision[index]
-    current_recall = recall[index]
+## Практика
 
-    if current_precision < 0.60:
-        continue
+#### Задание 1. C
 
-    if current_recall > selected_recall:
-        selected_threshold = float(threshold)
-        selected_recall = float(current_recall)
+Что произойдёт с margin и ошибками при очень большом C?
 
-if selected_threshold is None:
-    raise ValueError(
-        "No threshold satisfies precision >= 0.60"
-    )
+#### Задание 2. Gamma
 
-valid_prediction = (
-    valid_probability >= selected_threshold
-).astype(int)
+Как большое gamma меняет RBF boundary?
 
-print("Threshold:", round(selected_threshold, 3))
-print(classification_report(y_valid, valid_prediction))
-```
+#### Задание 3. Scaling
 
-Threshold выбирается на validation и затем фиксируется. Для final test нельзя подбирать его заново.
+Почему SVM особенно чувствителен к scale?
 
-## Проверки и инварианты
+#### Задание 4. Model choice
 
-```python
-assert len(valid_probability) == len(y_valid)
-assert np.isfinite(valid_probability).all()
-assert ((valid_probability >= 0) & (valid_probability <= 1)).all()
-assert X_train.index.intersection(X_valid.index).empty
-assert 0.0 <= selected_threshold <= 1.0
-```
+Когда LinearSVC разумнее RBF SVC?
 
-## Что добавить в реальном проекте
+## Разбор практики
 
-1. group/time-aware split вместо random, если требует data-generating process;
-2. cross-validation и out-of-fold predictions;
-3. baseline constant/previous model;
-4. calibration curve;
-5. segment and drift checks;
-6. untouched final test;
-7. serialization вместе с schema/version.
+**1.** Ошибки/violations сильнее штрафуются, margin обычно сужается, риск overfit растёт.
 
-## Типичные ошибки
+**2.** Влияние каждого point становится очень локальным, boundary — сложной.
 
-- fit scaler/OHE на полном dataset;
-- threshold по test;
-- `class_weight` считать заменой metric/cost analysis;
-- использовать accuracy при rare positive;
-- feature engineering после просмотра validation без учёта selection;
-- сохранять classifier отдельно от preprocessor.
+**3.** Objective зависит от dot products/distances; признаки большого масштаба доминируют.
 
-## Связанные знания
+**4.** При большом n и high-dimensional sparse data, например text.
 
-- [[Logistic Regression]] — Bernoulli, likelihood и LogLoss.
-- [[Validation Splits and Data Leakage]] — выбор split и fold-local preprocessing.
-- [[ML Metrics and Threshold Selection]] — PR-AUC, calibration и threshold.
-- [[Regularization]] — scaling и penalty.
+## Checkpoint для приложения
 
-## Пример
+#### Checkpoint 1
 
-Задача: банк хочет предсказать отток клиента за 30 дней. Объект — клиент; признаки — транзакции, продукты, обращения до момента прогноза; target — бинарный отток. Baseline — «все останутся» (accuracy ≈ 93%). Цель пайплайна — поднять PR-AUC при ограничении на precision для отдела удержания.
+**Вопрос:** Support vectors — это...
 
-## Визуализация
+- A. все train points
+- B. точки, определяющие margin/boundary
+- C. test samples
+- D. PCA axes
 
-После обучения полезно посмотреть confusion matrix, ROC-кривую и распределение вероятностей по классам: они показывают, где именно модель ошибается и как threshold влияет на решение.
+**Правильный ответ:** B
 
-## Сравнение
+**Объяснение:** Именно ближайшие к границе точки входят в решение.
 
-Baseline «всегда большинство» → простой логистический пайплайн → ансамбль с настройкой: сравнение по валидационным метрикам и по стоимости ошибок бизнеса. Сравнивать модели нужно на одном split и с одинаковым preprocessing-контрактом.
+#### Checkpoint 2
+
+**Вопрос:** Большое C означает...
+
+- A. сильнее regularization
+- B. слабее tolerance к violations
+- C. меньше features
+- D. обязательный linear kernel
+
+**Правильный ответ:** B
+
+**Объяснение:** Ошибки сильнее штрафуются, effective regularization слабее.
+
+#### Checkpoint 3
+
+**Вопрос:** RBF gamma контролирует...
+
+- A. локальность влияния точки
+- B. число классов
+- C. train size
+- D. calibration bins
+
+**Правильный ответ:** A
+
+**Объяснение:** Большое gamma делает kernel узким и локальным.
+
+## Мини-проект / применение
+
+Используй небольшой воспроизводимый dataset и оформи результат как карточку эксперимента: постановка задачи, split, baseline, pipeline, metric, результат, error analysis и ограничения. Код должен запускаться сверху вниз без ручных скрытых шагов.
+
+## Критерий завершения урока
+
+Ученик может своими словами объяснить механизм, решить хотя бы одно числовое задание, написать минимальный sklearn pipeline, назвать две типичные ошибки и обосновать, когда метод применять не стоит.

@@ -4,10 +4,10 @@ id: lesson.data-analysis.06
 schema_version: 2
 type: lesson
 area: data-analysis
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.data-analysis
 module_id: module.data-analysis.pandas
 module_order: 2
@@ -40,41 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Даты как тип, а не строка"
-    },
-    {
-      "type": "content",
-      "source_heading": "Извлечение признаков"
-    },
-    {
-      "type": "content",
-      "source_heading": "Временной индекс и resample"
-    },
-    {
       "type": "interactive",
       "component": "time-window-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Rolling window"
-    },
-    {
-      "type": "content",
-      "source_heading": "Grouped rolling"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "`shift`, `diff`, `pct_change`"
-    },
-    {
-      "type": "content",
-      "source_heading": "Cutoff и leakage"
     },
     {
       "type": "application",
@@ -93,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

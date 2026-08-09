@@ -21,6 +21,10 @@
 навыкам через KnowledgeModelService (вес mini-case 1.5, module-case 2.0).
 """
 
+# Case prompt/explanation pairs stay adjacent so reviewers can validate the
+# deterministic answer key without jumping between data files.
+# ruff: noqa: E501
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -649,9 +653,406 @@ def _module_case() -> Case:
     )
 
 
+def _domain_cases() -> list[Case]:
+    """Короткие decision cases по основным специализациям DataPath."""
+    return [
+        Case(
+            id="case.ml.credit-scoring",
+            title="Credit scoring: решение под стоимость ошибок",
+            content_id="case.ml.credit-scoring",
+            description="Выбрать split, metric, threshold и объяснение решения для кредитного риска.",
+            practice_kind="mini-case",
+            lesson_ids=["lesson.classic-ml.linear.logistic", "lesson.classic-ml.framing.metrics"],
+            skill_ids=["ml.metrics_threshold", "ml.linear_logistic_models", "ml.data_leakage"],
+            estimated_minutes=18,
+            difficulty="standard",
+            intro="Дефолт редкий, цена пропущенного риска выше цены ручной проверки.",
+            conclusion="Temporal split, PR/recall под constraint, calibrated probability и понятная reason code.",
+            questions=[
+                CaseQuestion(
+                    id="q1",
+                    type="single",
+                    topic="data",
+                    prompt="Application date предшествует outcome на 90 дней. Какой split честнее?",
+                    options=[
+                        "Random по строкам",
+                        "Temporal: train прошлое, validation будущее",
+                        "По target",
+                        "Один train",
+                    ],
+                    correct=1,
+                    hint="Модель будет применяться к будущим заявкам.",
+                    explanation="Temporal split воспроизводит реальный порядок и обнаруживает drift.",
+                ),
+                CaseQuestion(
+                    id="q2",
+                    type="multiple",
+                    topic="metrics",
+                    prompt="Что нужно проверить до выбора threshold?",
+                    options=[
+                        "Стоимость FP/FN",
+                        "Calibration probabilities",
+                        "Capacity manual review",
+                        "Только accuracy",
+                    ],
+                    correct=[0, 1, 2],
+                    explanation="Порог — бизнес-решение с cost/capacity; accuracy сама его не определяет.",
+                ),
+                CaseQuestion(
+                    id="q3",
+                    type="single",
+                    topic="interpret",
+                    prompt="Коэффициент Logistic Regression равен 0.7. Корректная интерпретация?",
+                    options=[
+                        "Probability выросла на 70%",
+                        "Odds умножаются на exp(0.7) при +1, прочее фиксировано",
+                        "Класс всегда 1",
+                        "Это threshold",
+                    ],
+                    correct=1,
+                    explanation="Линейный коэффициент действует на log-odds, не напрямую на probability.",
+                ),
+            ],
+        ),
+        Case(
+            id="case.ml.house-prices",
+            title="House prices: честная оценка регрессии",
+            content_id="case.ml.house-prices",
+            description="Обработать skew, leakage и неодинаковую стоимость ошибки в прогнозе цены.",
+            practice_kind="mini-case",
+            lesson_ids=[
+                "lesson.classic-ml.linear.regression",
+                "lesson.data-tools.sklearn-pipeline",
+            ],
+            skill_ids=["ml.linear_regression", "ml.validation_split", "sklearn.pipeline"],
+            estimated_minutes=16,
+            difficulty="foundation-core",
+            intro="Есть площадь, район, год, состояние и финальная цена сделки.",
+            conclusion="Pipeline внутри CV, MAE как понятный baseline, log-target при сильном skew и анализ residuals.",
+            questions=[
+                CaseQuestion(
+                    id="q1",
+                    type="single",
+                    topic="data",
+                    prompt="Какой признак является leakage для оценки до сделки?",
+                    options=[
+                        "Площадь",
+                        "Район",
+                        "Итоговая комиссия агента как процент цены сделки",
+                        "Год постройки",
+                    ],
+                    correct=2,
+                    explanation="Комиссия рассчитана из будущей final price и недоступна в момент прогноза.",
+                ),
+                CaseQuestion(
+                    id="q2",
+                    type="single",
+                    topic="metrics",
+                    prompt="Нужна ошибка в рублях, устойчивее к дорогим выбросам. Базовая metric?",
+                    options=["Accuracy", "MAE", "ROC-AUC", "Log-loss"],
+                    correct=1,
+                    explanation="MAE измеряется в единицах target и слабее MSE реагирует на extreme prices.",
+                ),
+                CaseQuestion(
+                    id="q3",
+                    type="order",
+                    topic="apply",
+                    prompt="Упорядочьте workflow:",
+                    options=[
+                        "Split",
+                        "Fit preprocessing только на train",
+                        "CV моделей",
+                        "Residual analysis",
+                    ],
+                    correct=[0, 1, 2, 3],
+                    explanation="Split предшествует fit preprocessing; residuals анализируют после честной оценки.",
+                ),
+            ],
+        ),
+        Case(
+            id="case.ml.fraud-detection",
+            title="Fraud detection: дисбаланс и delayed labels",
+            content_id="case.ml.fraud-detection",
+            description="Выбрать метрику и threshold при 0.3% fraud и ограничении команды проверки.",
+            practice_kind="mini-case",
+            lesson_ids=["lesson.classic-ml.expansion.19", "lesson.classic-ml.framing.metrics"],
+            skill_ids=["ml.imbalance", "ml.metrics_threshold", "ml.validation_split"],
+            estimated_minutes=20,
+            difficulty="interview",
+            intro="Можно проверить вручную только 500 из 100 000 операций в день.",
+            conclusion="Temporal validation, Precision@500/Recall, threshold по capacity и мониторинг label delay.",
+            questions=[
+                CaseQuestion(
+                    id="q1",
+                    type="single",
+                    topic="metrics",
+                    prompt="Какая operating metric прямо учитывает capacity 500?",
+                    options=["Accuracy", "Precision@500 вместе с Recall", "R²", "Train loss"],
+                    correct=1,
+                    explanation="Top-k metric измеряет качество именно на доступном бюджете проверок.",
+                ),
+                CaseQuestion(
+                    id="q2",
+                    type="single",
+                    topic="data",
+                    prompt="Chargeback приходит через 30 дней. Что нельзя делать?",
+                    options=[
+                        "Temporal cutoff",
+                        "Считать последние 30 дней полностью размеченными negative",
+                        "Хранить mature validation",
+                        "Мониторить label delay",
+                    ],
+                    correct=1,
+                    explanation="Незрелые labels создают ложные negatives и смещают оценку.",
+                ),
+                CaseQuestion(
+                    id="q3",
+                    type="multiple",
+                    topic="apply",
+                    prompt="Какие проверки нужны по сегментам?",
+                    options=[
+                        "Country/device",
+                        "New vs returning user",
+                        "Amount bands",
+                        "Только global accuracy",
+                    ],
+                    correct=[0, 1, 2],
+                    explanation="Global metric скрывает провал отдельных fraud patterns.",
+                ),
+            ],
+        ),
+        Case(
+            id="case.ml.customer-segmentation",
+            title="Customer segmentation: K-Means с бизнес-смыслом",
+            content_id="case.classic-ml.customer-segmentation",
+            description="Подготовить RFM-признаки, выбрать scaling/k и проверить полезность сегментов.",
+            practice_kind="mini-case",
+            lesson_ids=[
+                "lesson.classic-ml.unsupervised.kmeans",
+                "lesson.classic-ml.unsupervised.pca",
+            ],
+            skill_ids=["ml.clustering", "ml.preprocessing", "ml.interpretability"],
+            estimated_minutes=16,
+            difficulty="standard",
+            intro="Маркетинг хочет 4–6 понятных customer groups, target отсутствует.",
+            conclusion="Scale RFM, сравните stability/silhouette, профилируйте clusters и проверяйте actionability.",
+            questions=[
+                CaseQuestion(
+                    id="q1",
+                    type="single",
+                    topic="apply",
+                    prompt="Monetary в тысячах, frequency 1–20. Что сделать до K-Means?",
+                    options=[
+                        "Ничего",
+                        "Scale features и проверить skew/outliers",
+                        "Добавить target",
+                        "Удалить frequency",
+                    ],
+                    correct=1,
+                    explanation="Euclidean distance иначе почти полностью определяется Monetary.",
+                ),
+                CaseQuestion(
+                    id="q2",
+                    type="multiple",
+                    topic="interpret",
+                    prompt="Как проверить, что clusters полезны?",
+                    options=[
+                        "Stability по seeds/samples",
+                        "Профили признаков",
+                        "Actionable differences",
+                        "Только красивый PCA plot",
+                    ],
+                    correct=[0, 1, 2],
+                    explanation="2D plot помогает объяснять, но не доказывает stability или business value.",
+                ),
+                CaseQuestion(
+                    id="q3",
+                    type="single",
+                    topic="metrics",
+                    prompt="Silhouette выше при k=2, но бизнесу нужны 4 устойчивые стратегии. Что выбрать?",
+                    options=[
+                        "Всегда k=2",
+                        "Сравнить k=4 по stability и actionability; metric не единственный критерий",
+                        "k=20",
+                        "Random",
+                    ],
+                    correct=1,
+                    explanation="Unsupervised selection сочетает geometric metric, устойчивость и цель использования.",
+                ),
+            ],
+        ),
+        Case(
+            id="case.nlp.text-classification",
+            title="Text classification: TF-IDF или Transformer",
+            content_id="case.nlp.text-classification",
+            description="Построить baseline, избежать duplicate leakage и выбрать разумную сложность NLP-модели.",
+            practice_kind="mini-case",
+            lesson_ids=["lesson.nlp.classical", "lesson.nlp.transformers"],
+            skill_ids=["nlp.tfidf", "nlp.text_classification", "nlp.evaluation"],
+            estimated_minutes=18,
+            difficulty="standard",
+            intro="Нужно классифицировать обращения поддержки по 12 темам, данных 15 тысяч.",
+            conclusion="Начните с word/char TF-IDF + linear model; group duplicate threads; Transformer только после error analysis.",
+            questions=[
+                CaseQuestion(
+                    id="q1",
+                    type="single",
+                    topic="apply",
+                    prompt="Какой первый baseline наиболее информативен?",
+                    options=[
+                        "Сразу fine-tune large Transformer",
+                        "TF-IDF + Logistic Regression",
+                        "Random labels",
+                        "K-Means",
+                    ],
+                    correct=1,
+                    explanation="Линейный TF-IDF baseline быстр, силён и показывает, нужна ли контекстная модель.",
+                ),
+                CaseQuestion(
+                    id="q2",
+                    type="single",
+                    topic="data",
+                    prompt="Одна переписка разбита на несколько сообщений. Как снизить leakage?",
+                    options=[
+                        "Random split сообщений",
+                        "Group split по thread_id",
+                        "Удалить punctuation",
+                        "Увеличить batch",
+                    ],
+                    correct=1,
+                    explanation="Сообщения одного thread должны целиком попадать в один split.",
+                ),
+                CaseQuestion(
+                    id="q3",
+                    type="multiple",
+                    topic="interpret",
+                    prompt="Что смотреть кроме macro-F1?",
+                    options=[
+                        "Confusion по классам",
+                        "Редкие классы",
+                        "Latency",
+                        "Только train accuracy",
+                    ],
+                    correct=[0, 1, 2],
+                    explanation="Качество класса и operating constraints важнее одной aggregate metric.",
+                ),
+            ],
+        ),
+        Case(
+            id="case.dl.image-classification",
+            title="Image classification: transfer learning без leakage",
+            content_id="case.dl.image-classification",
+            description="Настроить split по объектам, augmentation и fine-tuning небольшого image dataset.",
+            practice_kind="mini-case",
+            lesson_ids=["lesson.deep-learning.05", "lesson.deep-learning.10"],
+            skill_ids=["dl.cnn", "dl.transfer-learning", "ml.data_leakage"],
+            estimated_minutes=18,
+            difficulty="standard",
+            intro="Есть 8 тысяч фотографий, но по 3–5 ракурсов одного объекта.",
+            conclusion="Group split by object, pretrained backbone, label-preserving augmentation и staged unfreezing.",
+            questions=[
+                CaseQuestion(
+                    id="q1",
+                    type="single",
+                    topic="data",
+                    prompt="Как делить ракурсы одного объекта?",
+                    options=[
+                        "Случайно по фото",
+                        "Все ракурсы объекта в одном split",
+                        "По разрешению",
+                        "Не нужен validation",
+                    ],
+                    correct=1,
+                    explanation="Иначе модель видит почти тот же объект в train и validation.",
+                ),
+                CaseQuestion(
+                    id="q2",
+                    type="multiple",
+                    topic="apply",
+                    prompt="Что разумно на первом этапе transfer learning?",
+                    options=[
+                        "Заменить head",
+                        "Freeze backbone",
+                        "Малый lr при unfreeze",
+                        "Случайная normalization",
+                    ],
+                    correct=[0, 1, 2],
+                    explanation="Pretrained normalization нужно сохранить; head и staged fine-tuning уменьшают риск overfit.",
+                ),
+                CaseQuestion(
+                    id="q3",
+                    type="single",
+                    topic="interpret",
+                    prompt="Train accuracy растёт, validation падает. Первый диагноз?",
+                    options=[
+                        "Overfitting",
+                        "Underfitting",
+                        "Идеальная модель",
+                        "Нужно убрать validation",
+                    ],
+                    correct=0,
+                    explanation="Расходящиеся curves — классический сигнал overfitting.",
+                ),
+            ],
+        ),
+        Case(
+            id="case.ml.recommendation-basics",
+            title="Recommendation basics: offline metric и cold start",
+            content_id="case.ml.recommendation-basics",
+            description="Сформулировать implicit-feedback задачу и честно оценить top-k рекомендации.",
+            practice_kind="mini-case",
+            lesson_ids=["lesson.classic-ml.framing.validation"],
+            skill_ids=["ml.problem_framing", "ml.validation_split", "ml.metrics_threshold"],
+            estimated_minutes=17,
+            difficulty="interview",
+            intro="История содержит views, carts и purchases; нужно выдать top-10 товаров.",
+            conclusion="Time split, negative sampling без future leakage, Recall/NDCG@10 и отдельная cold-start policy.",
+            questions=[
+                CaseQuestion(
+                    id="q1",
+                    type="single",
+                    topic="data",
+                    prompt="Какой offline split ближе к production?",
+                    options=[
+                        "Random interactions",
+                        "Последние interactions как test",
+                        "По item id",
+                        "Один train",
+                    ],
+                    correct=1,
+                    explanation="Рекомендация предсказывает будущее пользователя из прошлого.",
+                ),
+                CaseQuestion(
+                    id="q2",
+                    type="multiple",
+                    topic="metrics",
+                    prompt="Что полезно для top-10 evaluation?",
+                    options=["Recall@10", "NDCG@10", "Coverage", "R²"],
+                    correct=[0, 1, 2],
+                    explanation="Нужны relevance/ranking и охват каталога; R² здесь не соответствует задаче.",
+                ),
+                CaseQuestion(
+                    id="q3",
+                    type="single",
+                    topic="apply",
+                    prompt="Что делать с новым пользователем без истории?",
+                    options=[
+                        "Ошибка сервера",
+                        "Popularity/context/onboarding fallback",
+                        "Случайно удалить",
+                        "Использовать future purchases",
+                    ],
+                    correct=1,
+                    explanation="Cold-start требует отдельного fallback до накопления персональных signals.",
+                ),
+            ],
+        ),
+    ]
+
+
 def get_default_registry() -> CaseRegistry:
-    """Registry по умолчанию: мини-кейс и итоговый кейс модуля."""
-    return CaseRegistry([_mini_case(), _module_case()])
+    """Registry по умолчанию: end-to-end и короткие domain cases."""
+    return CaseRegistry([_mini_case(), _module_case(), *_domain_cases()])
 
 
 DEFAULT_CASE_REGISTRY = get_default_registry()

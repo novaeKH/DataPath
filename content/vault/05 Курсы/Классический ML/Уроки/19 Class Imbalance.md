@@ -4,10 +4,10 @@ id: lesson.classic-ml.expansion.19
 schema_version: 2
 type: lesson
 area: classic-ml
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.classic-ml
 module_id: module.classic-ml.production
 module_order: 7
@@ -18,7 +18,7 @@ skill_ids:
 estimated_minutes: 45
 difficulty: beginner-core
 tags:
-- datapath/draft-lesson
+- datapath/lesson
 ---
 
 # 19 Class Imbalance
@@ -40,49 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Проблема"
-    },
-    {
-      "type": "content",
-      "source_heading": "Метрики"
-    },
-    {
-      "type": "content",
-      "source_heading": "Class weights"
-    },
-    {
       "type": "interactive",
       "component": "imbalance-threshold-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Undersampling"
-    },
-    {
-      "type": "content",
-      "source_heading": "Oversampling"
-    },
-    {
-      "type": "content",
-      "source_heading": "Частые ошибки"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Threshold"
-    },
-    {
-      "type": "content",
-      "source_heading": "Evaluation"
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
     },
     {
       "type": "application",
@@ -101,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

@@ -180,4 +180,68 @@ describe('StudioView', () => {
     )
     expect(await screen.findByText(/Кейс не найден/)).toBeInTheDocument()
   })
+
+  it('runs SQL practice and renders the result table', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url === '/api/practice') {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                exercises: [
+                  {
+                    id: 'sql.select-filter',
+                    track: 'sql',
+                    kind: 'sql',
+                    title: 'SELECT и WHERE',
+                    difficulty: 'foundation',
+                    estimated_minutes: 8,
+                    prompt: 'Найдите оплаченные заказы дороже 100.',
+                    starter_code: "SELECT order_id FROM orders WHERE status = 'paid';",
+                    hint: 'Добавьте фильтр amount.',
+                    completed: false,
+                    schema: { orders: ['order_id', 'status', 'amount'] },
+                  },
+                ],
+                completed_count: 0,
+                total_count: 1,
+              }),
+              { status: 200 },
+            ),
+          )
+        }
+        if (url === '/api/practice/sql/run') {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                columns: ['order_id'],
+                rows: [[104], [101]],
+                row_count: 2,
+                passed: true,
+                feedback: 'Результат совпал с эталонным набором.',
+                solution: null,
+                evidence: [{ skill_id: 'sql.select-where', state: 'exploring', evidence_count: 1 }],
+              }),
+              { status: 200 },
+            ),
+          )
+        }
+        return Promise.resolve(new Response('{}', { status: 404 }))
+      }) as unknown as typeof fetch,
+    )
+
+    render(
+      <MemoryRouter initialEntries={['/studio?practice=sql.select-filter']}>
+        <StudioView />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('heading', { name: /SELECT и WHERE/ })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Run и проверить/ }))
+    expect(await screen.findByText(/Решение принято/)).toBeInTheDocument()
+    expect(screen.getByText('104')).toBeInTheDocument()
+  })
 })

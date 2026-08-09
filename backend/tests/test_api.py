@@ -88,6 +88,14 @@ def test_api_atlas_structure(make_client, sync_service: ContentSyncService) -> N
         assert node["status"] == "not_started"
 
 
+def test_api_atlas_excludes_algopath_release_areas(
+    make_client, sync_service: ContentSyncService
+) -> None:
+    sync_service.sync()
+    nodes = make_client().get("/api/atlas").json()["nodes"]
+    assert all(node.get("area") not in {"algorithms", "python-algorithms"} for node in nodes)
+
+
 def test_api_atlas_no_absolute_paths(make_client, sync_service: ContentSyncService) -> None:
     sync_service.sync()
     client = make_client()
@@ -109,6 +117,30 @@ def test_api_atlas_deterministic(make_client, sync_service: ContentSyncService) 
     first_positions = {n["id"]: (n["x"], n["y"]) for n in first["nodes"]}
     second_positions = {n["id"]: (n["x"], n["y"]) for n in second["nodes"]}
     assert first_positions == second_positions
+
+
+def test_api_roadmap_maps_each_lesson_once(make_client, sync_service: ContentSyncService) -> None:
+    sync_service.sync()
+    data = make_client().get("/api/roadmap").json()
+    assert [stage["id"] for stage in data["stages"]] == [
+        "orientation",
+        "understanding",
+        "application",
+    ]
+    lesson_ids = [
+        lesson["id"]
+        for stage in data["stages"]
+        for module in stage["modules"]
+        for lesson in module["lessons"]
+    ]
+    assert sorted(lesson_ids) == [
+        "lesson.classic-ml.one.one",
+        "lesson.classic-ml.one.two",
+        "lesson.classic-ml.two.one",
+        "lesson.classic-ml.two.two",
+    ]
+    assert len(lesson_ids) == len(set(lesson_ids))
+    assert data["total_lessons"] == 4
 
 
 def test_api_health_and_system_still_work(make_client) -> None:

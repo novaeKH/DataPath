@@ -27,6 +27,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.config import Settings, get_settings
 from app.db.models import (
     CaseAttempt,
+    ContentItem,
     LabAttempt,
     LessonProgress,
     ReviewAttempt,
@@ -36,6 +37,7 @@ from app.db.models import (
 from app.db.session import SessionLocal
 from app.services.knowledge_model import STATE_NEEDS_ATTENTION
 from app.services.reviews.clock import ReviewClock, parse_utc
+from app.services.reviews.dynamic import KINDS, build_dynamic_template, template_id
 from app.services.reviews.registry import ReviewTemplate, ReviewTemplateRegistry
 from app.services.reviews.templates import get_default_registry
 
@@ -90,7 +92,13 @@ class ReviewQueueService:
         existing_ids = set(db.scalars(select(ReviewItem.template_id)).all())
         created = 0
         now = self.clock.now_iso()
-        for template in self.registry.all():
+        registered_templates = self.registry.all()
+        covered_lesson_ids = {
+            template.source_lesson_id
+            for template in registered_templates
+            if template.source_lesson_id
+        }
+        for template in registered_templates:
             if template.id in existing_ids:
                 continue
             if not self._template_triggered(db, template):
@@ -114,6 +122,39 @@ class ReviewQueueService:
             )
             existing_ids.add(template.id)
             created += 1
+        completed_lessons = db.scalars(
+            select(LessonProgress).where(LessonProgress.completed_at.is_not(None))
+        ).all()
+        for progress in completed_lessons:
+            lesson = db.get(ContentItem, progress.lesson_id)
+            if lesson is None or lesson.type != "lesson" or not lesson.publish:
+                continue
+            if lesson.id in covered_lesson_ids:
+                continue
+            skill = next(iter(lesson.skill_ids or []), f"course.{lesson.course_id or 'general'}")
+            for kind in KINDS:
+                dynamic_id = template_id(lesson.id, kind)
+                if dynamic_id in existing_ids:
+                    continue
+                db.add(
+                    ReviewItem(
+                        template_id=dynamic_id,
+                        primary_skill_id=skill,
+                        source_type="lesson",
+                        source_id=lesson.id,
+                        stage="learning",
+                        status="active",
+                        due_at=now,
+                        interval_days=0.0,
+                        ease_factor=2.5,
+                        repetitions=0,
+                        lapses=0,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
+                existing_ids.add(dynamic_id)
+                created += 1
         if created:
             db.flush()
         return created
@@ -154,10 +195,10 @@ class ReviewQueueService:
         }
 
     def _template_for(self, db, item: ReviewItem) -> ReviewTemplate | None:
-        return self.registry.get(item.template_id)
+        return self.registry.get(item.template_id) or build_dynamic_template(db, item.template_id)
 
-    def _lesson_id_of(self, item: ReviewItem) -> str:
-        template = self.registry.get(item.template_id)
+    def _lesson_id_of(self, db, item: ReviewItem) -> str:
+        template = self._template_for(db, item)
         return template.source_lesson_id if template else ""
 
     def overdue_counts_by_lesson(self) -> dict[str, int]:
@@ -173,7 +214,7 @@ class ReviewQueueService:
                 )
             ).all()
             for row in rows:
-                lesson_id = self._lesson_id_of(row)
+                lesson_id = self._lesson_id_of(db, row)
                 if lesson_id:
                     counts[lesson_id] = counts.get(lesson_id, 0) + 1
             return counts
@@ -192,7 +233,7 @@ class ReviewQueueService:
 
             items = list(db.scalars(select(ReviewItem).where(ReviewItem.status == "active")).all())
             if lesson_id:
-                items = [item for item in items if self._lesson_id_of(item) == lesson_id]
+                items = [item for item in items if self._lesson_id_of(db, item) == lesson_id]
 
             due_items = [item for item in items if item.due_at <= end_iso]
             overdue_items = [item for item in items if item.due_at < start_iso]
@@ -266,7 +307,7 @@ class ReviewQueueService:
                 ).all()
             )
             if lesson_id:
-                items = [item for item in items if self._lesson_id_of(item) == lesson_id]
+                items = [item for item in items if self._lesson_id_of(db, item) == lesson_id]
             if skill_id:
                 items = [item for item in items if item.primary_skill_id == skill_id]
 
@@ -345,7 +386,7 @@ class ReviewQueueService:
             history = []
             for row in rows:
                 item = items.get(row.review_item_id)
-                template = self.registry.get(item.template_id) if item else None
+                template = self._template_for(db, item) if item else None
                 history.append(
                     {
                         "id": row.id,

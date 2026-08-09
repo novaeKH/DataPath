@@ -37,6 +37,13 @@ math_depth: 1
 
 Model должна почти идеально запомнить 10–100 examples. Если не может, вероятны bug, insufficient capacity, wrong loss/labels или optimization issue.
 
+Например, classification model на 16 объектах остаётся на loss `0.69` и
+accuracy `0.50`. Увеличение эпох не помогает. Сначала проверьте соответствие
+logits и `CrossEntropyLoss`: loss ждёт raw logits shape `(B, C)` и integer labels
+shape `(B,)`, а не уже применённый softmax. Затем временно отключите augmentation
+и regularization. Если tiny batch после этого запоминается, проблема была в
+training setup, а не в «недостаточно мощной архитектуре».
+
 ## Sanity baselines
 
 - random/constant prediction;
@@ -121,6 +128,18 @@ for name, param in model.named_parameters():
 - игнорировать data duplicates;
 - считать seed полноценным reproducibility;
 - использовать test для debugging.
+
+## Self-check и mini-case
+
+- Почему overfit tiny batch проверяется раньше hyperparameter search?
+- Что доказывает эксперимент с shuffled labels?
+- Как отличить exploding gradients от плохого data scale?
+- Почему изменение пяти параметров одновременно не даёт causal conclusion?
+
+Mini-case: validation loss скачет, а train loss плавно падает. Зафиксируйте split
+и seed, проверьте размер/дубликаты validation, залогируйте gradient norm и learning
+rate, затем меняйте по одной гипотезе. Результат эксперимента — не только metric,
+но и короткий вывод, какую причину удалось исключить.
 
 ## Связи
 

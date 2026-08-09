@@ -126,3 +126,23 @@ Tree impurity importance ставит `customer_id` на первое место
 - [[Decision Trees]]
 - [[Linear Regression]]
 - [[EDA Relationships Time and Groups]]
+
+## Код: permutation importance на holdout
+
+```python
+from sklearn.inspection import permutation_importance
+
+result = permutation_importance(
+    model, X_valid, y_valid,
+    scoring="average_precision",
+    n_repeats=15,
+    random_state=42,
+)
+importance = sorted(
+    zip(X_valid.columns, result.importances_mean),
+    key=lambda item: -item[1],
+)
+```
+
+Перемешивание делается на validation: падение metric оценивает полезность для
+generalization. Коррелированные features могут делить importance между собой.

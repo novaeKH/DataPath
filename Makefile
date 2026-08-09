@@ -1,11 +1,13 @@
-# DataPath — команды разработки (Фаза 2)
-# Все команды реально работают и проверены. PYTHONPATH= защищает проектный
-# venv от глобального PYTHONPATH окружения (см. README.md).
+# DataPath 1.0.0 — development, validation and native release commands.
 
-.PHONY: dev-backend dev-frontend sync-content validate-content test lint build check
+.PHONY: dev dev-backend dev-frontend sync-content validate-content release-snapshot test lint build build-web build-macos ios-sync ios-open check prod
 
 BACKEND = cd backend && PYTHONPATH=
 FRONTEND = cd frontend
+
+## Полный локальный DataPath (Ctrl+C останавливает оба процесса)
+dev:
+	$(MAKE) -j2 dev-backend dev-frontend
 
 ## Backend: FastAPI dev server на :8000
 dev-backend:
@@ -22,6 +24,11 @@ sync-content:
 ## Валидация vault (без изменения БД)
 validate-content:
 	$(BACKEND) uv run python -m app.cli.content validate
+	$(BACKEND) uv run python -m app.cli.content quality
+
+## Канонический offline snapshot для PWA, macOS и iOS.
+release-snapshot:
+	$(BACKEND) .venv/bin/python -m app.cli.release_snapshot
 
 ## Все тесты (backend pytest + frontend vitest)
 test:
@@ -41,6 +48,26 @@ build:
 	$(BACKEND) uv sync --frozen
 	$(FRONTEND) && npm run build
 
+## Production web/PWA bundle со всеми уроками и local-first runtime.
+build-web: release-snapshot
+	$(FRONTEND) && npm run build
+
+## Native unsigned macOS application bundle.
+build-macos: release-snapshot
+	cd desktop && PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ../frontend/node_modules/.bin/tauri build --bundles app --no-sign
+
+## Обновить native iOS project production assets.
+ios-sync: release-snapshot
+	$(FRONTEND) && npm run ios:sync
+
+## Синхронизировать и открыть Xcode project (требует полный Xcode).
+ios-open: ios-sync
+	$(FRONTEND) && npm run ios:open
+
 ## Полная проверка: линт + тесты + build
 check: lint test build
 	@echo "Все проверки пройдены."
+
+## Production-like локальный запуск: migrations + content sync выполняет backend entrypoint.
+prod:
+	docker compose up --build

@@ -4,10 +4,10 @@ id: lesson.python-ds.10
 schema_version: 2
 type: lesson
 area: python-ds
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.python-ds
 module_id: module.python-ds.quality
 module_order: 3
@@ -40,33 +40,9 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Модуль и пакет"
-    },
-    {
-      "type": "content",
-      "source_heading": "`if __name__ == \"__main__\"`"
-    },
-    {
-      "type": "content",
-      "source_heading": "`pathlib`"
-    },
-    {
-      "type": "content",
-      "source_heading": "Текстовые и бинарные файлы"
-    },
-    {
-      "type": "content",
-      "source_heading": "Виртуальное окружение"
-    },
-    {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Версии и воспроизводимость"
     },
     {
       "type": "application",
@@ -85,7 +61,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

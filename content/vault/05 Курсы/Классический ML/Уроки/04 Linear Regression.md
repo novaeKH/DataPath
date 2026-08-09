@@ -50,40 +50,8 @@ cssclasses:
       "title": "Зачем это нужно и какой результат получим"
     },
     {
-      "type": "content",
-      "source_heading": "Задача с нуля"
-    },
-    {
-      "type": "content",
-      "source_heading": "Простой пример"
-    },
-    {
-      "type": "content",
-      "source_heading": "Как обучается"
-    },
-    {
       "type": "interactive",
       "component": "linear-fit-residual-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Почему MSE"
-    },
-    {
-      "type": "content",
-      "source_heading": "Категориальные признаки"
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
-    },
-    {
-      "type": "content",
-      "source_heading": "Частые ошибки"
-    },
-    {
-      "type": "content",
-      "source_heading": "Сравнение с другими моделями"
     },
     {
       "type": "retrieval",
@@ -91,41 +59,9 @@ cssclasses:
       "prompt": "Что означает коэффициент при признаке и почему его нельзя автоматически читать причинно?"
     },
     {
-      "type": "content",
-      "source_heading": "Scaling"
-    },
-    {
-      "type": "content",
-      "source_heading": "Multicollinearity"
-    },
-    {
-      "type": "content",
-      "source_heading": "Нелинейность"
-    },
-    {
-      "type": "content",
-      "source_heading": "Residual analysis"
-    },
-    {
-      "type": "content",
-      "source_heading": "Metrics"
-    },
-    {
       "type": "application",
       "mode": "micro-task",
       "prompt": "По residual plot опиши, какой pattern модель не выучила и какой следующий шаг проверишь."
-    },
-    {
-      "type": "content",
-      "source_heading": "Regularization"
-    },
-    {
-      "type": "content",
-      "source_heading": "Предположения и интерпретация"
-    },
-    {
-      "type": "content",
-      "source_heading": "sklearn пример"
     },
     {
       "type": "interview",

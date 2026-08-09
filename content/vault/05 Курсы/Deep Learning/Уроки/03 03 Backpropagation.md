@@ -4,10 +4,10 @@ id: lesson.deep-learning.03
 schema_version: 2
 type: lesson
 area: deep-learning
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.deep-learning
 module_id: module.dl.foundations
 module_order: 1
@@ -40,49 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Нейронная сеть с нуля"
-    },
-    {
-      "type": "content",
-      "source_heading": "Forward pass"
-    },
-    {
-      "type": "content",
-      "source_heading": "Gradient"
-    },
-    {
       "type": "interactive",
       "component": "backprop-computation-graph"
-    },
-    {
-      "type": "content",
-      "source_heading": "Chain rule"
-    },
-    {
-      "type": "content",
-      "source_heading": "Маленький пример"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Training step"
-    },
-    {
-      "type": "content",
-      "source_heading": "Epoch, batch, iteration"
-    },
-    {
-      "type": "content",
-      "source_heading": "`train()` и `eval()`"
-    },
-    {
-      "type": "content",
-      "source_heading": "Autograd traps"
     },
     {
       "type": "application",
@@ -101,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

@@ -19,167 +19,216 @@ tags:
 math_depth: 2
 ---
 
-# Principal Component Analysis
 
-## Интуиция
+**Рекомендуемое время:** 50–65 минут.
 
-Если points образуют вытянутое облако, можно повернуть координаты так, чтобы первая ось шла вдоль максимального разброса, вторая — вдоль следующего независимого направления. PCA строит такие orthogonal components и позволяет оставить первые $k$.
+## Результаты обучения
+- применять Bayes theorem к классификации
+- понимать conditional independence assumption
+- различать Gaussian, Multinomial и Bernoulli NB
+- объяснять smoothing и работу в log-space
 
-## Подготовка
+## Вход в тему
 
-Матрица $X\in\mathbb R^{n\times d}$ центрируется:
+Naive Bayes задаёт простой генеративный вопрос: насколько вероятны наблюдаемые признаки для каждого класса? Предположение о независимости часто неверно буквально, но алгоритм всё равно может хорошо ранжировать документы и служить сильным baseline.
 
-$$
-X_c=X-\mathbf 1\bar x^\top.
-$$
+## Полная теория
 
-Если units отличаются и absolute variance не должна определять importance, сначала standardize features.
+## Идея
 
-## Covariance view
-
-$$
-S=\frac{1}{n-1}X_c^\top X_c.
-$$
-
-Principal direction $v_j$ — eigenvector covariance matrix:
+Naive Bayes сравнивает вероятности классов после наблюдения признаков:
 
 $$
-Sv_j=\lambda_jv_j.
+P(C_k\mid x)
+\propto
+P(C_k)P(x\mid C_k).
 $$
 
-$\lambda_j$ — variance проекции. Components сортируются по убыванию $\lambda$.
-
-## SVD view
+«Naive» assumption: признаки условно независимы при известном классе:
 
 $$
-X_c=U\Sigma V^\top.
+P(x\mid C_k)=\prod_jP(x_j\mid C_k).
 $$
 
-Columns $V$ — principal directions, а:
+Это редко буквально верно, но сильно упрощает оценку и часто хорошо работает на sparse text.
+
+## Пошаговый пример
+
+Пусть нужно определить spam. Prior:
 
 $$
-\lambda_j=\frac{\sigma_j^2}{n-1}.
+P(spam)=0.2,\quad P(not)=0.8.
 $$
 
-SVD обычно используется для устойчивого вычисления.
+Слова `free` и `meeting` имеют разные conditional probabilities. Для письма модель складывает log-probabilities каждого слова с log prior и выбирает больший score.
 
-## Projection
-
-$$
-Z=X_cV_k.
-$$
-
-$Z$ содержит coordinates objects в reduced space. Reconstruction:
+Вычисления ведут в log-space:
 
 $$
-\widehat X=ZV_k^\top+\bar x.
+\log P(C_k\mid x)=const+\log P(C_k)+\sum_j\log P(x_j\mid C_k).
 $$
 
-Первые $k$ components минимизируют squared reconstruction error среди linear rank-$k$ projections.
+Это предотвращает underflow произведения множества малых чисел.
 
-## Explained variance
+## Варианты
+
+#### Gaussian NB
+
+Для continuous feature:
 
 $$
-\operatorname{EVR}_j=\frac{\lambda_j}{\sum_l\lambda_l}.
+x_j\mid C_k\sim\mathcal N(\mu_{kj},\sigma_{kj}^2).
 $$
 
-Выбор $k$ зависит от:
+Оцениваются mean/variance каждого feature внутри класса.
 
-- downstream CV metric;
-- reconstruction;
-- memory/latency;
-- visualization;
-- stability;
-- interpretability.
+#### Multinomial NB
 
-`95% variance` — heuristic, не универсальное правило.
+Для non-negative counts: token counts, частоты событий. Feature value влияет как число повторений.
 
-## Пример
+#### Bernoulli NB
 
-Два features: рост в сантиметрах и рост в дюймах. Они почти дублируют друг друга. Первая component сохраняет общий direction роста, вторая имеет очень малую variance и в основном описывает noise/несогласованность.
+Для binary presence/absence. Отсутствие feature тоже входит в likelihood.
 
-## Scaling меняет задачу
+Выбор варианта зависит от representation.
 
-Без scaling feature с большой variance в физических units доминирует. После StandardScaler PCA работает с correlation-like structure. Оба варианта могут быть правильными — вопрос должен быть сформулирован заранее.
+## Smoothing
 
-## Leakage
+Невстречавшийся token без smoothing даёт zero likelihood. Additive smoothing:
 
-Scaler и PCA fit только на train fold. Даже без target covariance validation data содержит информацию о distribution.
+$$
+\widehat P(w_j\mid C_k)=\frac{N_{kj}+\alpha}{N_k+\alpha V}.
+$$
 
-## Интерпретация
+$\alpha$ выбирается по validation. Большое значение сглаживает distributions сильнее.
 
-Loadings показывают direction component, но:
+## Почему работает
 
-- sign условен;
-- при близких eigenvalues directions нестабильны;
-- component не causal factor;
-- high variance не означает predictive importance;
-- low-variance feature может быть сильным для target.
+Для classification не обязательно точно оценить joint probability: достаточно правильного ordering class scores. Сильное assumption даёт high bias, но low variance и хорошую sample efficiency.
 
-## Sparse data
+Проблема correlated features: одна и та же информация учитывается несколько раз, posterior становится overconfident.
 
-Centering sparse matrix делает её dense. `TruncatedSVD` не выполняет полное centering и решает близкую, но другую задачу. Для text это часто практичнее.
+## Priors и imbalance
 
-## Когда использовать
+Prior должен отражать ожидаемую prevalence. Если train искусственно сбалансирован, empirical prior не соответствует production. При prior shift score можно корректировать, но при изменении $p(x\mid y)$ простой correction не спасёт.
 
-- снижение размерности для визуализации (2–3 компоненты);
-- декорреляция признаков и борьба с multicollinearity;
-- шумоподавление и сжатие (с сохранением explained variance);
-- НЕ использовать как «чёрный ящик» без масштабирования; не полагаться на интерпретацию компонент как реальных признаков; PCA до split — leakage.
-
-## Визуализация
-
-Компонент `pca-projection-lab`:
-
-- вращаемое 2D cloud;
-- first/second component arrows;
-- projection onto PC1;
-- reconstruction error;
-- scaling toggle;
-- outlier toggle;
-- explained variance bars.
-
-## sklearn пример
+## Text pipeline
 
 ```python
-from sklearn.decomposition import PCA
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 
 pipeline = Pipeline([
-    ("scale", StandardScaler()),
-    ("pca", PCA(n_components=0.95, random_state=42)),
-    ("model", model),
+    ("vectorizer", TfidfVectorizer(ngram_range=(1, 2), min_df=2)),
+    ("model", MultinomialNB(alpha=1.0)),
 ])
 ```
 
-## Ответ для собеседования
+Vocabulary fit только на train fold. Multinomial NB требует non-negative features.
 
-> PCA находит ортогональные направления максимальной дисперсии данных: собственные векторы ковариационной матрицы (или правые сингулярные векторы через SVD). Проекция $X W_k$ даёт новые признаки; число компонент выбирают по explained variance. Обязательно масштабирование признаков и fit только на train, иначе утечка информации.
+## Calibration
+
+Naive Bayes probabilities часто overconfident из-за independence assumption. Используйте ranking/decision metrics и отдельно проверяйте calibration.
+
+## Визуальная демонстрация
+
+Компонент `naive-bayes-evidence-lab`:
+
+- prior slider;
+- включение признаков;
+- likelihood каждого класса;
+- log-score decomposition;
+- correlated duplicate feature toggle;
+- posterior before/after evidence.
 
 ## Частые ошибки
 
-- fit PCA на полном dataset;
-- считать 2D separation доказательством;
-- применять без scaling по привычке;
-- интерпретировать component как реальную скрытую сущность;
-- удалять low-variance components без downstream validation;
-- сравнивать loadings при нестабильных close eigenvalues.
+- Multinomial NB после StandardScaler с negative values;
+- vocabulary на полном dataset;
+- считать posterior calibrated;
+- дублировать correlated features;
+- забыть prior после resampling;
+- путать conditional independence с обычной independence;
+- сравнивать probabilities разных variants без calibration.
 
-## Сравнение с другими методами снижения размерности
+## Обязательная визуальная демонстрация
 
-| Метод | Линейность | Интерпретация | Когда |
-|---|---|---|---|
-| PCA | линейный | компоненты-направления | декорреляция, визуализация |
-| t-SNE | нелинейный | расстояния в малой размерности | визуализация |
-| UMAP | нелинейный | сохраняет локальную структуру | визуализация больших данных |
-| Feature selection | — | сохраняет исходные признаки | интерпретируемость |
+Документ с токенами → prior + likelihood каждого слова → log-score классов; slider smoothing.
 
-PCA — детерминированный и обратимый; t-SNE/UMAP — для картинок, не для фичей модели.
+## Практика
 
-## Связи
+#### Задание 1. Bayes
 
-- [[Eigenvalues Covariance Matrix and PCA Foundations]]
-- [[Singular Value Decomposition]]
-- [[K-Means]]
-- [[K-Nearest Neighbors]]
+Дано P(spam)=0.2, P(word|spam)=0.5, P(word|not spam)=0.1. Сравни posterior scores.
+
+#### Задание 2. Smoothing
+
+Почему unseen word без Laplace smoothing обнуляет likelihood?
+
+#### Задание 3. Variant
+
+Какой NB выбрать для word counts, binary indicators и continuous features?
+
+#### Задание 4. Python lab
+
+Сравни TF-IDF Logistic Regression и CountVectorizer+MultinomialNB.
+
+## Разбор практики
+
+**1.** Ненормированные scores: spam=0.1, not spam=0.08; posterior spam≈0.556.
+
+**2.** Произведение содержит множитель 0; smoothing добавляет pseudo-count.
+
+**3.** Multinomial, Bernoulli, Gaussian соответственно.
+
+**4.** Оценивать на stratified split; NB может быть очень быстрым baseline, LR часто лучше при достаточных данных.
+
+## Checkpoint для приложения
+
+#### Checkpoint 1
+
+**Вопрос:** Что означает naive assumption?
+
+- A. Features независимы вообще
+- B. Features условно независимы при фиксированном классе
+- C. Classes равновероятны
+- D. Target отсутствует
+
+**Правильный ответ:** B
+
+**Объяснение:** Предположение делается conditional on class.
+
+#### Checkpoint 2
+
+**Вопрос:** Зачем log-space?
+
+- A. Для визуального стиля
+- B. Чтобы избежать underflow и заменить произведение суммой
+- C. Для OHE
+- D. Для scaling
+
+**Правильный ответ:** B
+
+**Объяснение:** Произведение малых вероятностей численно нестабильно.
+
+#### Checkpoint 3
+
+**Вопрос:** Laplace smoothing...
+
+- A. убирает train
+- B. даёт ненулевую вероятность unseen events
+- C. выбирает threshold
+- D. создаёт PCA
+
+**Правильный ответ:** B
+
+**Объяснение:** Pseudo-count предотвращает нулевой likelihood.
+
+## Мини-проект / применение
+
+Используй небольшой воспроизводимый dataset и оформи результат как карточку эксперимента: постановка задачи, split, baseline, pipeline, metric, результат, error analysis и ограничения. Код должен запускаться сверху вниз без ручных скрытых шагов.
+
+## Критерий завершения урока
+
+Ученик может своими словами объяснить механизм, решить хотя бы одно числовое задание, написать минимальный sklearn pipeline, назвать две типичные ошибки и обосновать, когда метод применять не стоит.

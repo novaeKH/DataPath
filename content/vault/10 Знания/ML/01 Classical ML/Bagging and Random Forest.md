@@ -20,7 +20,21 @@ rag_collection: knowledge
 app: source
 visual: true
 ---
-# Bagging and Random Forest
+
+
+**Рекомендуемое время:** 60–75 минут.
+
+## Результаты обучения
+- понимать bootstrap и averaging
+- объяснять снижение variance через decorrelation
+- использовать OOB evaluation
+- разбирать параметры n_estimators, max_features и tree constraints
+
+## Вход в тему
+
+Одно глубокое дерево нестабильно: небольшое изменение train может полностью перестроить верхние splits. Random Forest обучает много разных деревьев и усредняет их ответы. Ключ не только в количестве деревьев, но и в том, чтобы их ошибки не были слишком похожими.
+
+## Полная теория
 
 ## Идея за 30 секунд
 
@@ -136,46 +150,103 @@ Extremely Randomized Trees добавляют randomness thresholds/splits. Эт
 
 Random Forest — ансамбль Decision Trees, где каждое дерево обучается на bootstrap-выборке строк и случайном подмножестве признаков на каждом split. Предсказание — усреднение (регрессия) или голосование (классификация). **Ключевая идея:** усреднение некоррелированных деревьев снижает variance. Одно дерево может сильно переобучиться; $M$ деревьев на разных выборках ошибаются по-разному, и при усреднении ошибки компенсируются. **Преимущества:** стабильнее одного дерева, OOB-оценка заменяет validation set для baseline, feature importance, параллельное обучение. **Ограничения:** не экстраполирует за пределы train-диапазона, хуже boosting на сложных зависимостях, требует кодирования категорий.
 
-## Визуализация
+## Обязательная визуальная демонстрация
 
-Компонент `bootstrap-forest-lab`: число деревьев, bootstrap-сэмплы и доля признаков — видно, как декорреляция деревьев снижает variance без роста bias.
+Один dataset → несколько bootstrap samples → деревья → голоса/среднее. Ползунок correlation показывает, почему одинаковые деревья почти не снижают variance.
 
-## Сравнение с Gradient Boosting
+## Практика
 
-| | Random Forest | Gradient Boosting |
-|---|---|---|
-| Идея | параллельные деревья, усреднение | последовательные деревья на ошибках |
-| Bias | выше | ниже |
-| Variance | ниже | контролируется |
-| Переобучение | реже | чаще, нужен regularization |
-| Обучение | параллелится | последовательное |
+#### Задание 1. Bootstrap
 
-RF — стабильный baseline с меньшим числом параметров; GB — выше качество при аккуратной настройке.
+Почему в bootstrap sample примерно 63.2% уникальных объектов? Объясни интуитивно.
 
-## Простой пример
+#### Задание 2. Decorrelation
 
-Bootstrap-выборки из 100 объектов: каждое дерево видит ~63 уникальных объекта; усреднение 100 деревьев снижает variance предсказаний по сравнению с одним деревом, почти не меняя bias.
+Зачем ограничивать max_features на каждом split?
 
-## Пример кода
+#### Задание 3. OOB
+
+Что такое out-of-bag prediction и когда оно полезно?
+
+#### Задание 4. Python lab
+
+Сравни одно дерево и RandomForest на нескольких random seeds; измерь variance validation score.
+
+## Разбор практики
+
+**1.** Вероятность не попасть в n draws стремится к e^-1≈0.368, значит попасть хотя бы раз ≈0.632.
+
+**2.** Чтобы сильные признаки не заставляли все деревья строиться одинаково; это снижает корреляцию ошибок.
+
+**3.** Для каждого объекта используются деревья, которые не видели его в bootstrap; это внутренняя оценка без отдельного holdout, но не замена корректной временной проверки.
+
+**4.** Forest обычно стабильнее по seed и split, хотя может иметь схожий bias.
+
+## Checkpoint для приложения
+
+#### Checkpoint 1
+
+**Вопрос:** Главный эффект bagging для нестабильных моделей?
+
+- A. Снижение variance
+- B. Гарантированное снижение bias до нуля
+- C. Calibration
+- D. Feature scaling
+
+**Правильный ответ:** A
+
+**Объяснение:** Усреднение снижает вариативность ошибок.
+
+#### Checkpoint 2
+
+**Вопрос:** Что делает max_features?
+
+- A. Увеличивает target
+- B. Декоррелирует деревья
+- C. Удаляет bootstrap
+- D. Выбирает threshold
+
+**Правильный ответ:** B
+
+**Объяснение:** Разные subsets признаков делают деревья менее похожими.
+
+#### Checkpoint 3
+
+**Вопрос:** Больше n_estimators обычно...
+
+- A. снижает stability
+- B. стабилизирует ансамбль, но увеличивает вычисления
+- C. обязательно overfit
+- D. меняет тип target
+
+**Правильный ответ:** B
+
+**Объяснение:** Ошибка усреднения стабилизируется по мере роста числа деревьев.
+
+## Мини-проект / применение
+
+Используй небольшой воспроизводимый dataset и оформи результат как карточку эксперимента: постановка задачи, split, baseline, pipeline, metric, результат, error analysis и ограничения. Код должен запускаться сверху вниз без ручных скрытых шагов.
+
+## Критерий завершения урока
+
+Ученик может своими словами объяснить механизм, решить хотя бы одно числовое задание, написать минимальный sklearn pipeline, назвать две типичные ошибки и обосновать, когда метод применять не стоит.
+
+## Код: baseline и probability
 
 ```python
 from sklearn.ensemble import RandomForestClassifier
 
-model = RandomForestClassifier(
-    n_estimators=300, max_depth=8, min_samples_leaf=5,
-    max_features="sqrt", random_state=42,
+forest = RandomForestClassifier(
+    n_estimators=400,
+    min_samples_leaf=5,
+    max_features="sqrt",
+    class_weight="balanced_subsample",
+    n_jobs=-1,
+    random_state=42,
 )
-model.fit(X_train, y_train)
-print(model.score(X_val, y_val))
-print(model.feature_importances_)
+forest.fit(X_train, y_train)
+probability = forest.predict_proba(X_valid)[:, 1]
 ```
 
-## Связи
-
-- [[Decision Trees]] — base learner и split mechanics.
-- [[Gradient Boosting]] — последовательная коррекция вместо independent averaging.
-- [[ML Foundations]] — variance reduction через averaging.
-- [[Expectation Variance Covariance and Correlation]] — correlation errors определяет предел averaging.
-- [[Validation Splits and Data Leakage]] — OOB не заменяет structure-aware split.
-- [[Trees and Random Forest — Interview]] — короткий формат.
-- [[Ensemble Comparison]] — comparison table и decision framework.
+`[:, 1]` берёт probability положительного класса. `min_samples_leaf`
+ограничивает variance отдельных trees.

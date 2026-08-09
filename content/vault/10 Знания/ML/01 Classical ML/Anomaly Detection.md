@@ -142,3 +142,20 @@ Isolation Forest помечает 1% объектов как anomalies. Это �
 - [[Data Quality Missing Values and Outliers]]
 - [[DBSCAN and Hierarchical Clustering]]
 - [[Class Imbalance and Resampling]]
+
+## Код: Isolation Forest и contamination
+
+```python
+from sklearn.ensemble import IsolationForest
+
+detector = IsolationForest(
+    n_estimators=300,
+    contamination=0.01,
+    random_state=42,
+)
+detector.fit(X_train)
+anomaly_score = -detector.score_samples(X_valid)
+```
+
+`contamination` задаёт ожидаемую долю anomalies для порога, но не улучшает
+ranking автоматически. Порог калибруют на validation labels или capacity.

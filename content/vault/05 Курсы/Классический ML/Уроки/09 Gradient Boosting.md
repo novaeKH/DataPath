@@ -50,36 +50,8 @@ cssclasses:
       "title": "Зачем это нужно и какой результат получим"
     },
     {
-      "type": "content",
-      "source_heading": "Идея за 30 секунд"
-    },
-    {
-      "type": "content",
-      "source_heading": "Additive model"
-    },
-    {
-      "type": "content",
-      "source_heading": "От loss к pseudo-residuals"
-    },
-    {
       "type": "interactive",
       "component": "boosting-residuals-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Squared error"
-    },
-    {
-      "type": "content",
-      "source_heading": "Пример: 3 шага boosting"
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
-    },
-    {
-      "type": "content",
-      "source_heading": "Сравнение с Random Forest"
     },
     {
       "type": "retrieval",
@@ -87,37 +59,9 @@ cssclasses:
       "prompt": "Почему boosting learners нельзя обучить полностью независимо и что такое pseudo-residual?"
     },
     {
-      "type": "content",
-      "source_heading": "Binary LogLoss"
-    },
-    {
-      "type": "content",
-      "source_heading": "Почему обучение последовательное"
-    },
-    {
-      "type": "content",
-      "source_heading": "Tree complexity и interactions"
-    },
-    {
-      "type": "content",
-      "source_heading": "Learning rate и iterations"
-    },
-    {
       "type": "application",
       "mode": "micro-task",
       "prompt": "По train/validation curves выбери learning rate, iteration limit и early stopping."
-    },
-    {
-      "type": "content",
-      "source_heading": "Row/feature subsampling"
-    },
-    {
-      "type": "content",
-      "source_heading": "Failure modes"
-    },
-    {
-      "type": "content",
-      "source_heading": "Ответ для собеседования"
     },
     {
       "type": "interview",

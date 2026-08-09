@@ -4,16 +4,16 @@ id: module.python-ds.quality
 schema_version: 2
 type: module
 area: python
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.python-ds
 module_order: 3
 estimated_minutes: 260
 tags:
 - course/python
-- datapath/draft
+- datapath/lesson
 ---
 
 # 03 Надёжный Python для Data Science

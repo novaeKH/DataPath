@@ -51,6 +51,16 @@ KNOWLEDGE_COL_WIDTH = 320
 NODE_STRONG_MIN = 3
 NODE_DEVELOPING_MIN = 2
 NODE_NEEDS_ATTENTION_SCORE = 0.45
+RELEASE_EXCLUDED_COURSES = frozenset({"course.algorithms"})
+RELEASE_EXCLUDED_AREAS = frozenset({"algorithms", "python-algorithms"})
+
+
+def _in_release_scope(item: ContentItem) -> bool:
+    return (
+        item.id not in RELEASE_EXCLUDED_COURSES
+        and item.course_id not in RELEASE_EXCLUDED_COURSES
+        and item.area not in RELEASE_EXCLUDED_AREAS
+    )
 
 
 def aggregate_node_state(
@@ -121,7 +131,9 @@ class AtlasBuilder:
 
         # Замыкание: опубликованные объекты курса + связанная теория.
         in_scope: set[str] = {
-            item.id for item in items.values() if item.publish and item.type in ATLAS_TYPES
+            item.id
+            for item in items.values()
+            if item.publish and item.type in ATLAS_TYPES and _in_release_scope(item)
         }
         changed = True
         while changed:
@@ -130,6 +142,8 @@ class AtlasBuilder:
                 src = items.get(link.source_id)
                 dst = items.get(link.target_id)
                 if src is None or dst is None:
+                    continue
+                if not _in_release_scope(src) or not _in_release_scope(dst):
                     continue
                 if (
                     link.source_id in in_scope
@@ -183,6 +197,12 @@ class AtlasBuilder:
                     "area": node.area,
                     "publish": node.publish,
                     "status": self._node_status(
+                        node,
+                        node_skills.get(node.id, []),
+                        assessments,
+                        lesson_progress,
+                    ),
+                    "mastery_percent": self._node_mastery(
                         node,
                         node_skills.get(node.id, []),
                         assessments,
@@ -273,6 +293,27 @@ class AtlasBuilder:
         progress = lesson_progress.get(node.id)
         state, _ = aggregate_node_state(related, progress)
         return state
+
+    def _node_mastery(
+        self,
+        node: ContentItem,
+        skills: list[str],
+        assessments: dict[str, SkillAssessment],
+        lesson_progress: dict[str, LessonProgress],
+    ) -> int:
+        """Понятная шкала 0..100 из той же evidence-модели, без второй mastery-системы."""
+        scores = [
+            float(axis.get("score", 0.0))
+            for skill in skills
+            if skill in assessments
+            for axis in (assessments[skill].axes or {}).values()
+            if axis.get("evidence_count", 0) > 0
+        ]
+        if scores:
+            return round(100 * sum(scores) / len(scores))
+        if node.id in lesson_progress:
+            return 20
+        return 0
 
     @staticmethod
     def _build_routes(items: dict[str, ContentItem], in_scope: set[str]) -> dict:

@@ -4,16 +4,15 @@ id: lesson.deep-learning.11
 schema_version: 2
 type: lesson
 area: deep-learning
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.deep-learning
 module_id: module.dl.training
 module_order: 4
 lesson_order: 3
 content_path: 10 Знания/ML/02 Deep Learning/04 Теория/DL Debugging and Experiment Design.md
-  Design.md
 skill_ids:
 - dl.foundations
 estimated_minutes: 45
@@ -41,45 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Отладка по слоям"
-    },
-    {
-      "type": "content",
-      "source_heading": "Overfit tiny batch"
-    },
-    {
-      "type": "content",
-      "source_heading": "Sanity baselines"
-    },
-    {
       "type": "interactive",
       "component": "dl-debugging-decision-tree"
-    },
-    {
-      "type": "content",
-      "source_heading": "Проверка gradients"
-    },
-    {
-      "type": "content",
-      "source_heading": "Curves"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Ablation"
-    },
-    {
-      "type": "content",
-      "source_heading": "Experiment record"
-    },
-    {
-      "type": "content",
-      "source_heading": "NaN debugging"
     },
     {
       "type": "application",
@@ -98,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

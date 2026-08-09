@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { fetchSystemStatus, type SystemStatus } from '../lib/api'
+import {
+  exportBackup,
+  fetchSystemStatus,
+  restoreBackup,
+  type BackupPayload,
+  type SystemStatus,
+} from '../lib/api'
 
 type LoadState =
   { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; data: SystemStatus }
@@ -46,12 +52,10 @@ function StatusCard({
   )
 }
 
-/**
- * Техническая страница: статус backend, SQLite, vault и счётчик Markdown-файлов.
- * Никаких бизнес-расчётов — только отображение данных API.
- */
+/** Настройки локальных данных, диагностика и backup. */
 export function SystemStatusView() {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
+  const [backupState, setBackupState] = useState<string | null>(null)
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setState({ kind: 'loading' })
@@ -62,9 +66,7 @@ export function SystemStatusView() {
       if (error instanceof DOMException && error.name === 'AbortError') return
       setState({
         kind: 'error',
-        message:
-          'Backend недоступен. Убедитесь, что сервер запущен: в папке backend выполните ' +
-          '`uv run python -m uvicorn app.main:app --reload` (порт 8000).',
+        message: 'Локальное хранилище временно недоступно. Перезапустите DataPath и повторите.',
       })
     }
   }, [])
@@ -75,6 +77,41 @@ export function SystemStatusView() {
     return () => controller.abort()
   }, [load])
 
+  const downloadBackup = async () => {
+    try {
+      const payload = await exportBackup()
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      const filename = `datapath-backup-${new Date().toISOString().slice(0, 10)}.json`
+      const file = new File([blob], filename, { type: 'application/json' })
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'DataPath backup' })
+        setBackupState('Backup передан в выбранное приложение или папку.')
+        return
+      }
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      link.click()
+      URL.revokeObjectURL(url)
+      setBackupState('Backup сохранён.')
+    } catch {
+      setBackupState('Не удалось создать backup.')
+    }
+  }
+
+  const uploadBackup = async (file: File | undefined) => {
+    if (!file) return
+    try {
+      const payload = JSON.parse(await file.text()) as BackupPayload
+      if (!window.confirm('Заменить текущий учебный progress данными из backup?')) return
+      await restoreBackup(payload)
+      setBackupState('Progress восстановлен. Обновите страницы обучения.')
+    } catch (error) {
+      setBackupState(error instanceof Error ? error.message : 'Не удалось восстановить backup.')
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl">
       <motion.div
@@ -84,11 +121,9 @@ export function SystemStatusView() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              Статус системы
-            </h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Настройки</h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Техническая страница — проверка соединения frontend ↔ backend
+              Локальные данные, резервная копия и диагностика приложения
             </p>
           </div>
           <button
@@ -100,16 +135,14 @@ export function SystemStatusView() {
         </div>
 
         {state.kind === 'loading' && (
-          <div className="mt-10 text-center text-sm text-slate-500">
-            Проверка соединения с backend…
-          </div>
+          <div className="mt-10 text-center text-sm text-slate-500">Проверка локальных данных…</div>
         )}
 
         {state.kind === 'error' && (
           <div className="mt-10 rounded-xl border border-rose-300 bg-rose-50 p-6 dark:border-rose-800/60 dark:bg-rose-950/40">
             <div className="flex items-center gap-2 text-rose-700 dark:text-rose-300">
               <span className="h-2 w-2 rounded-full bg-rose-500" />
-              <span className="font-semibold">Backend недоступен</span>
+              <span className="font-semibold">Данные недоступны</span>
             </div>
             <p className="mt-3 text-sm leading-relaxed text-rose-600 dark:text-rose-200/80">
               {state.message}
@@ -126,40 +159,74 @@ export function SystemStatusView() {
         {state.kind === 'ready' && (
           <div className="mt-8 space-y-6">
             <div className="flex flex-wrap items-center gap-3">
-              <StatusPill ok={state.data.status === 'ok'} label="Backend" />
-              <StatusPill ok={state.data.database.available} label="SQLite" />
-              <StatusPill ok={state.data.vault.exists} label="Vault" />
-              <StatusPill ok={state.data.ollama === 'not_configured'} label="Ollama: не настроен" />
-              <StatusPill
-                ok={state.data.chromadb === 'not_configured'}
-                label="ChromaDB: не настроен"
-              />
+              <StatusPill ok={state.data.status === 'ok'} label="Приложение готово" />
+              <StatusPill ok={state.data.database.available} label="Прогресс доступен" />
+              <StatusPill ok={state.data.vault.exists} label="Уроки доступны" />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <StatusCard
-                title="Backend"
-                value={state.data.status === 'ok' ? 'работает' : state.data.status}
+                title="Версия"
+                value={`DataPath ${state.data.version}`}
                 ok={state.data.status === 'ok'}
-                hint={`DataPath v${state.data.version} · ${state.data.environment}`}
+                hint="Stable local-first release"
               />
               <StatusCard
-                title="SQLite"
-                value={state.data.database.available ? 'доступна' : 'недоступна'}
+                title="Учебный прогресс"
+                value={state.data.database.available ? 'сохраняется' : 'недоступен'}
                 ok={state.data.database.available}
               />
               <StatusCard
-                title="content/vault"
-                value={state.data.vault.exists ? 'найден' : 'не найден'}
+                title="Учебный контент"
+                value={state.data.vault.exists ? 'доступен offline' : 'не найден'}
                 ok={state.data.vault.exists}
               />
               <StatusCard
-                title="Markdown-файлы"
+                title="Материалы"
                 value={String(state.data.vault.markdown_files)}
                 ok
-                hint="без учёта служебных каталогов Obsidian"
+                hint="локальных source-backed файлов"
               />
             </div>
+
+            <section className="rounded-xl p-5 dp-surface">
+              <h2 className="text-base font-semibold">Backup учебного состояния</h2>
+              <p className="mt-1 text-sm" style={{ color: 'var(--dp-text-secondary)' }}>
+                Экспорт содержит progress, mastery, попытки и Review. Храните файл в надёжном месте
+                — его можно импортировать после обновления или переустановки.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => void downloadBackup()}
+                  className="min-h-11 rounded-xl px-4 text-sm font-semibold"
+                  style={{ background: 'var(--dp-accent)', color: 'var(--dp-surface)' }}
+                >
+                  Скачать backup
+                </button>
+                <label
+                  className="flex min-h-11 cursor-pointer items-center rounded-xl border px-4 text-sm font-semibold"
+                  style={{ borderColor: 'var(--dp-border-strong)' }}
+                >
+                  Восстановить из файла
+                  <input
+                    type="file"
+                    accept="application/json,.json"
+                    className="sr-only"
+                    onChange={(event) => void uploadBackup(event.target.files?.[0])}
+                  />
+                </label>
+              </div>
+              {backupState && (
+                <p
+                  role="status"
+                  className="mt-3 text-xs"
+                  style={{ color: 'var(--dp-text-secondary)' }}
+                >
+                  {backupState}
+                </p>
+              )}
+            </section>
           </div>
         )}
       </motion.div>

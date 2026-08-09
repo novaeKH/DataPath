@@ -223,3 +223,20 @@ Follow-up:
 - [[Embeddings and Attention]] — contextual dense representations.
 - [[Transformer and Language Modeling]] — long-context sequence model.
 
+## Код: сильный baseline
+
+```python
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+model = make_pipeline(
+    TfidfVectorizer(ngram_range=(1, 2), min_df=3, sublinear_tf=True),
+    LogisticRegression(max_iter=1000, class_weight="balanced"),
+)
+model.fit(train_texts, y_train)
+pred = model.predict(test_texts)
+```
+
+Vectorizer находится внутри pipeline: vocabulary и IDF обучаются только на train,
+что предотвращает leakage при cross-validation.

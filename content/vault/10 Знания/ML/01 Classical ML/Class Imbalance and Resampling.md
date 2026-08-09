@@ -134,3 +134,18 @@ Resampling — не обязательный ритуал. Иногда CatBoost
 - [[Probability Calibration]]
 - [[Logistic Regression]]
 - [[Validation Splits and Data Leakage]]
+
+## Код: веса классов и правильная метрика
+
+```python
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import average_precision_score
+
+model = LogisticRegression(class_weight="balanced", max_iter=1000)
+model.fit(X_train, y_train)
+probability = model.predict_proba(X_valid)[:, 1]
+print(average_precision_score(y_valid, probability))
+```
+
+Resampling, если нужен, выполняют только внутри training fold. Иначе synthetic
+или duplicated objects могут попасть одновременно в train и validation.

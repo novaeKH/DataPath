@@ -140,11 +140,7 @@ function SummaryScreen({
                   value={summary.due_count}
                   color="var(--dp-text-primary)"
                 />
-                <Count
-                  label="Просрочено"
-                  value={summary.overdue_count}
-                  color="var(--dp-error)"
-                />
+                <Count label="Просрочено" value={summary.overdue_count} color="var(--dp-error)" />
                 <Count
                   label="Выполнено сегодня"
                   value={summary.completed_today}
@@ -220,8 +216,12 @@ function EmptyState({ summary, onReload }: { summary: ReviewSummary; onReload: (
 function Count({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="rounded-lg p-4 text-center dp-surface">
-      <div className="text-3xl font-bold" style={{color}}>{value}</div>
-      <div className="mt-1 text-xs" style={{ color: 'var(--dp-text-muted)' }}>{label}</div>
+      <div className="text-3xl font-bold" style={{ color }}>
+        {value}
+      </div>
+      <div className="mt-1 text-xs" style={{ color: 'var(--dp-text-muted)' }}>
+        {label}
+      </div>
     </div>
   )
 }
@@ -413,9 +413,7 @@ function QuestionCard({
   return (
     <div className="rounded-xl p-6 dp-surface-elevated">
       <div className="flex items-center justify-between gap-2">
-        <div className="dp-section-title">
-          {item.title}
-        </div>
+        <div className="dp-section-title">{item.title}</div>
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
           {item.primary_skill_id}
         </span>
@@ -724,16 +722,8 @@ function DoneScreen({
         </header>
         <section className="mt-6 rounded-xl border border-slate-200 bg-white/70 p-5 dark:border-slate-800 dark:bg-slate-900/50">
           <div className="grid gap-4 sm:grid-cols-3">
-            <Count
-              label="Выполнено"
-              value={stats.completed}
-              color="var(--dp-text-primary)"
-            />
-            <Count
-              label="Верно"
-              value={stats.correct}
-              color="var(--dp-success)"
-            />
+            <Count label="Выполнено" value={stats.completed} color="var(--dp-text-primary)" />
+            <Count label="Верно" value={stats.correct} color="var(--dp-success)" />
             <Count
               label="Требуют внимания"
               value={stats.needsAttention}

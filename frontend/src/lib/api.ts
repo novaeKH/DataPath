@@ -2,8 +2,38 @@
  * API-клиент DataPath.
  *
  * Frontend не содержит бизнес-логики: здесь только HTTP-запросы к backend.
- * Все запросы идут через относительный путь /api (Vite/nginx проксируют в backend).
+ * По умолчанию запросы идут через /api (Vite/nginx проксируют в backend).
+ * VITE_API_BASE_URL позволяет desktop/PWA-клиенту обращаться к отдельному backend.
  */
+
+import { isPackagedRuntime, localPost, localRead } from '../platform/localApi'
+
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+const IS_RELEASE_BUILD = import.meta.env.MODE === 'production'
+
+function usesLocalReleaseRuntime(): boolean {
+  return isPackagedRuntime() || (IS_RELEASE_BUILD && API_BASE === '')
+}
+
+function apiUrl(path: string): string {
+  return `${API_BASE}${path}`
+}
+
+const OFFLINE_CACHE_PREFIX = 'datapath-read-cache:'
+
+function canCacheRead(path: string): boolean {
+  return (
+    path.startsWith('/api/content/') ||
+    path === '/api/atlas' ||
+    path === '/api/roadmap' ||
+    path.startsWith('/api/reviews/queue') ||
+    path.startsWith('/api/reviews/summary')
+  )
+}
+
+function reportApiConnectivity(online: boolean) {
+  window.dispatchEvent(new CustomEvent('datapath-api-connectivity', { detail: { online } }))
+}
 
 export interface SystemStatus {
   status: string
@@ -51,6 +81,7 @@ export interface AtlasNode {
   area: string | null
   publish: boolean
   status: string
+  mastery_percent?: number
   review_due?: boolean
   review_due_count?: number
   course_id: string | null
@@ -116,27 +147,86 @@ export interface ContentItem {
 }
 
 async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(path, { signal })
-  if (!response.ok) {
-    throw new Error(`Backend вернул HTTP ${response.status}`)
+  if (usesLocalReleaseRuntime()) {
+    reportApiConnectivity(true)
+    return localRead<T>(path)
   }
-  return (await response.json()) as T
+  try {
+    const response = await fetch(apiUrl(path), { signal })
+    if (!response.ok) {
+      throw new Error(`Backend вернул HTTP ${response.status}`)
+    }
+    const payload = (await response.json()) as T
+    if (canCacheRead(path)) {
+      window.localStorage?.setItem(
+        `${OFFLINE_CACHE_PREFIX}${path}`,
+        JSON.stringify({ cached_at: new Date().toISOString(), payload }),
+      )
+    }
+    reportApiConnectivity(true)
+    return payload
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error
+    if (canCacheRead(path)) {
+      const cached = window.localStorage?.getItem(`${OFFLINE_CACHE_PREFIX}${path}`)
+      if (cached) {
+        reportApiConnectivity(false)
+        return (JSON.parse(cached) as { payload: T }).payload
+      }
+    }
+    if (!IS_RELEASE_BUILD) throw error
+    try {
+      reportApiConnectivity(false)
+      return await localRead<T>(path)
+    } catch {
+      throw error
+    }
+  }
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!response.ok) {
-    throw new Error(`Backend вернул HTTP ${response.status}`)
+  if (usesLocalReleaseRuntime()) return localPost<T>(path, body)
+  try {
+    const response = await fetch(apiUrl(path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { detail?: string } | null
+      throw new Error(payload?.detail ?? `Backend вернул HTTP ${response.status}`)
+    }
+    return (await response.json()) as T
+  } catch (error) {
+    if (!IS_RELEASE_BUILD) throw error
+    try {
+      return await localPost<T>(path, body)
+    } catch {
+      throw error
+    }
   }
-  return (await response.json()) as T
 }
 
 export async function fetchSystemStatus(signal?: AbortSignal): Promise<SystemStatus> {
   return request<SystemStatus>('/api/system/status', signal)
+}
+
+export interface BackupPayload {
+  format: 'datapath-learning-state'
+  version: number
+  exported_at: string
+  checksum: string
+  tables: Record<string, Record<string, unknown>[]>
+}
+
+export async function exportBackup(): Promise<BackupPayload> {
+  return request<BackupPayload>('/api/system/backup')
+}
+
+export async function restoreBackup(
+  payload: BackupPayload,
+): Promise<{ status: string; rows: Record<string, number> }> {
+  return postJson('/api/system/restore', payload)
 }
 
 export async function fetchContentStatus(signal?: AbortSignal): Promise<ContentStatus> {
@@ -154,6 +244,52 @@ export async function fetchContentItem(id: string, signal?: AbortSignal): Promis
 
 export async function fetchAtlas(signal?: AbortSignal): Promise<AtlasData> {
   return request<AtlasData>('/api/atlas', signal)
+}
+
+export type RoadmapLessonStatus = 'available' | 'learning' | 'completed'
+
+export interface RoadmapLesson {
+  id: string
+  title: string
+  estimated_minutes: number | null
+  status: RoadmapLessonStatus
+  mastery_percent: number
+}
+
+export interface RoadmapModule {
+  id: string
+  title: string
+  course_id: string
+  course_title: string
+  source_provider: string
+  order: number
+  lessons: RoadmapLesson[]
+}
+
+export interface RoadmapStage {
+  id: 'orientation' | 'understanding' | 'application'
+  number: number
+  title: string
+  short_title: string
+  description: string
+  depth: 'orientation' | 'understanding' | 'application'
+  modules: RoadmapModule[]
+  lesson_count: number
+  completed_lessons: number
+  progress_percent: number
+  status: RoadmapLessonStatus
+}
+
+export interface RoadmapData {
+  stages: RoadmapStage[]
+  total_lessons: number
+  completed_lessons: number
+  current_lesson: RoadmapLesson | null
+  current_stage: Pick<RoadmapStage, 'id' | 'number' | 'title' | 'depth' | 'progress_percent'> | null
+}
+
+export async function fetchRoadmap(signal?: AbortSignal): Promise<RoadmapData> {
+  return request<RoadmapData>('/api/roadmap', signal)
 }
 
 // --- Фаза 3: курсы, уроки, сцены, лаборатории ---
@@ -208,6 +344,7 @@ export interface LessonScene {
     | 'callout'
     | 'checkpoint'
     | 'interactive_lab'
+    | 'visual_demo'
     | 'table'
     | 'visual'
   title?: string | null
@@ -222,6 +359,15 @@ export interface LessonScene {
   question?: string | null
   lab_id?: string | null
   lab_title?: string | null
+  demo_id?: string | null
+  checkpoint_kind?: 'retrieval' | 'application' | 'interview' | null
+  assessment_type?:
+    | 'self_assessment'
+    | 'single_choice_quiz'
+    | 'multiple_choice_quiz'
+    | 'free_response'
+    | 'reflection'
+    | null
   // Фаза 6A: метаданные сцены
   word_count?: number
   source_content_id?: string | null
@@ -426,8 +572,15 @@ export interface TodayData {
     current_scene_id: string | null
     completed_scenes: string[]
     started_at: string
+    estimated_minutes?: number | null
   } | null
-  next_lesson: { id: string; title: string; skills: string[] } | null
+  next_lesson: {
+    id: string
+    title: string
+    skills: string[]
+    estimated_minutes?: number | null
+    course_id?: string | null
+  } | null
   weak_skills: WeakSkill[]
   recent_activity: RecentEvent[]
   suggested_case: SuggestedCase | null
@@ -438,6 +591,49 @@ export interface TodayData {
   overdue_reviews: number
   next_review_at: string | null
   review_action: 'review_session' | null
+  suggested_practice?: {
+    exercise_id: string
+    title: string
+    track: string
+    estimated_minutes: number
+  } | null
+  roadmap_context?: {
+    current_stage: RoadmapData['current_stage']
+    current_lesson: RoadmapLesson | null
+    completed_lessons: number
+    total_lessons: number
+  }
+}
+
+export interface PracticeExercise {
+  id: string
+  track: 'sql' | 'pandas' | 'numpy' | 'sklearn' | 'algorithms' | 'deep-learning'
+  kind: 'sql' | 'code'
+  title: string
+  difficulty: string
+  estimated_minutes: number
+  prompt: string
+  starter_code: string
+  hint: string
+  completed: boolean
+  schema?: Record<string, string[]>
+}
+
+export interface PracticeCatalog {
+  exercises: PracticeExercise[]
+  completed_count: number
+  total_count: number
+}
+
+export interface PracticeCheckResult {
+  passed: boolean
+  feedback: string
+  solution: string | null
+  evidence: { skill_id: string; state: string; evidence_count: number }[]
+  columns?: string[]
+  rows?: unknown[][]
+  row_count?: number
+  missing_count?: number
 }
 
 export interface CaseQuestion {
@@ -602,6 +798,30 @@ export async function fetchCaseAttempts(
     signal,
   )
   return data.attempts
+}
+
+export async function fetchPractice(signal?: AbortSignal): Promise<PracticeCatalog> {
+  return request<PracticeCatalog>('/api/practice', signal)
+}
+
+export async function runSqlPractice(
+  exerciseId: string,
+  query: string,
+): Promise<PracticeCheckResult> {
+  return postJson<PracticeCheckResult>('/api/practice/sql/run', {
+    exercise_id: exerciseId,
+    query,
+  })
+}
+
+export async function checkCodePractice(
+  exerciseId: string,
+  code: string,
+): Promise<PracticeCheckResult> {
+  return postJson<PracticeCheckResult>('/api/practice/code/check', {
+    exercise_id: exerciseId,
+    code,
+  })
 }
 
 // --- Фаза 5: интервальное повторение ---

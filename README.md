@@ -1,309 +1,142 @@
-# DataPath — учебная платформа Data Science
+# DataPath
 
-Локальная платформа для структурированного изучения Data Science: интерактивные
-уроки, атлас знаний, интервальное повторение и AI-наставник на базе RAG.
+DataPath — локальная учебная платформа по Data Science, Machine Learning и Deep Learning. Она
+объединяет связный маршрут, содержательные русскоязычные уроки, интерактивные объяснения,
+практику и интервальное повторение. Аккаунт, облако и внешний AI API не требуются.
 
-**Статус: Фаза 5 — интервальное повторение, Review и расписание.**
+Текущая стабильная версия: **1.0.0**.
 
-> Решения по архитектуре и стеку зафиксированы в [`docs/decisions.md`](docs/decisions.md)
-> и [`docs/architecture.md`](docs/architecture.md). Правила работы агента — в [`.hermes.md`](.hermes.md).
+## Что внутри
 
----
+- 86 уроков в основном маршруте: Python, NumPy/pandas, Math/Statistics, SQL/scikit-learn,
+  Classic ML, Deep Learning, NLP, LLM/RAG и MLOps. В каноническом vault хранится 103 урока.
+- 57 зарегистрированных интерактивных visual demos — от broadcasting, regression и boosting до
+  backpropagation, attention, RAG retrieval и model monitoring — плюс три ML-лаборатории.
+- Studio с 15 упражнениями и 9 mini-cases. Шесть SQL-задач выполняются настоящим SQLite WASM
+  прямо в приложении.
+- Today формирует короткую ежедневную сессию из урока, практики и Review.
+- Focus сохраняет раздел, заметки, проверки понимания и прогресс.
+- Review использует интервалы повторения и factual, conceptual, code/error и case форматы.
+- Atlas показывает темы спокойными блоками и рассчитывает состояние из реального mastery.
+- Экспорт и импорт учебного состояния с версией схемы и проверкой целостности.
 
-## Назначение
+## Учебный путь
 
-DataPath объединяет **Obsidian-хранилище** (`content/vault`) как единственный
-источник учебных материалов, **Python backend** (весь контент, прогресс, проверка
-заданий, RAG) и **React frontend** (только интерфейс и визуализация).
+Roadmap устроен как три последовательных прохода:
 
-Жёсткое правило: **вся бизнес-логика — в backend**, frontend не дублирует
-парсинг Markdown, вычисление prerequisites, построение маршрутов и т.д.
+1. **Ориентация** — Python и данные, SQL, постановка ML-задачи, честный split и первый baseline.
+2. **Понимание** — математика, validation, классические модели, нейросети и Transformer.
+3. **Применение** — end-to-end решения, NLP/RAG, воспроизводимость, serving и monitoring.
 
-## Структура проекта
+Открытие страницы не считается освоением. Mastery складывается из прохождения урока, проверок,
+практики, ошибок и успешных повторов.
 
-```text
-ds-learning-rag/
-├── content/vault/        # Канонический Obsidian vault (только чтение приложением)
-├── docs/                 # Архитектура, решения, roadmap, контентная система
-├── backend/              # FastAPI + SQLAlchemy + Alembic (Python 3.12, uv)
-│   ├── app/
-│   │   ├── api/          #   API-роутеры (health, system, content, atlas, progress, today, cases)
-│   │   ├── cli/          #   CLI: python -m app.cli.content {sync|validate|status}
-│   │   ├── core/         #   Конфигурация (pydantic-settings), логирование
-│   │   ├── db/           #   engine/session, Base, модели каталога и прогресса
-│   │   ├── services/     #   parser, validator, sync, catalog, atlas, knowledge_model, progress, cases
-│   │   └── main.py       #   FastAPI entry point
-│   ├── tests/            # pytest (126 тестов)
-│   ├── alembic/          # Миграции (content catalog — Фаза 2)
-│   └── pyproject.toml    # Зависимости и инструменты (uv)
-├── frontend/             # React 18 + TypeScript + Vite + Tailwind v4 + React Router
-│   └── src/
-│       ├── views/        # Today/Atlas/Focus/Studio/SystemStatus
-│       ├── components/   # Sidebar и др.
-│       ├── stores/       # Zustand (тема)
-│       ├── lib/          # API-клиент
-│       └── test/         # Vitest setup
-├── Makefile              # dev-backend, dev-frontend, sync-content, validate-content, test, lint, build, check
-├── compose.yaml          # Docker Compose (backend + frontend)
-└── .env.example          # Пример переменных окружения
-```
+## Интерфейс
 
-## Требования
+| Ежедневная сессия | Режим Focus |
+| --- | --- |
+| ![Today](docs/screenshots/phase7-today-desktop.png) | ![Focus](docs/screenshots/phase7-focus-or-lesson-dark.png) |
 
-| Компонент | Версия |
-|---|---|
-| Python | 3.12 (управляется через `uv`) |
-| [uv](https://docs.astral.sh/uv/) | 0.5+ |
-| Node.js | 20+ (разработка проверена на Node 22/26) |
-| npm | 10+ |
-| Docker | 24+ (опционально, для Compose) |
-| macOS / Linux | любая современная |
+![Интерактивная ML-лаборатория](docs/screenshots/lab-ensemble.png)
 
-Проверка установки: `uv --version && node --version && npm --version`.
-
-## Расположение учебных материалов
-
-Канонический источник контента — **`content/vault`** (Obsidian-хранилище).
-Приложение читает его **только на чтение** и не создаёт второй копии.
-Путь задаётся в конфигурации backend как относительный:
-
-```env
-DATAPATH_VAULT_PATH=content/vault
-```
-
-В Docker Compose vault монтируется в контейнер read-only
-(`./content/vault:/app/content/vault:ro`).
-
-## Контентный каталог (Фаза 2)
-
-Пайплайн: `content/vault → Python parser → валидация → SQLite → REST API → Atlas`.
-
-### CLI
+## Web / PWA
 
 ```bash
-cd backend
-PYTHONPATH= uv run python -m app.cli.content sync      # vault → SQLite каталог
-PYTHONPATH= uv run python -m app.cli.content validate  # валидация без изменения БД
-PYTHONPATH= uv run python -m app.cli.content status    # состояние каталога
+make sync-content
+make build-web
 ```
 
-`sync` показывает: `scanned / created / updated / unchanged / removed / errors / warnings`.
-Синхронизация идемпотентна: повторный запуск без изменений не создаёт дубликатов.
+Production bundle появляется в `frontend/dist`. После первой успешной загрузки PWA сохраняет
+application shell, весь release snapshot и SQLite WASM для работы без сети.
 
-Правила включения файлов и схема таблиц — в [`docs/content-system.md`](docs/content-system.md).
+В репозитории подготовлен GitHub Actions workflow для GitHub Pages. Публичный адрес будет указан
+здесь после успешного первого deployment и проверки установленной PWA.
 
-### REST API
+### Установка PWA на iPhone
 
-| Endpoint | Описание |
-|---|---|
-| `GET /api/health` | Проверка работоспособности |
-| `GET /api/system/status` | Технический статус backend/SQLite/vault |
-| `GET /api/content/status` | Счётчики каталога: файлы vault, published, по типам, ошибки/предупреждения, время синка |
-| `GET /api/content/courses` | Опубликованные курсы с metadata и количеством модулей/уроков/кейсов |
-| `GET /api/content/courses/{id}` | Курс: модули по порядку, уроки, кейсы, первый/последний урок (Фаза 3) |
-| `GET /api/content/lessons/{id}` | Урок: metadata, сцены, prev/next, лаборатории, материалы (Фаза 3) |
-| `GET /api/content/items/{content_id}` | Metadata одного материала + связи + issues |
-| `GET /api/labs/{lab_id}` | Метаданные лаборатории: параметры, диапазоны, дефолты, initial result (Фаза 3) |
-| `POST /api/labs/{lab_id}/run` | Расчёт лаборатории по валидированным параметрам (Фаза 3) |
-| `GET /api/atlas` (и `GET /api/content/atlas`) | Готовые данные Atlas: nodes, edges, areas, routes, prerequisites, детерминированная раскладка, состояния узлов (Фаза 4) |
-| `GET /api/progress/summary` | Сводка: начатые/завершённые уроки, лабы, кейсы, распределение навыков, последние события, рекомендация (Фаза 4) |
-| `GET /api/progress/skills` | Оценки навыков по осям, состояния, причины (Фаза 4) |
-| `GET /api/progress/skills/{skill_id}` | Детали навыка: оси, confidence, типичные ошибки, последние события (Фаза 4) |
-| `GET /api/progress/lessons/{lesson_id}` | Прогресс урока: текущая сцена, завершённые сцены (Фаза 4) |
-| `POST /api/progress/lessons/{lesson_id}/scenes/{scene_id}/complete` | Сохранение прохождения сцены и позиции (Фаза 4) |
-| `POST /api/progress/lessons/{lesson_id}/complete` | Завершение урока, слабое evidence по теории (Фаза 4) |
-| `POST /api/progress/labs/{lab_id}/record` | Идемпотентное сохранение результата лаборатории + evidence (Фаза 4) |
-| `GET /api/today` | Экран Today: повторения, продолжить урок, следующий урок, слабые темы, активность, рекомендуемый кейс (Фаза 4–5) |
-| `GET /api/cases` | Список кейсов (Фаза 4) |
-| `GET /api/cases/{case_id}` | Спецификация кейса по режиму (guided/standard/interview) (Фаза 4) |
-| `POST /api/cases/{case_id}/submit` | Проверка ответов, результат с разбором, evidence (Фаза 4) |
-| `GET /api/cases/{case_id}/attempts` | История попыток кейса (Фаза 4) |
-| `GET /api/reviews/summary` | Сводка повторений: due/overdue/completed_today/next_due (Фаза 5) |
-| `GET /api/reviews/queue` | Очередь повторений с приоритетом, без answer key (Фаза 5) |
-| `GET /api/reviews/{id}` | Элемент повторения: вопрос, варианты, source metadata (Фаза 5) |
-| `POST /api/reviews/{id}/submit` | Проверка ответа, интервал, evidence; повторная отправка дедуплицируется (Фаза 5) |
-| `POST /api/reviews/{id}/skip` | Пропуск без отрицательного evidence (Фаза 5) |
-| `GET /api/reviews/history` | История попыток повторений (Фаза 5) |
+1. Откройте публичный адрес DataPath в Safari.
+2. Нажмите **Поделиться** → **На экран «Домой»**.
+3. Если Safari показывает переключатель **Открывать как веб‑приложение**, оставьте его включённым.
+4. Нажмите **Добавить**, затем запускайте DataPath с домашнего экрана.
 
-Ответы не содержат абсолютных путей файловой системы. Полный Markdown-текст
-через Atlas endpoint не отдаётся.
+Для первого запуска нужна сеть: приложение сохранит shell, учебный snapshot и SQLite WASM. После
+этого откройте несколько уроков и Studio, закройте приложение, включите авиарежим и убедитесь, что
+они снова открываются. Учебный прогресс и заметки остаются локально на устройстве.
 
-## Уроки и лаборатории (Фаза 3)
-
-- Модель сцен: `markdown, formula, code, callout, checkpoint, interactive_lab`;
-  парсер — `LessonContentService` (детали — [`docs/lesson-system.md`](docs/lesson-system.md)).
-- Frontend: `/focus` (выбор урока) и `/focus/:lessonId` (урок со сценами),
-  безопасный рендер Markdown (react-markdown + KaTeX + sanitize).
-- Лаборатории: `decision-tree-split-lab`, `tree-depth-overfitting-lab`,
-  `ensemble-comparison-lab` (scikit-learn; CatBoost — при наличии CPU-пакета).
-- Atlas → Focus: кнопка «Открыть урок» для lesson-узлов, связанные уроки для concept.
-
-## Прогресс и модель знаний (Фаза 4)
-
-- **Модель знаний**: байесовская оценка навыков по 7 осям (`theory, reproduce,
-  apply, code, interpret, explain, interview`), консервативная при малом
-  evidence; состояния `not_started / exploring / developing / strong /
-  needs_attention`; слабые темы — только при достаточном evidence.
-  Детали — [`docs/progress-system.md`](docs/progress-system.md).
-- **Прогресс**: сохранение текущей сцены урока, завершение урока, идемпотентное
-  сохранение результатов лабораторий (повторная отправка не начисляет evidence
-  повторно).
-- **Today**: главная карточка действия (продолжить урок → следующий урок маршрута),
-  слабые темы, недавняя активность, рекомендуемый кейс, прогресс маршрута.
-- **Кейсы (Studio)**: мини-кейс «Выбор ансамбля для оттока» и итоговый кейс
-  «Churn end-to-end»; структурированные ответы (single/multiple/numeric/select/order),
-  режимы Guided/Standard/Interview, детерминированная оценка и разбор.
-  Детали — [`docs/case-system.md`](docs/case-system.md).
-- **Atlas**: состояния узлов вычисляются backend из skill assessments и прогресса
-  уроков; визуальные состояния и режим «Слабые темы»; индикатор просроченных
-  повторений на узлах уроков (Фаза 5).
-
-## Повторение (Фаза 5)
-
-- **Очередь**: интервальное повторение (SM-2-like). После завершения урока,
-  успешной лаборатории (score ≥ 0.6) и кейса создаются review items
-  (ленивый идемпотентный bootstrap — существующий прогресс Фазы 4 не теряется).
-- **Review**: экран `/review` с сессией: структурированные вопросы
-  (single/multiple/ordering/numeric/parameter_selection/error_diagnosis/
-  reveal_and_rate), проверка без LLM, объяснение, оценки Again/Hard/Good/Easy.
-- **Расписание**: Again → ~10 минут (relearning), Hard → 1 день, Good → 3 дня,
-  Easy → 7 дней; ease factor 1.3–2.8, верхний предел интервала 365 дней.
-- **Правила**: неправильный ответ → effective Again; частичный → не выше Hard;
-  повторная отправка не создаёт дубликата (dedup_key); skip не вредит расписанию.
-- **Knowledge Model**: ответ создаёт learning event (`review_answer`) и обновляет
-  7 осей через существующий KnowledgeModelService (вторая модель mastery не создаётся).
-- **Today/Focus/Atlas**: Today показывает карточку повторений и приоритет review-сессии;
-  Focus — ссылка «Повторить тему (N)»; Atlas — amber-индикатор на уроках
-  с просроченными повторениями.
-- Детали — [`docs/review-system.md`](docs/review-system.md).
-
-## Локальный запуск
-
-### 1. Backend (FastAPI, порт 8000)
+## macOS
 
 ```bash
-cd backend
-uv sync                 # установка зависимостей в .venv (Python 3.12)
-uv run python -m alembic upgrade head   # применить миграции (создаёт data/datapath.db)
-uv run python -m app.cli.content sync   # синхронизировать каталог из content/vault
-uv run python -m uvicorn app.main:app --reload
+make build-macos
 ```
 
-Проверка:
+Готовый unsigned bundle:
+`desktop/src-tauri/target/release/bundle/macos/DataPath.app`. Он работает без Terminal и FastAPI.
+Релизный DMG или ZIP будет прикреплён к GitHub Release. Перенесите `DataPath.app` в
+`/Applications`. Поскольку версия 1.0.0 не подписана и не notarized, при первом запуске нажмите по
+приложению с удержанием Control, выберите **Открыть**, затем подтвердите **Открыть**. Не отключайте
+Gatekeeper глобально.
+
+## iPhone / iOS
 
 ```bash
-curl http://localhost:8000/api/health          # {"status":"ok",...}
-curl http://localhost:8000/api/content/status  # счётчики каталога
-curl http://localhost:8000/api/atlas           # данные Atlas
+make ios-open
 ```
 
-> `PYTHONPATH` окружения может «перекрывать» проектный venv (например, в терминале
-> Hermes). При проблемах запускайте с префиксом: `PYTHONPATH= uv run ...`
+Команда собирает и синхронизирует тот же frontend в Capacitor project, затем открывает
+`frontend/ios/App/App.xcodeproj`. В Xcode нужно выбрать личную Development Team и физическое
+устройство. Требуются полный Xcode, iOS 15+ и Apple signing.
 
-### 2. Frontend (Vite dev server, порт 5173)
+## Development
+
+Требования: Python 3.12, [uv](https://docs.astral.sh/uv/), Node.js 22 и npm. Для macOS bundle
+дополнительно нужны Rust и системные зависимости Tauri.
 
 ```bash
-cd frontend
-npm install
-npm run dev
+make sync-content
+make dev
 ```
 
-Откройте <http://localhost:5173>. Vite проксирует `/api/*` в backend
-(`http://localhost:8000`), поэтому frontend ходит только по относительным путям.
-Маршруты: `/today`, `/atlas`, `/focus`, `/review`, `/studio`, `/system`; `/` ведёт на `/today`.
+Открыть `http://127.0.0.1:5173`.
 
-### 3. Makefile
+Основные проверки:
 
 ```bash
-make dev-backend        # uvicorn :8000
-make dev-frontend       # vite :5173
-make sync-content       # python -m app.cli.content sync
-make validate-content   # python -m app.cli.content validate
-make test               # pytest + vitest
-make lint               # ruff + eslint + tsc + prettier
-make build              # uv sync --frozen + frontend build
-make check              # lint + test + build
+make test
+make lint
+make validate-content
+make build-web
+make build-macos
+make ios-sync
 ```
 
-## Запуск через Docker Compose
+## Architecture
 
-```bash
-docker compose build     # сборка образов backend + frontend
-docker compose up -d     # запуск: backend на :8000, frontend на :8080
-docker compose exec backend python -m alembic upgrade head   # миграция
-docker compose exec backend python -m app.cli.content sync  # синхронизация контента
-```
+- `content/vault` — канонический source-backed контент.
+- `backend` — authoring/dev runtime: sync, validation, dev API и генерация release snapshot.
+- `frontend` — общая React/TypeScript application и local-first platform layer.
+- `desktop/src-tauri` — тонкая оболочка macOS.
+- `frontend/ios` — Capacitor iOS target с той же frontend codebase.
+- `.github/workflows` — CI и deployment GitHub Pages.
 
-Проверка:
+Подробности: [архитектура](docs/architecture.md), [текущее состояние](docs/current-state.md) и
+[инструкция по релизу](docs/release.md).
 
-```bash
-curl http://localhost:8000/api/health
-curl http://localhost:8080/api/atlas   # через nginx frontend → backend
-```
+## Privacy
 
-Остановка:
+DataPath не содержит регистрации, аналитики, рекламы или telemetry SaaS. Учебное состояние,
+заметки и история Review хранятся локально в WebKit/localStorage контейнере выбранной платформы.
+Приложение не отправляет их на сервер. Пользователь сам управляет backup-файлами, созданными через
+«Настройки».
 
-```bash
-docker compose down
-```
+## Sources and license
 
-Compose запускает **только** backend и frontend. Ollama, ChromaDB и RAG
-намеренно не включены (Фаза 6).
+Редакционные источники и принципы атрибуции перечислены в
+[карте источников](docs/content-reference-map.md). Тексты уроков написаны для DataPath и не
+копируют исходные учебники или документацию.
 
-## Тесты и линтеры
+Исходный код распространяется по [MIT License](LICENSE). Учебные материалы, datasets, названия
+продуктов и сторонние assets не передаются автоматически под MIT; подробности — в
+[уведомлении о контенте](CONTENT_NOTICE.md).
 
-### Backend
-
-```bash
-cd backend
-uv run ruff format .          # форматирование
-uv run ruff check .           # линт (Ruff)
-uv run pytest                 # тесты (162 шт.)
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm run lint                  # ESLint
-npx tsc -b                    # TypeScript check
-npm run format:check          # Prettier check
-npm run test                  # Vitest (74 шт.)
-npm run build                 # production build (tsc -b && vite build)
-```
-
-## Результаты валидации реального vault (2026-08-05)
-
-```
-Валидация: 0 ошибок, 0 предупреждений
-Синхронизация: scanned 264, created 189, unchanged 189, errors 0, warnings 0
-```
-
-Каталог по типам: `course 1`, `module 5`, `lesson 13`, `practice 78`,
-`concept 67`, `interview 18`, `project 7`. Опубликовано (`app: include`): 26
-(курс + 5 модулей + 13 уроков + 7 кейсов). Atlas содержит 100 узлов,
-296 связей и 8 областей знаний.
-
-## Текущие ограничения (Фаза 5)
-
-- **RAG не реализован**: нет embeddings, ChromaDB, Ollama, чанкинга, retrieval.
-- **AI-оценка свободного текста не реализована**: кейсы и повторения используют
-  только структурированные правила (reveal_and_rate — слабая самооценка без
-  объективной проверки); сцены retrieval/application/interview/reflection —
-  Фаза 6.
-- **Один локальный пользователь**: без авторизации и облачной синхронизации.
-- **Prerequisites** в vault не заданы полем frontmatter (VAULT_SPEC):
-  явное поле поддерживается и валидируется, для уроков порядок внутри модуля
-  даёт неявные рёбра `prerequisite` (детали — в docs/content-system.md).
-- В backend нет глобальной обработки ошибок с кастомными JSON-ответами —
-  используется стандартное поведение FastAPI.
-
-## Технический долг (известный)
-
-- Starlette выдаёт deprecation warning про `httpx` → `httpx2` в TestClient;
-  не влияет на работу, обновится вместе со стеком.
-- `/api/atlas` и `/api/content/atlas` — два пути к одному обработчику
-  (задание Фазы 2 требует `/api/atlas`, ранние документы — `/content/atlas`).
-- Frontend bundle ~800 kB (KaTeX + markdown-пайплайн) — код-сплит в Фазе 7.
-- `content/vault` монтируется в контейнер как есть (включая служебные `.obsidian/`,
-  `_meta/`); фильтрация выполняется парсером контента.
+Algorithms не входит в scope версии 1.0.0: задачи остаются во внешнем AlgoPath; в DataPath
+сохранена только будущая adapter boundary.

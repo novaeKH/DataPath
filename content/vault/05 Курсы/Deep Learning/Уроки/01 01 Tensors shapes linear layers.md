@@ -4,10 +4,10 @@ id: lesson.deep-learning.01
 schema_version: 2
 type: lesson
 area: deep-learning
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.deep-learning
 module_id: module.dl.foundations
 module_order: 1
@@ -40,45 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Почему всё начинается с shape"
-    },
-    {
-      "type": "content",
-      "source_heading": "Создание Tensor"
-    },
-    {
-      "type": "content",
-      "source_heading": "Dtype"
-    },
-    {
       "type": "interactive",
       "component": "tensor-shape-tracer"
-    },
-    {
-      "type": "content",
-      "source_heading": "Device"
-    },
-    {
-      "type": "content",
-      "source_heading": "Reshape"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Linear layer"
-    },
-    {
-      "type": "content",
-      "source_heading": "Batch dimension"
-    },
-    {
-      "type": "content",
-      "source_heading": "Broadcasting"
     },
     {
       "type": "application",
@@ -97,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

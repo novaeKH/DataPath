@@ -13,9 +13,12 @@ import pytest
 from app.api.cases import get_case_service
 from app.api.content import get_catalog_service, get_lesson_service
 from app.api.labs import get_lab_registry
+from app.api.practice import get_service as get_practice_service
 from app.api.progress import get_progress_service
 from app.api.reviews import get_review_answer_service, get_review_queue_service
-from app.api.system import get_system_service
+from app.api.roadmap import get_roadmap_service
+from app.api.system import get_backup_service, get_system_service
+from app.api.today import get_practice_service as get_today_practice_service
 from app.api.today import (
     get_progress_service as get_today_progress_service,
 )
@@ -25,6 +28,7 @@ from app.api.today import (
 from app.core.config import Settings
 from app.db.base import Base
 from app.main import create_app
+from app.services.backup import BackupService
 from app.services.cases.registry import DEFAULT_CASE_REGISTRY
 from app.services.cases.service import CaseService
 from app.services.content_catalog import ContentCatalogService
@@ -34,10 +38,12 @@ from app.services.labs.ensemble_comparison import EnsembleComparisonLab
 from app.services.labs.registry import LabRegistry
 from app.services.labs.tree_overfitting import TreeOverfittingLab
 from app.services.lesson_content import LessonContentService
+from app.services.practice import PracticeService
 from app.services.progress import ProgressService
 from app.services.reviews.answer import ReviewAnswerService
 from app.services.reviews.queue import ReviewQueueService
 from app.services.reviews.templates import get_default_registry as get_default_review_registry
+from app.services.roadmap import RoadmapService
 from app.services.system import SystemStatusService
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -142,6 +148,9 @@ def make_client(
         app.dependency_overrides[get_system_service] = lambda: SystemStatusService(
             settings=settings, engine=db_session_factory.kw["bind"]
         )
+        app.dependency_overrides[get_backup_service] = lambda: BackupService(
+            session_factory=db_session_factory
+        )
         app.dependency_overrides[get_catalog_service] = lambda: ContentCatalogService(
             settings=settings, session_factory=db_session_factory
         )
@@ -172,6 +181,15 @@ def make_client(
             settings=settings,
             session_factory=db_session_factory,
             registry=get_default_review_registry(),
+        )
+        app.dependency_overrides[get_practice_service] = lambda: PracticeService(
+            session_factory=db_session_factory
+        )
+        app.dependency_overrides[get_today_practice_service] = lambda: PracticeService(
+            session_factory=db_session_factory
+        )
+        app.dependency_overrides[get_roadmap_service] = lambda: RoadmapService(
+            session_factory=db_session_factory
         )
         return TestClient(app)
 

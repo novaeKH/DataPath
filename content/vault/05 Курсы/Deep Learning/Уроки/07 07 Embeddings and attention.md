@@ -4,10 +4,10 @@ id: lesson.deep-learning.07
 schema_version: 2
 type: lesson
 area: deep-learning
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.deep-learning
 module_id: module.dl.transformers
 module_order: 3
@@ -40,49 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Embedding с нуля"
-    },
-    {
-      "type": "content",
-      "source_heading": "Static и contextual embeddings"
-    },
-    {
-      "type": "content",
-      "source_heading": "Зачем attention"
-    },
-    {
       "type": "interactive",
       "component": "attention-matrix-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Scaled dot-product attention"
-    },
-    {
-      "type": "content",
-      "source_heading": "Почему scale"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Masks"
-    },
-    {
-      "type": "content",
-      "source_heading": "Multi-head"
-    },
-    {
-      "type": "content",
-      "source_heading": "Cross-attention"
-    },
-    {
-      "type": "content",
-      "source_heading": "Complexity"
     },
     {
       "type": "application",
@@ -101,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

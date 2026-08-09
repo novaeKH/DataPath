@@ -139,7 +139,7 @@ class ContentIssue(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     item_id: Mapped[str | None] = mapped_column(
-        ForeignKey("content_items.id", ondelete="CASCADE"), index=True
+        ForeignKey("content_items.id", ondelete="SET NULL"), index=True, nullable=True
     )
     path: Mapped[str] = mapped_column(String, nullable=False, index=True)  # относительный путь
     severity: Mapped[str] = mapped_column(String, nullable=False)  # error | warning

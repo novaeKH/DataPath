@@ -1,5 +1,6 @@
 # macOS
 .DS_Store
+.AppleDouble
 
 # Environment
 .env
@@ -15,6 +16,7 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+target/
 
 # Кэши тестов и линтеров
 .pytest_cache/
@@ -28,6 +30,7 @@ node_modules/
 dist/
 dist-ssr/
 *.local
+.npm/
 
 # Локальная SQLite-база
 data/
@@ -50,6 +53,9 @@ chromadb/
 # Логи
 *.log
 logs/
+*.backup
+*.bak
+datapath-backup-*.json
 
 # Временные файлы
 tmp/
@@ -57,6 +63,22 @@ temp/
 *.tmp
 *.swp
 *~
+.hermes/
+
+# IDE / editors
+.idea/
+.vscode/
+
+# Apple build/signing state
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.mobileprovision
+*.p12
+*.cer
+*.provisionprofile
+*.dmg
+DataPath-*-macOS-*.zip
 
 # Obsidian — только локальное состояние, контент vault остаётся в Git
 content/vault/.trash/

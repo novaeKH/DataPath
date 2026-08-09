@@ -49,48 +49,8 @@ cssclasses:
       "title": "Зачем это нужно и какой результат получим"
     },
     {
-      "type": "content",
-      "source_heading": "Идея за 30 секунд"
-    },
-    {
-      "type": "content",
-      "source_heading": "Сначала определить, что оцениваем"
-    },
-    {
-      "type": "content",
-      "source_heading": "Confusion matrix"
-    },
-    {
       "type": "interactive",
       "component": "threshold-cost-explorer"
-    },
-    {
-      "type": "content",
-      "source_heading": "Accuracy и balanced accuracy"
-    },
-    {
-      "type": "content",
-      "source_heading": "ROC-AUC"
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
-    },
-    {
-      "type": "content",
-      "source_heading": "Частые ошибки"
-    },
-    {
-      "type": "content",
-      "source_heading": "Сравнение метрик"
-    },
-    {
-      "type": "content",
-      "source_heading": "Простой пример"
-    },
-    {
-      "type": "content",
-      "source_heading": "Пример кода"
     },
     {
       "type": "retrieval",
@@ -98,33 +58,9 @@ cssclasses:
       "prompt": "Почему ROC-AUC и precision отвечают на разные вопросы?"
     },
     {
-      "type": "content",
-      "source_heading": "Precision–Recall и PR-AUC"
-    },
-    {
-      "type": "content",
-      "source_heading": "LogLoss и Brier score"
-    },
-    {
-      "type": "content",
-      "source_heading": "Threshold selection"
-    },
-    {
       "type": "application",
       "mode": "micro-task",
       "prompt": "Выбери metric и threshold policy для ручной проверки 500 клиентов в неделю при редком positive class."
-    },
-    {
-      "type": "content",
-      "source_heading": "Multiclass averaging"
-    },
-    {
-      "type": "content",
-      "source_heading": "Regression metrics"
-    },
-    {
-      "type": "content",
-      "source_heading": "Связь с бизнесом"
     },
     {
       "type": "interview",

@@ -43,10 +43,13 @@ export function LabFrame({
   }
 
   return (
-    <div className="rounded-xl p-5" style={{
-      background: 'var(--dp-surface)',
-      border: '1px solid var(--dp-border-subtle)',
-    }}>
+    <div
+      className="rounded-xl p-5"
+      style={{
+        background: 'var(--dp-surface)',
+        border: '1px solid var(--dp-border-subtle)',
+      }}
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div
@@ -103,7 +106,10 @@ export function LabFrame({
       {/* Result area — always mounted, content updates via React reconciliation */}
       <div className="mt-5" style={{ minHeight: '120px' }}>
         {busy ? (
-          <div className="flex h-32 items-center justify-center text-sm" style={{ color: 'var(--dp-text-muted)' }}>
+          <div
+            className="flex h-32 items-center justify-center text-sm"
+            style={{ color: 'var(--dp-text-muted)' }}
+          >
             Вычисление на backend…
           </div>
         ) : (

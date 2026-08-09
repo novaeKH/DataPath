@@ -177,9 +177,8 @@ describe('TodayView', () => {
 
   it('empty state: слабых тем нет и не показывает фиктивную аналитику', async () => {
     renderToday()
-    expect(
-      await screen.findByText(/Пока недостаточно данных, чтобы выделить слабые темы/i),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Decision Tree/ })).toBeInTheDocument()
+    expect(screen.queryByText(/Нужно усилить/)).not.toBeInTheDocument()
   })
 
   it('shows error state when API fails', async () => {
@@ -212,22 +211,21 @@ describe('TodayView with activity', () => {
   it('weak skills shown when evidence is sufficient', async () => {
     renderToday()
     expect(await screen.findByText(/ml.bias_variance_regularization/)).toBeInTheDocument()
-    expect(screen.getByText(/3 измерен/)).toBeInTheDocument()
+    expect(screen.getByText(/Нужно усилить/)).toBeInTheDocument()
   })
 
-  it('recent activity and suggested case are rendered', async () => {
+  it('suggested case is available in the compact secondary section', async () => {
     renderToday()
-    expect(await screen.findByText(/Недавняя активность/)).toBeInTheDocument()
-    expect(screen.getByText(/tree-depth-overfitting-lab/)).toBeInTheDocument()
-    expect(screen.getByText(/Рекомендуемый кейс/)).toBeInTheDocument()
+    expect(await screen.findByText(/Mini-case/)).toBeInTheDocument()
+    expect(screen.queryByText(/Недавняя активность/)).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Открыть в Studio/ })).toBeInTheDocument()
   })
 
-  it('links to Focus, Atlas and Studio exist', async () => {
+  it('keeps the daily route focused on lesson, practice and review', async () => {
     renderToday()
-    expect(await screen.findByRole('link', { name: /Уроки/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /^Atlas$/ })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: /Продолжить урок/ })).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: /Studio/ }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('link', { name: /К повторениям/ })).toBeInTheDocument()
   })
 
   it('shows review card with «на сегодня всё» when queue is empty but items exist', async () => {

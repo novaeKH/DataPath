@@ -91,6 +91,10 @@ EVIDENCE_POLICY: dict[str, dict[str, Any]] = {
         "axes": {"apply": 1.0, "interpret": 1.0, "theory": 0.3},
         "note": "Лаборатория: сильнее влияет на применение и интерпретацию.",
     },
+    "practice_completed": {
+        "axes": {"apply": 1.2, "code": 1.0, "theory": 0.25},
+        "note": "Структурированная практика: сильный сигнал применения и кода.",
+    },
     "case_mini": {
         "axes": {"apply": 1.5, "interpret": 1.5, "theory": 0.75},
         "note": "Мини-кейс — интегративный сигнал.",

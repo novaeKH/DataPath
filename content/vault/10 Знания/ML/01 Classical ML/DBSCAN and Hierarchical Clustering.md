@@ -144,3 +144,21 @@ DBSCAN не начинает с заданного количества clusters
 - [[K-Means]]
 - [[Anomaly Detection]]
 - [[Principal Component Analysis]]
+
+## Код: DBSCAN после scaling
+
+```python
+from sklearn.cluster import DBSCAN
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+clusterer = make_pipeline(
+    StandardScaler(),
+    DBSCAN(eps=0.55, min_samples=8),
+)
+labels = clusterer.fit_predict(X)
+noise_share = (labels == -1).mean()
+```
+
+Label `-1` обозначает noise. `eps` интерпретируется в scale преобразованных
+features, поэтому его нельзя переносить между datasets механически.

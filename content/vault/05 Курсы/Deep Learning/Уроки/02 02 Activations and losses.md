@@ -4,10 +4,10 @@ id: lesson.deep-learning.02
 schema_version: 2
 type: lesson
 area: deep-learning
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.deep-learning
 module_id: module.dl.foundations
 module_order: 1
@@ -40,41 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Зачем нужна activation"
-    },
-    {
-      "type": "content",
-      "source_heading": "ReLU"
-    },
-    {
-      "type": "content",
-      "source_heading": "Leaky ReLU, GELU, SiLU"
-    },
-    {
       "type": "interactive",
       "component": "activation-loss-explorer"
-    },
-    {
-      "type": "content",
-      "source_heading": "Output layer и loss должны совпадать"
-    },
-    {
-      "type": "content",
-      "source_heading": "Logits, probabilities, predictions"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Cross-entropy как likelihood"
-    },
-    {
-      "type": "content",
-      "source_heading": "Class weights"
     },
     {
       "type": "application",
@@ -93,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

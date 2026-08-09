@@ -12,6 +12,7 @@ source-заметку по content_path. Весь парсинг Markdown и п�
 - callout         — Obsidian callout (> [!type])
 - checkpoint      — вопрос для самопроверки (без сохранения оценки)
 - interactive_lab — ссылка на зарегистрированную лабораторию
+- visual_demo     — интерактивная клиентская визуализация из проверенного registry
 - visual          — изображение/график с подписью (Фаза 6A)
 - table           — таблица сравнения (Фаза 6A)
 
@@ -58,9 +59,72 @@ SCENE_TYPES = (
     "callout",
     "checkpoint",
     "interactive_lab",
+    "visual_demo",
     "visual",
     "table",
 )
+
+# Единый контракт backend content validator ↔ frontend registry. Любой component
+# из lesson manifest обязан быть перечислен здесь и иметь renderer на frontend.
+VISUAL_DEMO_IDS = {
+    "activation-loss-explorer",
+    "anomaly-methods-lab",
+    "attention-matrix-lab",
+    "backprop-computation-graph",
+    "boosting-residuals-lab",
+    "bootstrap-forest-lab",
+    "calibration-reliability-lab",
+    "categorical-encoding-lab",
+    "cnn-kernel-feature-map-lab",
+    "data-cleaning-lab",
+    "dataframe-selection-lab",
+    "decision-tree-split-lab",
+    "density-hierarchy-clustering-lab",
+    "dl-debugging-decision-tree",
+    "eda-to-pipeline-builder",
+    "eda-workflow-board",
+    "experiment-reproducibility-lab",
+    "fine-tuning-parameter-budget",
+    "gradient-descent-landscape",
+    "groupby-merge-lab",
+    "hyperparameter-search-landscape",
+    "imbalance-threshold-lab",
+    "interpretation-methods-lab",
+    "kmeans-canvas",
+    "knn-neighbourhood-lab",
+    "linear-fit-residual-lab",
+    "logistic-boundary-threshold-lab",
+    "metrics-threshold-lab",
+    "missing-outlier-lab",
+    "monitoring-drift-quality-lab",
+    "mlp-neuron-lab",
+    "naive-bayes-evidence-lab",
+    "neuron-computation-lab",
+    "numpy-array-lab",
+    "numpy-broadcasting-lab",
+    "optimizer-landscape-lab",
+    "pca-projection-lab",
+    "pipeline-builder-lab",
+    "plot-design-lab",
+    "pooling-window-lab",
+    "preprocessing-pipeline-builder",
+    "problem-framing-canvas",
+    "regularization-path-lab",
+    "retrieval-ranking-lab",
+    "rag-pipeline-evaluation-lab",
+    "relationship-plot-lab",
+    "rnn-state-gates-lab",
+    "seaborn-plot-selector",
+    "svm-margin-kernel-lab",
+    "sql-join-grain-lab",
+    "tensor-shape-tracer",
+    "threshold-cost-explorer",
+    "tfidf-weight-lab",
+    "time-window-lab",
+    "training-loop-timeline",
+    "transformer-block-lab",
+    "validation-split-lab",
+}
 
 # Порог для слияния короткой сцены с соседней (слов).
 TINY_SCENE_WORD_THRESHOLD = 15
@@ -156,6 +220,19 @@ def _extract_summary_callout(body: str) -> str | None:
     return match.group(0).rstrip()
 
 
+def _extract_learning_objectives(body: str) -> str | None:
+    """Извлекает пользовательские learning objectives из lesson manifest."""
+    match = re.search(
+        r"^##\s+(?:Результат урока|Результат|Цели урока)\s*\n(.*?)(?=^##|\Z)",
+        body,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    if not match:
+        return None
+    value = match.group(1).strip()
+    return value or None
+
+
 def _extract_checkpoints(body: str) -> list[str]:
     """Вопросы из раздела «Проверка понимания» (нумерованный список)."""
     match = re.search(
@@ -172,6 +249,26 @@ def _extract_checkpoints(body: str) -> list[str]:
         if item:
             questions.append(item.group(1).strip())
     return questions
+
+
+def _assessment_type(question: str, explicit: str | None = None) -> str:
+    """Classify a checkpoint without pretending reflection has a correct answer."""
+    allowed = {
+        "self_assessment",
+        "single_choice_quiz",
+        "multiple_choice_quiz",
+        "free_response",
+        "reflection",
+    }
+    if explicit in allowed:
+        return explicit
+    options = re.findall(r"^[-*]\s*\[([xX ])\]\s+.+$", question, flags=re.MULTILINE)
+    correct_count = sum(mark.lower() == "x" for mark in options)
+    if correct_count > 1:
+        return "multiple_choice_quiz"
+    if correct_count == 1:
+        return "single_choice_quiz"
+    return "self_assessment"
 
 
 def _word_count(text: str) -> int:
@@ -258,6 +355,8 @@ def _detect_semantic_role(title: str | None, content: str, scene_type: str) -> s
         return "checkpoint"
     if scene_type == "interactive_lab":
         return "lab"
+    if scene_type == "visual_demo":
+        return "visualization"
     if scene_type == "visual":
         return "visualization"
     if scene_type == "code":
@@ -594,7 +693,7 @@ def _assign_display_titles(scenes: list[dict]) -> list[dict]:
 
     for scene in scenes:
         stype = scene.get("type", "")
-        if stype in ("interactive_lab", "checkpoint"):
+        if stype in ("interactive_lab", "visual_demo", "checkpoint"):
             continue
 
         title = scene.get("title")
@@ -1192,42 +1291,91 @@ class LessonContentService:
         scenes: list[dict] = []
         heading_resolution: list[dict] = []
 
-        # 1. Hook: заголовок из datapath или summary-callout урока.
-        hook_title = None
-        hook_markdown = _extract_summary_callout(body) or ""
-        if datapath:
-            for scene in datapath.get("scenes", []):
-                if isinstance(scene, dict) and scene.get("type") == "hook":
-                    hook_title = scene.get("title")
-                    break
-        if hook_markdown:
-            scenes.append(_markdown_scene(hook_title or "Результат урока", hook_markdown))
+        scenario = [
+            scene for scene in (datapath or {}).get("scenes", []) if isinstance(scene, dict)
+        ]
+        hook_markdown = _extract_summary_callout(body) or _extract_learning_objectives(body) or ""
+        source_scenes = build_source_scenes(source_md, source_content_id) if source_md else []
 
-        # 2. Content: секции source-заметки.
-        if source_md:
-            source_scenes = build_source_scenes(source_md, source_content_id)
-            if datapath:
-                content_scenes_raw = [
-                    s
-                    for s in datapath.get("scenes", [])
-                    if isinstance(s, dict) and s.get("type") == "content"
-                ]
-                headings = [s.get("source_heading") for s in content_scenes_raw]
-                # Нормализованное сопоставление (Фаза 6A)
-                if headings:
-                    selected = []
-                    for s in source_scenes:
-                        stitle = s.get("title")
-                        if stitle and _normalized_match(stitle, headings):
-                            selected.append(s)
-                    content_scenes = selected if selected else source_scenes
-                    heading_resolution = _resolve_heading_statuses(headings, source_scenes)
-                else:
-                    content_scenes = source_scenes
-            else:
-                content_scenes = source_scenes
-            scenes.extend(content_scenes)
-        else:
+        if source_md and datapath:
+            headings = [
+                scene.get("source_heading") for scene in scenario if scene.get("type") == "content"
+            ]
+            heading_resolution = _resolve_heading_statuses(headings, source_scenes)
+
+        # Manifest order is the lesson order: content → visualization → check → practice.
+        # All business-safe client visualizations come from the allowlisted registry.
+        used_source_indices: set[int] = set()
+        manifest_checkpoints: set[str] = set()
+        if scenario:
+            for manifest_scene in scenario:
+                kind = manifest_scene.get("type")
+                if kind == "hook":
+                    if hook_markdown:
+                        scenes.append(
+                            _markdown_scene(
+                                str(manifest_scene.get("title") or "Результат урока"),
+                                hook_markdown,
+                            )
+                        )
+                elif kind == "content" and source_scenes:
+                    requested = manifest_scene.get("source_heading")
+                    matches = [
+                        (index, source_scene)
+                        for index, source_scene in enumerate(source_scenes)
+                        if source_scene.get("title")
+                        and isinstance(requested, str)
+                        and _normalized_match(str(source_scene.get("title")), [requested])
+                    ]
+                    for index, source_scene in matches:
+                        if index not in used_source_indices:
+                            scenes.append(source_scene)
+                            used_source_indices.add(index)
+                elif kind in {"interactive", "visual_demo"}:
+                    demo_id = manifest_scene.get("component") or manifest_scene.get("demo_id")
+                    if isinstance(demo_id, str):
+                        scenes.append(
+                            _scene_metadata(
+                                {
+                                    "type": "visual_demo",
+                                    "title": manifest_scene.get("title")
+                                    or "Интерактивная визуализация",
+                                    "demo_id": demo_id,
+                                },
+                                source_content_id,
+                            )
+                        )
+                elif kind in {"retrieval", "application", "interview"}:
+                    prompt = manifest_scene.get("prompt")
+                    if isinstance(prompt, str) and prompt.strip():
+                        manifest_checkpoints.add(prompt.strip())
+                        scenes.append(
+                            _scene_metadata(
+                                {
+                                    "type": "checkpoint",
+                                    "title": None,
+                                    "question": prompt.strip(),
+                                    "checkpoint_kind": kind,
+                                    "assessment_type": _assessment_type(
+                                        prompt.strip(),
+                                        manifest_scene.get("assessment_type"),
+                                    ),
+                                },
+                                source_content_id,
+                            )
+                        )
+
+            # Если ни один запрошенный heading не разрешился, честно показываем
+            # source целиком: полноценный материал лучше пустого lesson route.
+            if source_scenes and not used_source_indices:
+                insert_at = 1 if scenes and scenes[0].get("source_content_id") is None else 0
+                scenes[insert_at:insert_at] = source_scenes
+        elif source_scenes:
+            if hook_markdown:
+                scenes.append(_markdown_scene("Результат урока", hook_markdown))
+            scenes.extend(source_scenes)
+
+        if not source_scenes:
             # Запасной вариант: сам урок содержит теорию (нет content_path).
             theory = re.sub(r"```datapath.*?```", "", body, flags=re.DOTALL).strip()
             if theory:
@@ -1251,7 +1399,7 @@ class LessonContentService:
                         for h in headings
                     ]
 
-        # 3. Interactive labs из registry.
+        # Backend-computed labs добавляются после учебного сценария.
         for lab in self.registry.labs_for_lesson(item.id):
             scene = {
                 "type": "interactive_lab",
@@ -1261,9 +1409,16 @@ class LessonContentService:
             }
             scenes.append(_scene_metadata(scene, source_content_id))
 
-        # 4. Checkpoint: «Проверка понимания» урока.
+        # Checkpoints из Markdown добавляются, если manifest ещё не содержит их.
         for question in _extract_checkpoints(body):
-            scene = {"type": "checkpoint", "title": None, "question": question}
+            if question in manifest_checkpoints:
+                continue
+            scene = {
+                "type": "checkpoint",
+                "title": None,
+                "question": question,
+                "assessment_type": _assessment_type(question),
+            }
             scenes.append(_scene_metadata(scene, source_content_id))
 
         return scenes, heading_resolution

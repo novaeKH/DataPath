@@ -50,32 +50,8 @@ cssclasses:
       "title": "Зачем это нужно и какой результат получим"
     },
     {
-      "type": "content",
-      "source_heading": "Интуиция"
-    },
-    {
-      "type": "content",
-      "source_heading": "Подготовка"
-    },
-    {
-      "type": "content",
-      "source_heading": "Covariance view"
-    },
-    {
       "type": "interactive",
       "component": "pca-projection-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "SVD view"
-    },
-    {
-      "type": "content",
-      "source_heading": "Projection"
-    },
-    {
-      "type": "content",
-      "source_heading": "Сравнение с другими методами снижения размерности"
     },
     {
       "type": "retrieval",
@@ -83,45 +59,9 @@ cssclasses:
       "prompt": "Почему PCA нужно fit только на train и как scaling меняет найденные directions?"
     },
     {
-      "type": "content",
-      "source_heading": "Explained variance"
-    },
-    {
-      "type": "content",
-      "source_heading": "Пример"
-    },
-    {
-      "type": "content",
-      "source_heading": "Scaling меняет задачу"
-    },
-    {
-      "type": "content",
-      "source_heading": "Leakage"
-    },
-    {
-      "type": "content",
-      "source_heading": "Интерпретация"
-    },
-    {
-      "type": "content",
-      "source_heading": "Sparse data"
-    },
-    {
       "type": "application",
       "mode": "micro-task",
       "prompt": "Выбери число components для KNN pipeline и объясни, почему нельзя опираться только на 95% variance."
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
-    },
-    {
-      "type": "content",
-      "source_heading": "sklearn пример"
-    },
-    {
-      "type": "content",
-      "source_heading": "Частые ошибки"
     },
     {
       "type": "interview",

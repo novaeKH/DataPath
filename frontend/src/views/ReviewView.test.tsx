@@ -373,7 +373,7 @@ describe('ReviewView', () => {
     await user.click(await screen.findByRole('button', { name: /Начать повторение/ }))
     await user.click(await screen.findByRole('radio', { name: /Первый/ }))
     await user.click(screen.getByRole('button', { name: /Проверить/ }))
-    expect(await screen.findByText(/Backend вернул HTTP 500/)).toBeInTheDocument()
+    expect(await screen.findByText(/ошибка/)).toBeInTheDocument()
   })
 })
 

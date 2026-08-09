@@ -1,134 +1,76 @@
-# DataPath — текущее состояние (передача контекста)
+# DataPath — текущее состояние
 
-> **Stable baseline:** `phase-6a1-complete`
-> Актуальный commit можно получить командой `git rev-parse HEAD`.
+> Обновлено 2026-08-10. Версия 1.0.0, single-user/local-first.
 
-## Фаза и результат
+## Release scope
 
-- Фазы 1–6A.1 выполнены. Фаза 6A стабилизировала парсинг сцен, метаданные,
-  content quality audit и подготовила черновики контента. Phase 6A.1
-  интегрировала одобренные content drafts в канонический `content/vault` и
-  исправила source_heading маппинги.
-- Пайплайн: `content/vault → Python parser → валидация → SQLite → REST API → Atlas/Focus/Studio/Review`.
+- В canonical vault — 103 source-backed урока. В основной Roadmap опубликованы 86 уроков по
+  Python, NumPy/pandas, математике и статистике, SQL/scikit-learn, Classic ML, Deep Learning, NLP,
+  LLM/RAG и MLOps.
+- Algorithms исключён из release navigation, Roadmap, Atlas и Studio. Исходные материалы не
+  удалены; сохранена только adapter boundary для отдельного AlgoPath.
+- Roadmap использует три прохода: orientation, understanding, application.
+- В registry — 57 валидируемых интерактивных visual demos; опубликованные demo ID имеют реальные
+  frontend renderers. Сохранены три отдельные ML-лаборатории.
+- Studio содержит 15 упражнений, включая 6 исполняемых локальных SQLite-задач, и 9 mini-cases.
 
-## Выполненные фазы (история)
+## Рабочий учебный цикл
 
-- Phase 1 — project scaffold;
-- Phase 2 — content catalog and Atlas;
-- Phase 3 — interactive lessons and labs;
-- Phase 4 — Knowledge Model, progress and cases;
-- Phase 5 — spaced repetition;
-- Phase 6A — content parsing and quality foundation;
-- Phase 6A.1 — canonical MVP content integration.
+- Today формирует компактную сессию lesson + practice + Review.
+- Focus рендерит source-backed sections, KaTeX, code, checkpoint, visual demo и lab; сохраняет
+  resume position, completion, notes и assessment outcomes.
+- Review различает factual quiz, conceptual/free response, code/error diagnosis и reveal/rate;
+  расписание и mastery обновляются из результата, а не из открытия страницы.
+- Atlas — block map по course/module/lesson с реальным mastery, due count и связями.
+- Versioned local store schema v2 хранит progress, mastery, Review, practice/cases, notes, settings,
+  current roadmap position и Today state. Backup import проверяет format/version/checksum до записи.
 
-## Phase 6A.1: интеграция контента MVP
+## Distribution
 
-- Канонический MVP-контент улучшен, синхронизирован и **готов к RAG-индексации**.
-- Все 13 уроков Classic ML разрешают `source_heading` через `exact`/`normalized`.
-- source_heading fallback warnings: before **26** → after **0**.
-- Интегрированы **7 content drafts**: Decision Tree (пример Gain); Bias/Variance
-  и переобучение деревьев; Random Forest (variance reduction); Gradient Boosting
-  (пример трёх шагов); CatBoost (ordered target-statistics без leakage); ensemble
-  model comparison; interview answers.
-- Новый канонический content ID: `concept.ml.ensemble-comparison`.
-- Отдельный урок Model Comparison **не добавлялся**; существующий MVP-маршрут и
-  кейс `case.classic-ml.tree-ensemble-choice` не изменялись.
+- Версия 1.0.0 синхронизирована в frontend, backend, release snapshot, Tauri и iOS target.
+- GitHub Actions CI проверяет content/backend и frontend независимо.
+- GitHub Pages workflow собирает repository-subpath-safe PWA с hash routing. Vite генерирует
+  manifest 74 hashed assets; service worker pre-caches их вместе со snapshot и SQLite WASM.
+- Собран unsigned macOS bundle 11 МБ:
+  `desktop/src-tauri/target/release/bundle/macos/DataPath.app`.
+- Capacitor iOS target синхронизирован: `frontend/ios/App/App.xcodeproj`, iOS 15+.
+- Добавлены README, MIT license для software, отдельное content notice, changelog, release notes,
+  privacy/backup и source attribution documentation.
 
-## Content quality (Classic ML)
+## Финальная матрица
 
-- Errors: **0**; Warnings: **0**; Suggestions: **62** (неблокирующие).
-- Catalog sync: **190 content items**, без дубликатов ID, errors 0, warnings 0.
+- Content sync: 441 файлов, 365 catalogued items, 0 ошибок, 0 предупреждений.
+- Content quality: 103 урока, 0 ошибок, 0 предупреждений, 62 необязательные рекомендации.
+- Backend: 219/219 tests; одно upstream deprecation warning Starlette TestClient.
+- Frontend: 109/109 tests.
+- Ruff check/format, ESLint, TypeScript, Prettier, root production build и GitHub Pages base-path
+  build проходят.
+- `npm audit --omit=dev`: 0 vulnerabilities. Workflow YAML и `git diff --check` проходят.
+- Browser production smoke: Today, Learn, Roadmap, Studio, Review, Atlas, Settings, Focus и
+  критические visualizers открываются без FastAPI.
+- Packaged macOS smoke: Today → Focus → note → close → reopen → note restored. Тестовая заметка
+  удалена после проверки.
 
-## Следующая фаза: Phase 7 — Non-AI MVP Completion and Visual Polish
+## Release blockers / optional / post-release
 
-Довести приложение до сильного самостоятельного обучающего продукта **без
-зависимости от AI-агента**. Scope: унифицированная визуальная система;
-типографика и композиция уроков; Today; Focus; Review; Studio; Atlas; навигация;
-onboarding; empty/loading/error states; responsive layout; light/dark темы;
-accessibility; keyboard behavior; frontend performance; route-level code
-splitting; уменьшение bundle; улучшение раскладки Atlas; удаление мелких
-визуальных несоответствий; issue языковой метки `text` на plain-text code-блоках;
-финальный non-AI UX flow; production build и Docker readiness.
+### Блокирует публичный tag/publish
 
-Phase 7 **не реализует**: embeddings; vector databases; retrieval; LLM calls;
-AI mentor; RAG chat.
+- В checkout нет Git remote, поэтому Pages deployment, его реальный URL и GitHub-hosted Actions ещё
+  не запущены. URL не выдуман, tag `v1.0.0` не создан.
+- In-app browser Codex не подтвердил настоящий Service Worker offline runtime: build-time precache
+  manifest и все его URL проверены, но после отключения preview lazy routes не обслуживались в этом
+  browser sandbox. Перед публичным tag нужен один install → DevTools Offline → reload smoke в
+  обычном Chrome/Safari на опубликованном Pages URL.
 
-## После Phase 7: Phase 6B — Local RAG and AI Mentor
+### Не блокирует локальный 1.0.0
 
-Phase 6B намеренно выполняется **после Phase 7** и сохраняет свой номер и смысл.
+- macOS bundle unsigned и не notarized.
+- В среде установлен только Command Line Tools; iOS simulator/device build и signing не выполнены.
+- Non-SQL code practice проверяет структуру решения, но не исполняет arbitrary Python.
+- Focus chunk остаётся крупнейшим: около 469 kB до gzip / 140 kB gzip, но загружается лениво.
 
-Начальный RAG scope: индексация только валидированного контента с
-`rag: include`; старт с верифицированного MVP-корпуса; семантический
-детерминированный чанкинг; стабильные chunk IDs; инкрементальная индексация;
-локальные embeddings; локальное векторное хранилище; retrieval-фильтры по
-content/skill/lesson; grounded answers; source citations; история диалогов;
-интеграция с Focus; статус локальной модели и graceful degradation.
+### После 1.0
 
-Новые курсы/заметки добавляются через инкрементальный реиндексинг, а не
-пересборку RAG-архитектуры.
+- Cloud sync/accounts, AI tutor, App Store distribution и AlgoPath integration.
 
-## Phase 8 — Python and Algorithms
-
-- 8A — audit и миграция `Python_Interview_Preparation.zip`;
-- 8B — Python Core and Big O;
-- 8C — algorithmic patterns и интерактивные визуализаторы;
-- 8D — code editor, safe runner, tests и interview mode.
-
-## Phase 9 — Curriculum Expansion
-
-Финальный объём — отдельные связанные обучающие треки: полный Machine Learning;
-полный Deep Learning; NumPy; pandas; scikit-learn; Python Core; Big O; algorithms;
-позднее прикладные треки (NLP, recommender systems, LLMs, MLOps).
-
-Структура: 9A — complete Classic ML; 9B — NumPy; 9C — pandas; 9D — scikit-learn;
-9E — Deep Learning; 9F — applied ML/NLP/recsys/LLM/MLOps.
-
-## Продуктовая стратегия
-
-1. DataPath должен хорошо работать без AI.
-2. AI — усиление, а не зависимость (для lessons, progress, review, labs, cases,
-   Today, Atlas).
-3. Не ждать полный финальный курс перед реализацией RAG.
-4. RAG начинается с верифицированного MVP-корпуса и расширяется инкрементальным
-   реиндексированием.
-5. Канонический источник контента — `content/vault`.
-6. Product/business логика — в Python backend.
-7. React/TypeScript — только UI, рендер, интеракции, визуализация, навигация,
-   API-коммуникация.
-8. Не дублировать learning/progress/recommendation/review/content логику в frontend.
-
-## Политика эффективности (token/verification)
-
-- Одна новая сессия на крупную фазу.
-- `docs/current-state.md` — основной handoff.
-- Не перечитывать IDEA.md, весь репозиторий, всю документацию или полный vault,
-  если это явно не требуется.
-- Читать только изменённые и прямо релевантные файлы.
-- Оставаться в той же сессии внутри фазы, пока не достигнут лимит итераций.
-- При достижении лимита — компактный handoff.
-- Focused-тесты в процессе разработки; один полный набор верификации в конце фазы.
-- Не повторять зелёный полный прогон без последующих изменений кода.
-- Docker — только когда требуется интеграция/деплой.
-- Browser-проверки — только для затронутых UI-флоу.
-- Скриншоты — максимум четыре релевантных уникальных изображения.
-- Не реагировать на стейл-уведомления от остановленных процессов.
-- Не проводить аудиты только для подтверждения уже проверенных фактов.
-- Останавливаться перед commit/tag для ручного принятия.
-- `docs/current-state.md` обновлять только после принятия.
-
-## Ещё не реализовано
-
-- **Embeddings, retrieval и AI-наставник** (локальный RAG, ChromaDB, Ollama) — Phase 6B (после Phase 7).
-- Авторизация и облачная синхронизация (не планируются в ближайших фазах).
-
-## Команды
-
-```bash
-cd backend && PYTHONPATH= uv run python -m alembic upgrade head
-PYTHONPATH= uv run python -m app.cli.content sync
-PYTHONPATH= uv run python -m app.cli.content quality
-PYTHONPATH= uv run python -m uvicorn app.main:app --reload
-cd frontend && npm install && npm run dev
-# Makefile: dev-backend | dev-frontend | sync-content | test | lint | build | check
-# Docker: docker compose build && docker compose up -d
-```
+Сборка, публикация и tag checklist: `docs/release.md`.

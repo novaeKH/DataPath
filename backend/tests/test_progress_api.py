@@ -5,7 +5,9 @@
 
 from __future__ import annotations
 
+from app.db.models import ReviewItem
 from app.services.content_sync import ContentSyncService
+from sqlalchemy import select
 
 LESSON_ONE = "lesson.classic-ml.one.one"
 LESSON_TWO = "lesson.classic-ml.one.two"
@@ -37,6 +39,27 @@ def test_complete_scene_saves_position(make_client, sync_service: ContentSyncSer
     )
     assert second.status_code == 200
     assert second.json()["completed_scenes"] == ["scene-02"]
+    skill = client.get(f"/api/progress/skills/{SKILL}").json()
+    assert skill["evidence_count"] == 1
+
+
+def test_self_assessment_schedules_early_review(
+    make_client, sync_service: ContentSyncService, db_session_factory
+) -> None:
+    sync_service.sync()
+    response = make_client().post(
+        f"/api/progress/lessons/{LESSON_ONE}/scenes/scene-check/complete",
+        json={"scene_type": "checkpoint", "skill_id": SKILL, "outcome": "self_uncertain"},
+    )
+    assert response.status_code == 200
+
+    with db_session_factory() as db:
+        item = db.scalar(
+            select(ReviewItem).where(ReviewItem.template_id == f"auto.lesson.{LESSON_ONE}.concept")
+        )
+        assert item is not None
+        assert item.interval_days == 0.25
+        assert item.stage == "relearning"
 
 
 def test_complete_scene_unknown_lesson(make_client, sync_service: ContentSyncService) -> None:

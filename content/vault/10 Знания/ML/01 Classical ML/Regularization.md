@@ -19,7 +19,20 @@ tags:
 math_depth: 2
 ---
 
-# Regularization
+
+**Рекомендуемое время:** 50–65 минут.
+
+## Результаты обучения
+- диагностировать underfit и overfit по train/validation
+- понимать компромисс bias–variance
+- различать L1, L2, early stopping и structural regularization
+- выбирать regularization только внутри validation
+
+## Вход в тему
+
+Модель должна быть достаточно гибкой, чтобы выучить полезный сигнал, но не настолько гибкой, чтобы запомнить случайный шум. Regularization — это не одна формула, а общий принцип ограничения эффективной сложности модели.
+
+## Полная теория
 
 ## Зачем нужна regularization
 
@@ -109,7 +122,7 @@ Regularization шире, чем добавление penalty в formula.
 
 $\lambda$, `C`, depth и dropout выбирают по CV/validation. Сравнивайте pipeline целиком. Для временных данных используйте time-aware split.
 
-## Визуализация
+## Визуальная демонстрация
 
 Компонент `regularization-path-lab`:
 
@@ -130,35 +143,100 @@ $\lambda$, `C`, depth и dropout выбирают по CV/validation. Сравн
 - использовать weight decay как полную замену data quality;
 - сравнивать models с разным preprocessing нечестно.
 
-## Сравнение: L1 vs L2 vs Elastic Net
+## Обязательная визуальная демонстрация
 
-| | L2 / Ridge | L1 / Lasso | Elastic Net |
-|---|---|---|---|
-| Штраф | $\lambda\sum \beta_j^2$ | $\lambda\sum |\beta_j|$ | комбинация |
-| Эффект | сжатие коэффициентов | зануление (отбор) | сжатие + отбор |
-| Коррелированные признаки | делят вес | выбирает один | группы |
-| Когда | много шумных, multicollinearity | отбор признаков | много коррелированных |
+График train/validation error против complexity; переключатели noise, sample size и regularization.
 
-## Простой пример
+## Практика
 
-Полином степени 15 на 20 точках: без регуляризации коэффициенты взрываются и модель осциллирует; с ростом $\lambda$ кривая сглаживается, train quality падает, validation растёт — классический bias-variance trade-off.
+#### Задание 1. Диагностика
 
-## Пример кода
+Train F1=0.99, validation F1=0.68. Назови минимум четыре возможные причины и план проверки.
+
+#### Задание 2. L1 vs L2
+
+Когда Lasso предпочтительнее Ridge, а когда наоборот?
+
+#### Задание 3. Tree regularization
+
+Какие параметры ограничивают capacity Decision Tree?
+
+#### Задание 4. Learning curve
+
+Train и validation error оба высокие и близкие. Что вероятнее: high bias или high variance?
+
+## Разбор практики
+
+**1.** Overfit, leakage, split mismatch, duplicates/group overlap. Проверить split, pipeline, learning curves, capacity, features и leakage.
+
+**2.** L1 полезна для sparse selection, L2 — для стабильного shrinkage correlated coefficients; выбор зависит от CV и цели.
+
+**3.** max_depth, min_samples_leaf, max_leaf_nodes, ccp_alpha и др.
+
+**4.** High bias/underfit: модель не справляется даже с train.
+
+## Checkpoint для приложения
+
+#### Checkpoint 1
+
+**Вопрос:** Что обычно происходит при росте capacity?
+
+- A. Bias растёт, variance падает
+- B. Bias падает, variance растёт
+- C. Оба всегда падают
+- D. Ничего
+
+**Правильный ответ:** B
+
+**Объяснение:** Гибкая модель лучше fit train, но сильнее зависит от sample.
+
+#### Checkpoint 2
+
+**Вопрос:** Regularization выбирают по...
+
+- A. test
+- B. validation/CV
+- C. train score
+- D. случайному правилу
+
+**Правильный ответ:** B
+
+**Объяснение:** Иначе возникает optimistic bias.
+
+#### Checkpoint 3
+
+**Вопрос:** L1 penalty может...
+
+- A. создавать деревья
+- B. занулять коэффициенты
+- C. гарантировать causal effect
+- D. заменять split
+
+**Правильный ответ:** B
+
+**Объяснение:** L1 способствует sparse solutions.
+
+## Мини-проект / применение
+
+Используй небольшой воспроизводимый dataset и оформи результат как карточку эксперимента: постановка задачи, split, baseline, pipeline, metric, результат, error analysis и ограничения. Код должен запускаться сверху вниз без ручных скрытых шагов.
+
+## Критерий завершения урока
+
+Ученик может своими словами объяснить механизм, решить хотя бы одно числовое задание, написать минимальный sklearn pipeline, назвать две типичные ошибки и обосновать, когда метод применять не стоит.
+
+## Код: regularization внутри честного pipeline
 
 ```python
-from sklearn.linear_model import Ridge, Lasso, ElasticNet
+from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-for model in [Ridge(alpha=1.0), Lasso(alpha=0.01), ElasticNet(alpha=0.01, l1_ratio=0.5)]:
-    pipe = make_pipeline(StandardScaler(), model)
-    pipe.fit(X_train, y_train)
-    print(type(model).__name__, pipe.score(X_val, y_val))
+model = make_pipeline(
+    StandardScaler(),
+    LogisticRegression(C=0.3, penalty="l2", max_iter=1000),
+)
+model.fit(X_train, y_train)
 ```
 
-## Связи
-
-- [[Linear Regression]]
-- [[Logistic Regression]]
-- [[Optimization and Regularization in Deep Learning]]
-- [[Model Selection and Hyperparameter Tuning]]
+Меньший `C` означает более сильный penalty. Scaling находится внутри pipeline,
+чтобы статистики не подсматривали validation folds.

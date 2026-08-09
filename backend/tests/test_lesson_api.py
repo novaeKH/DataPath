@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+from app.api.content import LessonScene
 from app.services.content_sync import ContentSyncService
 from app.services.lesson_content import LessonContentService
 
@@ -11,6 +12,15 @@ LESSON_ONE = "lesson.classic-ml.one.one"
 LESSON_TWO = "lesson.classic-ml.one.two"
 LESSON_THREE = "lesson.classic-ml.two.one"
 LESSON_FOUR = "lesson.classic-ml.two.two"
+
+
+def test_visual_demo_id_survives_api_serialization() -> None:
+    scene = LessonScene(
+        id="scene-visual",
+        type="visual_demo",
+        demo_id="gradient-boosting-residuals",
+    )
+    assert scene.model_dump()["demo_id"] == "gradient-boosting-residuals"
 
 
 # --- Course detail ---
@@ -140,6 +150,7 @@ def test_scene_content_blocks(make_client, sync_service: ContentSyncService) -> 
     assert callout["callout_type"] == "warning"
     checkpoints = [s for s in scenes if s["type"] == "checkpoint"]
     assert len(checkpoints) == 2
+    assert all(s["assessment_type"] == "self_assessment" for s in checkpoints)
 
 
 def test_scene_fallback_without_datapath(make_client, sync_service: ContentSyncService) -> None:
@@ -153,6 +164,7 @@ def test_scene_fallback_without_datapath(make_client, sync_service: ContentSyncS
     assert "checkpoint" in types
     checkpoint = next(s for s in scenes if s["type"] == "checkpoint")
     assert "bagging" in checkpoint["question"]
+    assert checkpoint["assessment_type"] == "self_assessment"
 
 
 # --- Безопасность ---

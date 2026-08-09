@@ -51,40 +51,8 @@ cssclasses:
       "title": "Зачем это нужно и какой результат получим"
     },
     {
-      "type": "content",
-      "source_heading": "Что предсказывает модель"
-    },
-    {
-      "type": "content",
-      "source_heading": "Odds и log-odds"
-    },
-    {
-      "type": "content",
-      "source_heading": "Пример"
-    },
-    {
       "type": "interactive",
       "component": "logistic-boundary-threshold-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Обучение и LogLoss"
-    },
-    {
-      "type": "content",
-      "source_heading": "Decision boundary"
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
-    },
-    {
-      "type": "content",
-      "source_heading": "Частые ошибки"
-    },
-    {
-      "type": "content",
-      "source_heading": "Сравнение с другими моделями"
     },
     {
       "type": "retrieval",
@@ -92,41 +60,9 @@ cssclasses:
       "prompt": "Чем logit отличается от probability и почему не нужен sigmoid перед BCEWithLogitsLoss?"
     },
     {
-      "type": "content",
-      "source_heading": "Probability и threshold"
-    },
-    {
-      "type": "content",
-      "source_heading": "Regularization"
-    },
-    {
-      "type": "content",
-      "source_heading": "Class imbalance"
-    },
-    {
-      "type": "content",
-      "source_heading": "Calibration"
-    },
-    {
-      "type": "content",
-      "source_heading": "Multiclass"
-    },
-    {
       "type": "application",
       "mode": "micro-task",
       "prompt": "Предложи metric, class-weight policy и threshold для редкого positive class."
-    },
-    {
-      "type": "content",
-      "source_heading": "Preprocessing"
-    },
-    {
-      "type": "content",
-      "source_heading": "Интерпретация"
-    },
-    {
-      "type": "content",
-      "source_heading": "sklearn пример"
     },
     {
       "type": "interview",

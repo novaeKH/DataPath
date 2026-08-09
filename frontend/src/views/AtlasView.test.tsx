@@ -1,47 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AtlasView } from './AtlasView'
-import { buildRouteView, computeFit } from '../lib/atlasModel'
-import type { AtlasData, ContentItem } from '../lib/api'
-
-/**
- * Atlas: loading/error/empty/ready состояния, режимы «Маршрут»/«Весь атлас»,
- * fit-to-content, рендер узлов/рёбер, информационная панель узла.
- */
-
-const itemPayload: ContentItem = {
-  id: 'lesson.classic-ml.trees.tree',
-  path: '05 Курсы/Классический ML/Уроки/07 Decision Tree.md',
-  type: 'lesson',
-  title: 'Decision Tree без магии',
-  slug: '07-decision-tree',
-  area: 'ml',
-  status: 'active',
-  language: 'ru',
-  publish: true,
-  rag: 'exclude',
-  rag_collection: null,
-  course_id: 'course.classic-ml',
-  module_id: 'module.classic-ml.trees',
-  module_order: 3,
-  lesson_order: 1,
-  content_path: '10 Знания/ML/01 Classical ML/Decision Trees.md',
-  practice_kind: null,
-  skill_ids: ['ml.tree_ensembles'],
-  difficulty: 'core',
-  estimated_minutes: 45,
-  estimated_hours: null,
-  accent: null,
-  icon: null,
-  aliases: null,
-  tags: null,
-  prerequisites: null,
-  validation_status: 'ok',
-  issues: [],
-  links: { outgoing: [], incoming: [] },
-}
+import type { AtlasData } from '../lib/api'
 
 function makeAtlas(): AtlasData {
   return {
@@ -52,356 +14,196 @@ function makeAtlas(): AtlasData {
         type: 'course',
         area: 'ml',
         publish: true,
-        status: 'not_started',
+        status: 'developing',
+        mastery_percent: 42,
         course_id: null,
         module_id: null,
-        x: 60,
-        y: 60,
+        x: 0,
+        y: 0,
       },
       {
-        id: 'lesson.classic-ml.trees.tree',
+        id: 'module.classic-ml.trees',
+        label: 'Деревья и ансамбли',
+        type: 'module',
+        area: 'ml',
+        publish: true,
+        status: 'developing',
+        course_id: 'course.classic-ml',
+        module_id: null,
+        x: 0,
+        y: 0,
+      },
+      {
+        id: 'lesson.classic-ml.tree',
         label: 'Decision Tree',
         type: 'lesson',
         area: 'ml',
         publish: true,
-        status: 'not_started',
+        status: 'needs_attention',
+        mastery_percent: 72,
+        review_due: true,
         course_id: 'course.classic-ml',
         module_id: 'module.classic-ml.trees',
-        x: 280,
-        y: 240,
+        x: 0,
+        y: 0,
       },
       {
-        id: 'concept.ml.decision-trees',
-        label: 'Decision Trees',
+        id: 'lesson.classic-ml.forest',
+        label: 'Random Forest',
+        type: 'lesson',
+        area: 'ml',
+        publish: true,
+        status: 'strong',
+        mastery_percent: 86,
+        course_id: 'course.classic-ml',
+        module_id: 'module.classic-ml.trees',
+        x: 0,
+        y: 0,
+      },
+      {
+        id: 'concept.ml.impurity',
+        label: 'Impurity',
         type: 'concept',
         area: 'ml',
         publish: false,
         status: 'not_started',
         course_id: null,
         module_id: null,
-        x: 900,
-        y: 100,
-      },
-      {
-        id: 'concept.ml.orphan',
-        label: 'Orphan Concept',
-        type: 'concept',
-        area: 'ml',
-        publish: false,
-        status: 'not_started',
-        course_id: null,
-        module_id: null,
-        x: 5000,
-        y: 500,
+        x: 0,
+        y: 0,
       },
     ],
     edges: [
       {
-        source: 'lesson.classic-ml.trees.tree',
-        target: 'concept.ml.decision-trees',
-        relation: 'link',
+        source: 'lesson.classic-ml.tree',
+        target: 'concept.ml.impurity',
+        relation: 'explains',
         kind: 'wiki',
       },
     ],
     prerequisites: [
       {
-        source: 'course.classic-ml',
-        target: 'lesson.classic-ml.trees.tree',
+        source: 'concept.ml.impurity',
+        target: 'lesson.classic-ml.tree',
         relation: 'prerequisite',
-        kind: 'implied',
+        kind: 'explicit',
       },
     ],
     areas: ['ml'],
-    node_types: ['concept', 'course', 'lesson'],
+    node_types: ['course', 'module', 'lesson', 'concept'],
     routes: {
       'course.classic-ml': {
         modules: ['module.classic-ml.trees'],
-        lessons: { 'module.classic-ml.trees': ['lesson.classic-ml.trees.tree'] },
+        lessons: {
+          'module.classic-ml.trees': ['lesson.classic-ml.tree', 'lesson.classic-ml.forest'],
+        },
         cases: [],
       },
     },
-    layout: { width: 5200, height: 600, mode: 'deterministic' },
+    layout: { width: 4000, height: 1000, mode: 'deterministic' },
   }
 }
 
-function stubFetch(atlas: AtlasData) {
-  const fetchMock = vi.fn((input: RequestInfo | URL) => {
-    const url = String(input)
-    if (url.includes('/api/atlas')) {
-      return Promise.resolve(new Response(JSON.stringify(atlas), { status: 200 }))
-    }
-    if (url.includes('/api/content/items/')) {
-      return Promise.resolve(new Response(JSON.stringify(itemPayload), { status: 200 }))
-    }
-    return Promise.resolve(new Response('{}', { status: 404 }))
-  }) as unknown as typeof fetch
-  vi.stubGlobal('fetch', fetchMock)
-  return fetchMock
+function stub(atlas: AtlasData = makeAtlas()) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() =>
+      Promise.resolve(new Response(JSON.stringify(atlas), { status: 200 })),
+    ) as unknown as typeof fetch,
+  )
 }
 
-/** Рендер AtlasView внутри Router (нужен useNavigate). */
 function renderAtlas() {
   return render(
     <MemoryRouter initialEntries={['/atlas']}>
       <Routes>
         <Route path="/atlas" element={<AtlasView />} />
-        <Route path="/focus/:lessonId" element={<div data-testid="focus-route">FOCUS_VIEW</div>} />
+        <Route path="/focus/:lessonId" element={<div>FOCUS VIEW</div>} />
       </Routes>
     </MemoryRouter>,
   )
 }
 
-describe('buildRouteView (режим «Маршрут»)', () => {
-  it('оставляет только маршрут и непосредственных соседей', () => {
-    const view = buildRouteView(makeAtlas())
-    const ids = view.nodes.map((n) => n.id).sort()
-    // orphan не связан с маршрутом → исключён; concept связан рёбрами с lesson → остаётся
-    expect(ids).toEqual([
-      'concept.ml.decision-trees',
-      'course.classic-ml',
-      'lesson.classic-ml.trees.tree',
-    ])
-  })
+afterEach(() => vi.unstubAllGlobals())
 
-  it('детерминирован: одинаковые данные дают одинаковые позиции', () => {
-    const atlas = makeAtlas()
-    const first = buildRouteView(atlas)
-    const second = buildRouteView(atlas)
-    const pos1 = new Map(first.nodes.map((n) => [n.id, `${n.x},${n.y}`]))
-    const pos2 = new Map(second.nodes.map((n) => [n.id, `${n.x},${n.y}`]))
-    expect(pos1).toEqual(pos2)
-  })
-
-  it('не расширяет граф дальше 1 hop', () => {
-    const atlas = makeAtlas()
-    atlas.nodes.push({
-      id: 'concept.ml.distant',
-      label: 'Distant',
-      type: 'concept',
-      area: 'ml',
-      publish: false,
-      status: 'not_started',
-      course_id: null,
-      module_id: null,
-      x: 2000,
-      y: 300,
-    })
-    atlas.edges.push({
-      source: 'concept.ml.decision-trees',
-      target: 'concept.ml.distant',
-      relation: 'link',
-      kind: 'wiki',
-    })
-    const view = buildRouteView(atlas)
-    expect(view.nodes.some((n) => n.id === 'concept.ml.distant')).toBe(false)
-  })
-})
-
-describe('computeFit (fit-to-content)', () => {
-  it('центрирует граф и вписывает его в контейнер', () => {
-    const atlas = makeAtlas()
-    const view = buildRouteView(atlas)
-    const fit = computeFit(view.nodes, 1000, 700, 70, 0.45, 1.8)
-    // масштаб в разумных пределах и граф центрирован
-    expect(fit.k).toBeGreaterThanOrEqual(0.45)
-    expect(fit.k).toBeLessThanOrEqual(1.8)
-    expect(Number.isFinite(fit.x)).toBe(true)
-    expect(Number.isFinite(fit.y)).toBe(true)
-  })
-
-  it('пустой набор не ломается', () => {
-    expect(computeFit([], 1000, 700)).toEqual({ x: 0, y: 0, k: 1 })
-  })
-})
-
-describe('AtlasView', () => {
-  beforeEach(() => {
-    Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, value: 1000 })
-    Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, value: 700 })
-  })
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it('shows loading state first', () => {
-    let resolveAtlas: (value: Response) => void
-    const fetchMock = vi.fn(
-      () => new Promise<Response>((resolve) => (resolveAtlas = resolve)),
-    ) as unknown as typeof fetch
-    vi.stubGlobal('fetch', fetchMock)
+describe('AtlasView knowledge map', () => {
+  it('shows a stable loading state', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => undefined)) as unknown as typeof fetch)
     renderAtlas()
-    expect(screen.getByText(/Загрузка Atlas/)).toBeInTheDocument()
-    resolveAtlas!(new Response(JSON.stringify(makeAtlas()), { status: 200 }))
+    expect(screen.getByLabelText(/Загрузка карты знаний/)).toBeInTheDocument()
   })
 
-  it('shows error state when backend fails', async () => {
-    const fetchMock = vi.fn(() =>
-      Promise.reject(new Error('network down')),
-    ) as unknown as typeof fetch
-    vi.stubGlobal('fetch', fetchMock)
-    renderAtlas()
-    expect(await screen.findByText(/Atlas недоступен/)).toBeInTheDocument()
-  })
-
-  it('shows empty state when atlas has no nodes', async () => {
-    const atlas = makeAtlas()
-    atlas.nodes = []
-    stubFetch(atlas)
-    renderAtlas()
-    expect(await screen.findByText(/Atlas пуст/)).toBeInTheDocument()
-  })
-
-  it('default mode is route: disconnected node is not rendered', async () => {
-    stubFetch(makeAtlas())
-    renderAtlas()
-    await screen.findByRole('img', { name: /Атлас знаний/ })
-    expect(screen.getByRole('button', { name: 'Decision Tree' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Orphan Concept' })).not.toBeInTheDocument()
-    // режим «Маршрут» выбран по умолчанию
-    expect(screen.getByRole('button', { name: 'Маршрут' })).toHaveAttribute('aria-pressed', 'true')
-  })
-
-  it('switches to full atlas mode', async () => {
-    const user = userEvent.setup()
-    stubFetch(makeAtlas())
-    renderAtlas()
-    await screen.findByRole('img', { name: /Атлас знаний/ })
-    await user.click(screen.getByRole('button', { name: 'Весь атлас' }))
-    expect(screen.getByRole('button', { name: 'Весь атлас' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
+  it('shows a recoverable error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new Error('offline'))) as unknown as typeof fetch,
     )
-    expect(await screen.findByRole('button', { name: 'Orphan Concept' })).toBeInTheDocument()
-    // статистика обновилась: 4 узла
-    expect(screen.getByText(/4 узл/)).toBeInTheDocument()
-  })
-
-  it('renders nodes and edges from backend data in route mode', async () => {
-    stubFetch(makeAtlas())
     renderAtlas()
-    const graph = await screen.findByRole('img', { name: /Атлас знаний/ })
-    expect(graph).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Decision Tree' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Классический ML' })).toBeInTheDocument()
-    // подписи узлов отображаются в режиме маршрута (fit → k >= 0.45)
-    expect(screen.getByText('Decision Trees')).toBeInTheDocument()
-    expect(await screen.findByText(/3 узл/)).toBeInTheDocument()
+    expect(await screen.findByText(/Не удалось загрузить карту знаний/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Попробовать снова/ })).toBeInTheDocument()
   })
 
-  it('fit-to-content applies a readable scale in route mode', async () => {
-    stubFetch(makeAtlas())
+  it('shows an empty state without routes', async () => {
+    const atlas = makeAtlas()
+    atlas.routes = {}
+    stub(atlas)
     renderAtlas()
-    await screen.findByRole('img', { name: /Атлас знаний/ })
-    const g = document.querySelector('svg g')
-    const transform = g?.getAttribute('transform') ?? ''
-    const match = transform.match(/scale\(([\d.]+)\)/)
-    const scale = match ? Number(match[1]) : 0
-    expect(scale).toBeGreaterThanOrEqual(0.45)
+    expect(await screen.findByText(/Карта пока пуста/)).toBeInTheDocument()
   })
 
-  it('reset view button re-fits the graph', async () => {
+  it('renders course blocks with real mastery and due counts', async () => {
+    stub()
+    renderAtlas()
+    expect(await screen.findByRole('heading', { name: 'Карта знаний' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Классический ML/ })).toHaveTextContent('79% mastery')
+    expect(screen.getByRole('button', { name: /Классический ML/ })).toHaveTextContent('1 повторить')
+  })
+
+  it('filters overview to courses needing attention', async () => {
     const user = userEvent.setup()
-    stubFetch(makeAtlas())
+    stub()
     renderAtlas()
-    await screen.findByRole('img', { name: /Атлас знаний/ })
-    const readScale = () => {
-      const g = document.querySelector('svg g')
-      const m = g?.getAttribute('transform')?.match(/scale\(([\d.]+)\)/)
-      return m ? Number(m[1]) : 0
-    }
-    const before = readScale()
-    await user.click(screen.getByRole('button', { name: /Сбросить вид/ }))
-    await waitFor(() => {
-      expect(readScale()).toBeGreaterThanOrEqual(0.45)
-    })
-    expect(readScale()).toBeGreaterThan(0)
-    expect(before).toBeGreaterThan(0)
+    const filter = await screen.findByRole('button', { name: /Нужно внимание/ })
+    await user.click(filter)
+    expect(filter).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /Классический ML/ })).toBeInTheDocument()
   })
 
-  it('opens node info panel on click', async () => {
+  it('drills down from course to module and lessons', async () => {
     const user = userEvent.setup()
-    stubFetch(makeAtlas())
+    stub()
     renderAtlas()
-    const node = await screen.findByRole('button', { name: 'Decision Tree' })
-    await user.click(node)
-    expect(await screen.findByText(/Decision Tree без магии/)).toBeInTheDocument()
-    expect(screen.getByText(/ml.tree_ensembles/)).toBeInTheDocument()
-    expect(screen.getByText(/45 мин/)).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: /Классический ML/ }))
+    expect(screen.getByRole('heading', { name: 'Деревья и ансамбли' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Decision Tree/ })).toHaveTextContent(
+      'Повторение просрочено',
+    )
+    expect(screen.getByRole('button', { name: /Random Forest/ })).toHaveTextContent('Освоено')
   })
 
-  it('closes node panel', async () => {
+  it('opens an inline lesson panel with mastery and relations', async () => {
     const user = userEvent.setup()
-    stubFetch(makeAtlas())
+    stub()
     renderAtlas()
-    const node = await screen.findByRole('button', { name: 'Decision Tree' })
-    await user.click(node)
-    await screen.findByText(/Decision Tree без магии/)
-    await user.click(screen.getByRole('button', { name: /Закрыть панель/ }))
-    await waitFor(() => {
-      expect(screen.queryByText(/Decision Tree без магии/)).not.toBeInTheDocument()
-    })
+    await user.click(await screen.findByRole('button', { name: /Классический ML/ }))
+    await user.click(screen.getByRole('button', { name: /Decision Tree/ }))
+    expect(screen.getByText(/Mastery: 72%/)).toBeInTheDocument()
+    expect(screen.getAllByText(/Impurity/)).toHaveLength(2)
+    expect(screen.getByRole('link', { name: /Открыть урок/ })).toHaveAttribute(
+      'href',
+      '/focus/lesson.classic-ml.tree',
+    )
   })
 
-  it('navigates from lesson node to /focus/:lessonId', async () => {
+  it('closes lesson details and returns to all directions', async () => {
     const user = userEvent.setup()
-    stubFetch(makeAtlas())
+    stub()
     renderAtlas()
-    const node = await screen.findByRole('button', { name: 'Decision Tree' })
-    await user.click(node)
-    const openButton = await screen.findByRole('button', { name: /Открыть урок/ })
-    await user.click(openButton)
-    // заглушка /focus/:lessonId отрендерилась (переход произошёл)
-    expect(await screen.findByTestId('focus-route')).toBeInTheDocument()
-  })
-
-  it('zoom controls имеют доступные имена и работают', async () => {
-    const user = userEvent.setup()
-    stubFetch(makeAtlas())
-    renderAtlas()
-    await screen.findByRole('img', { name: /Атлас знаний/ })
-    const zoomIn = screen.getByRole('button', { name: 'Приблизить' })
-    const zoomOut = screen.getByRole('button', { name: 'Отдалить' })
-    const reset = screen.getByRole('button', { name: 'Сбросить вид' })
-    expect(zoomIn).toBeInTheDocument()
-    expect(zoomOut).toBeInTheDocument()
-    expect(reset).toBeInTheDocument()
-    const readScale = () => {
-      const g = document.querySelector('svg g')
-      const m = g?.getAttribute('transform')?.match(/scale\(([\d.]+)\)/)
-      return m ? Number(m[1]) : 0
-    }
-    const before = readScale()
-    await user.click(zoomIn)
-    await waitFor(() => {
-      expect(readScale()).toBeGreaterThan(before)
-    })
-    await user.click(reset)
-    await waitFor(() => {
-      expect(readScale()).toBeGreaterThanOrEqual(0.45)
-    })
-  })
-
-  it('клавиатура: Enter на узле открывает панель', async () => {
-    const user = userEvent.setup()
-    stubFetch(makeAtlas())
-    renderAtlas()
-    const node = await screen.findByRole('button', { name: 'Decision Tree' })
-    node.focus()
-    await user.keyboard('{Enter}')
-    expect(await screen.findByText(/Decision Tree без магии/)).toBeInTheDocument()
-  })
-
-  it('режим «Список» показывает маршрут и открывает урок', async () => {
-    const user = userEvent.setup()
-    stubFetch(makeAtlas())
-    renderAtlas()
-    await screen.findByRole('img', { name: /Атлас знаний/ })
-    await user.click(screen.getByRole('button', { name: 'Список' }))
-    expect(screen.getByRole('button', { name: 'Список' })).toHaveAttribute('aria-pressed', 'true')
-    // Модуль маршрута и связанные материалы видны списком.
-    expect(screen.getByText(/Связанные материалы/)).toBeInTheDocument()
-    const lesson = screen.getByRole('button', { name: 'Decision Tree' })
-    await user.click(lesson)
-    expect(await screen.findByTestId('focus-route')).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: /Классический ML/ }))
+    await user.click(screen.getByRole('button', { name: /Decision Tree/ }))
+    await user.click(screen.getByRole('button', { name: /Закрыть детали/ }))
+    expect(screen.queryByText(/Mastery: 72%/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Все направления/ }))
+    expect(screen.getByRole('heading', { name: 'Карта знаний' })).toBeInTheDocument()
   })
 })

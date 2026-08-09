@@ -4,10 +4,10 @@ id: lesson.data-analysis.09
 schema_version: 2
 type: lesson
 area: data-analysis
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.data-analysis
 module_id: module.data-analysis.eda
 module_order: 4
@@ -40,53 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Что такое EDA"
-    },
-    {
-      "type": "content",
-      "source_heading": "Шаг 1. Сформулировать задачу"
-    },
-    {
-      "type": "content",
-      "source_heading": "Шаг 2. Инвентаризация таблиц"
-    },
-    {
       "type": "interactive",
       "component": "eda-workflow-board"
-    },
-    {
-      "type": "content",
-      "source_heading": "Шаг 3. Проверка target"
-    },
-    {
-      "type": "content",
-      "source_heading": "Шаг 4. Data quality"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Шаг 5. Univariate analysis"
-    },
-    {
-      "type": "content",
-      "source_heading": "Шаг 6. Relationships"
-    },
-    {
-      "type": "content",
-      "source_heading": "Шаг 7. Leakage audit"
-    },
-    {
-      "type": "content",
-      "source_heading": "Шаг 8. Split и baseline"
-    },
-    {
-      "type": "content",
-      "source_heading": "Шаг 9. Зафиксировать выводы"
     },
     {
       "type": "application",
@@ -105,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

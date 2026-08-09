@@ -17,7 +17,21 @@ rag: include
 rag_collection: knowledge
 app: source
 ---
-# Validation Splits and Data Leakage
+
+
+**Рекомендуемое время:** 55–70 минут.
+
+## Результаты обучения
+- понимать роли train, validation и test
+- выбирать random, stratified, group и time split по deployment-сценарию
+- отличать target leakage, train-test contamination и entity leakage
+- строить preprocessing только внутри train-fold
+
+## Вход в тему
+
+Validation — это симуляция будущей работы модели. Если симуляция устроена неверно, даже идеальная метрика ничего не говорит о production. Главный вопрос не «какой split принято использовать», а «какие объекты модель увидит после запуска и чем они отличаются от train».
+
+## Полная теория
 
 ## Идея за 30 секунд
 
@@ -136,23 +150,23 @@ raw train fold
 
 ## Виды leakage
 
-### Target leakage
+#### Target leakage
 
 Feature прямо или косвенно использует target: post-outcome status, refund after churn, target encoding с собственной label.
 
-### Time leakage
+#### Time leakage
 
 Feature создан после prediction cutoff или aggregation заглядывает в future.
 
-### Group leakage
+#### Group leakage
 
 Один entity или near-duplicate присутствует в train и validation.
 
-### Preprocessing leakage
+#### Preprocessing leakage
 
 Statistics/feature selection/PCA/vocabulary fit на полном dataset.
 
-### Validation overfitting
+#### Validation overfitting
 
 Много ручных итераций по одному validation set адаптируют решение к его noise, даже без прямого доступа к labels в code.
 
@@ -172,38 +186,83 @@ Statistics/feature selection/PCA/vocabulary fit на полном dataset.
 - но правильный group/time structure важнее числа repeats;
 - uncertainty и fold-level results нужно показывать честно.
 
-## Визуализация
+## Обязательная визуальная демонстрация
 
-Визуализация split помогает увидеть разницу стратегий: при `Random split` объекты перемешиваются и разбиваются на train/validation; при `Time split` сохраняется порядок времени; при `Group split` все строки одного пользователя остаются в одном fold. Полезно показать, как выглядит утечка, когда строки одного объекта попадают в train и validation одновременно.
+Лента времени с пользователями и событиями. Переключатели random/group/time показывают пересечения пользователей, будущие признаки и contamination preprocessing.
 
-## Частые ошибки
+## Практика
 
-- `RandomSplit` для данных с группами (несколько строк на пользователя);
-- fit scaler/encoder на полном dataset до split — утечка;
-- tuning по test;
-- предсказывать будущее моделью, обученной на будущем;
-- не фиксировать `random_state` (несравнимые эксперименты);
-- забывать про `Stratification` при дисбалансе.
+#### Задание 1. Выбор split
 
-## Сравнение стратегий split
+Есть транзакции клиентов за два года. Нужно предсказывать дефолт новых заявок следующего месяца. Выбери split и объясни почему.
 
-| Стратегия | Когда | Риск |
-|---|---|---|
-| Random split | независимые объекты | перемешивание групп |
-| Stratified | дисбаланс классов | нет |
-| Group split | несколько строк на объект | утечка без него |
-| Time split | временные данные | future leakage |
-| CV | мало данных, стабильная оценка | двойное использование test |
+#### Задание 2. Group leakage
 
-## Простой пример
+Один клиент имеет 20 строк. Random split распределил его строки между train и validation. Почему score завышен?
 
-У каждого пользователя 10 строк. `RandomSplit` положит строки одного пользователя в train и validation — модель «подсмотрит» пользователя. `GroupKFold` по `user_id` держит все строки пользователя в одном fold.
+#### Задание 3. Pipeline
 
-## Связи
+Найди ошибку: сначала StandardScaler.fit_transform(X), затем train_test_split.
 
-- [[ML Foundations]] — validation измеряет generalization, а не train fit.
-- [[ML Metrics and Threshold Selection]] — metric и decision rule выбираются на validation.
-- [[A-B Testing]] — offline validation не заменяет randomized online effect.
-- [[Principal Component Analysis]] — PCA fit только внутри train folds.
-- [[Regularization]] — strength выбирается по validation.
-- [[Диагностика — PR-AUC на train выше validation]] — практический разбор gap.
+#### Задание 4. Test discipline
+
+Команда посмотрела test после каждой из 30 гипотез. Что произошло и как исправить процесс?
+
+## Разбор практики
+
+**1.** Основной выбор — time split по дате заявки; при повторяющихся клиентах дополнительно контролировать group leakage.
+
+**2.** Модель видит почти идентичные паттерны одного и того же клиента в обоих наборах и частично запоминает entity-specific information.
+
+**3.** Scaler уже увидел статистики validation. Split должен происходить раньше; scaler fit внутри Pipeline на train/fold.
+
+**4.** Test превратился в validation, оценка оптимистична. Нужно зафиксировать новый holdout или провести внешнюю оценку после заморозки решения.
+
+## Checkpoint для приложения
+
+#### Checkpoint 1
+
+**Вопрос:** Когда нужен GroupKFold?
+
+- A. Когда классы сбалансированы
+- B. Когда строки одной сущности повторяются
+- C. Когда features масштабированы
+- D. Когда модель линейная
+
+**Правильный ответ:** B
+
+**Объяснение:** Группы не должны пересекаться между train и validation.
+
+#### Checkpoint 2
+
+**Вопрос:** Что делает test?
+
+- A. Подбирает гиперпараметры
+- B. Выбирает threshold
+- C. Один раз оценивает зафиксированный pipeline
+- D. Обучает scaler
+
+**Правильный ответ:** C
+
+**Объяснение:** Test предназначен для финальной независимой оценки.
+
+#### Checkpoint 3
+
+**Вопрос:** Почему random split опасен для временной задачи?
+
+- A. Он слишком медленный
+- B. Он может обучать на будущем и проверять на прошлом
+- C. Он не поддерживает sklearn
+- D. Он всегда меняет баланс
+
+**Правильный ответ:** B
+
+**Объяснение:** Такой split не имитирует реальный прогноз будущего.
+
+## Мини-проект / применение
+
+Используй небольшой воспроизводимый dataset и оформи результат как карточку эксперимента: постановка задачи, split, baseline, pipeline, metric, результат, error analysis и ограничения. Код должен запускаться сверху вниз без ручных скрытых шагов.
+
+## Критерий завершения урока
+
+Ученик может своими словами объяснить механизм, решить хотя бы одно числовое задание, написать минимальный sklearn pipeline, назвать две типичные ошибки и обосновать, когда метод применять не стоит.

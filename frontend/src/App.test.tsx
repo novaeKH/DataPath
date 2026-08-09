@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
-import type { AtlasData, CourseDetail, CourseSummary, SystemStatus } from './lib/api'
+import type { AtlasData, CourseDetail, CourseSummary, RoadmapData, SystemStatus } from './lib/api'
 
 /**
  * Роутинг: маршруты /, /today, /atlas, /focus, /studio, /system.
@@ -30,6 +30,14 @@ const atlas: AtlasData = {
 }
 
 const courses: CourseSummary[] = []
+
+const roadmap: RoadmapData = {
+  stages: [],
+  total_lessons: 0,
+  completed_lessons: 0,
+  current_lesson: null,
+  current_stage: null,
+}
 
 const courseDetail: CourseDetail = {
   id: 'course.classic-ml',
@@ -103,6 +111,9 @@ function mockFetch() {
     }
     if (url.includes('/api/today')) {
       return Promise.resolve(new Response(JSON.stringify(todayPayload), { status: 200 }))
+    }
+    if (url.includes('/api/roadmap')) {
+      return Promise.resolve(new Response(JSON.stringify(roadmap), { status: 200 }))
     }
     if (url.includes('/api/reviews/summary')) {
       return Promise.resolve(
@@ -179,7 +190,12 @@ describe('App routing', () => {
 
   it('renders Atlas at /atlas', async () => {
     renderAt('/atlas')
-    expect(await screen.findByRole('heading', { name: /Atlas знаний/i })).toBeInTheDocument()
+    expect(await screen.findByText(/Карта пока пуста/i)).toBeInTheDocument()
+  })
+
+  it('renders Roadmap at /roadmap', async () => {
+    renderAt('/roadmap')
+    expect(await screen.findByRole('heading', { name: /Три прохода/ })).toBeInTheDocument()
   })
 
   it('renders Focus at /focus', async () => {
@@ -199,7 +215,7 @@ describe('App routing', () => {
 
   it('renders system status at /system', async () => {
     renderAt('/system')
-    expect(await screen.findByText(/DataPath v0.1.0/)).toBeInTheDocument()
+    expect(await screen.findByText(/DataPath 0.1.0/)).toBeInTheDocument()
   })
 
   it('unknown route redirects to /today', async () => {
@@ -211,8 +227,9 @@ describe('App routing', () => {
     renderAt('/today')
     // Навигация дублируется для desktop и mobile — ищем все вхождения.
     expect(await screen.findByRole('heading', { name: /Сегодня/i })).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /Atlas/i }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('link', { name: /Focus/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: /Карта/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: /Мой путь|Путь/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: /Курсы/i }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('link', { name: /Studio/i }).length).toBeGreaterThan(0)
   })
 })

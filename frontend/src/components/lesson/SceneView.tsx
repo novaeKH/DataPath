@@ -1,8 +1,24 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import type { LessonScene } from '../../lib/api'
+import { isPackagedRuntime } from '../../platform/localApi'
 import { MarkdownContent } from './MarkdownContent'
-import { LabHost } from '../interactive/LabHost'
-import { CheckpointScene } from './CheckpointScene'
+import { CheckpointScene, type AssessmentAttempt } from './CheckpointScene'
+
+const LabHost = lazy(() =>
+  import('../interactive/LabHost').then((module) => ({ default: module.LabHost })),
+)
+const VisualDemoHost = lazy(() =>
+  import('../visual-demos/VisualDemoHost').then((module) => ({ default: module.VisualDemoHost })),
+)
+
+function InteractiveFallback() {
+  return (
+    <div
+      className="min-h-48 animate-pulse rounded-xl dp-surface"
+      aria-label="Загрузка интерактивного блока"
+    />
+  )
+}
 
 /** Пользовательский заголовок сцены: display_title (Фаза 6A) → title. */
 function sceneTitle(scene: LessonScene): string | null {
@@ -52,10 +68,7 @@ function MarkdownScene({ scene }: { scene: LessonScene }) {
     <section className="dp-scene">
       <SceneRoleBadge role={scene.semantic_role} type={scene.type} />
       {title && (
-        <h3
-          className="mb-3 text-lg font-semibold"
-          style={{ color: 'var(--dp-text-primary)' }}
-        >
+        <h3 className="mb-3 text-lg font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
           {title}
         </h3>
       )}
@@ -68,24 +81,22 @@ function MarkdownScene({ scene }: { scene: LessonScene }) {
   )
 }
 
-/** Formula scene with explanation. */
+/** Formula scene with explanation — unescapes double-backslashes from backend. */
 function FormulaScene({ scene }: { scene: LessonScene }) {
   const title = sceneTitle(scene)
+  const formula = scene.formula ? scene.formula.replace(/\\\\/g, '\\') : null
   return (
     <section className="dp-scene">
       <SceneRoleBadge role={scene.semantic_role} type={scene.type} />
       {title && (
-        <h3
-          className="mb-2 text-lg font-semibold"
-          style={{ color: 'var(--dp-text-primary)' }}
-        >
+        <h3 className="mb-2 text-lg font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
           {title}
         </h3>
       )}
-      {scene.formula && (
+      {formula && (
         <div className="dp-formula-block">
           <div className="overflow-x-auto">
-            <MarkdownContent markdown={`$$\\n${scene.formula}\\n$$`} />
+            <MarkdownContent markdown={'$$\n' + formula + '\n$$'} />
           </div>
         </div>
       )}
@@ -102,8 +113,7 @@ function FormulaScene({ scene }: { scene: LessonScene }) {
 function CodeSceneComponent({ scene }: { scene: LessonScene }) {
   const title = sceneTitle(scene)
   const [copied, setCopied] = useState(false)
-  const languageLabel =
-    scene.language && scene.language !== 'text' ? scene.language : null
+  const languageLabel = scene.language && scene.language !== 'text' ? scene.language : null
 
   const handleCopy = () => {
     if (scene.code) {
@@ -117,10 +127,7 @@ function CodeSceneComponent({ scene }: { scene: LessonScene }) {
     <section className="dp-scene">
       <SceneRoleBadge role={scene.semantic_role} type={scene.type} />
       {title && (
-        <h3
-          className="mb-2 text-lg font-semibold"
-          style={{ color: 'var(--dp-text-primary)' }}
-        >
+        <h3 className="mb-2 text-lg font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
           {title}
         </h3>
       )}
@@ -173,10 +180,7 @@ function CalloutScene({ scene }: { scene: LessonScene }) {
   return (
     <section className="dp-scene">
       {title && (
-        <h3
-          className="mb-2 text-lg font-semibold"
-          style={{ color: 'var(--dp-text-primary)' }}
-        >
+        <h3 className="mb-2 text-lg font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
           {title}
         </h3>
       )}
@@ -202,7 +206,13 @@ function CalloutScene({ scene }: { scene: LessonScene }) {
    Entry point: routes scene type to the correct renderer.
    =============================================================== */
 
-export function SceneView({ scene }: { scene: LessonScene }) {
+export function SceneView({
+  scene,
+  onAssessmentAttempt,
+}: {
+  scene: LessonScene
+  onAssessmentAttempt?: (attempt: AssessmentAttempt) => void | Promise<void>
+}) {
   switch (scene.type) {
     case 'markdown':
       return <MarkdownScene scene={scene} />
@@ -213,9 +223,31 @@ export function SceneView({ scene }: { scene: LessonScene }) {
     case 'callout':
       return <CalloutScene scene={scene} />
     case 'checkpoint':
-      return <CheckpointScene scene={scene} />
+      return <CheckpointScene scene={scene} onAttempt={onAssessmentAttempt} />
     case 'interactive_lab':
-      return scene.lab_id ? <LabHost labId={scene.lab_id} title={scene.lab_title ?? null} /> : null
+      if (!scene.lab_id) return null
+      {
+        const localDemo = {
+          'decision-tree-split-lab': 'decision-tree-split-lab',
+          'tree-depth-overfitting-lab': 'bias-variance',
+          'ensemble-comparison-lab': 'bootstrap-forest-lab',
+        }[scene.lab_id]
+        return localDemo && isPackagedRuntime() ? (
+          <Suspense fallback={<InteractiveFallback />}>
+            <VisualDemoHost demoId={localDemo} />
+          </Suspense>
+        ) : (
+          <Suspense fallback={<InteractiveFallback />}>
+            <LabHost labId={scene.lab_id} title={scene.lab_title ?? null} />
+          </Suspense>
+        )
+      }
+    case 'visual_demo':
+      return scene.demo_id ? (
+        <Suspense fallback={<InteractiveFallback />}>
+          <VisualDemoHost demoId={scene.demo_id} />
+        </Suspense>
+      ) : null
     case 'table':
       return <MarkdownScene scene={scene} />
     case 'visual':

@@ -4,10 +4,10 @@ id: lesson.python-ds.11
 schema_version: 2
 type: lesson
 area: python-ds
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.python-ds
 module_id: module.python-ds.quality
 module_order: 3
@@ -40,37 +40,9 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Зачем это Data Scientist"
-    },
-    {
-      "type": "content",
-      "source_heading": "Аннотации типов"
-    },
-    {
-      "type": "content",
-      "source_heading": "Что тестировать"
-    },
-    {
-      "type": "content",
-      "source_heading": "Arrange–Act–Assert"
-    },
-    {
-      "type": "content",
-      "source_heading": "Тестирование ML-кода"
-    },
-    {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Линтер и форматтер"
-    },
-    {
-      "type": "content",
-      "source_heading": "Читаемость"
     },
     {
       "type": "application",
@@ -89,7 +61,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

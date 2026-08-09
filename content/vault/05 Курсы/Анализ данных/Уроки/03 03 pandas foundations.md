@@ -4,10 +4,10 @@ id: lesson.data-analysis.03
 schema_version: 2
 type: lesson
 area: data-analysis
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.data-analysis
 module_id: module.data-analysis.pandas
 module_order: 2
@@ -40,49 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Зачем pandas"
-    },
-    {
-      "type": "content",
-      "source_heading": "Создание и чтение"
-    },
-    {
-      "type": "content",
-      "source_heading": "Grain и ключ"
-    },
-    {
       "type": "interactive",
       "component": "dataframe-selection-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Выбор колонок"
-    },
-    {
-      "type": "content",
-      "source_heading": "`loc` и `iloc`"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Фильтрация"
-    },
-    {
-      "type": "content",
-      "source_heading": "Создание колонок"
-    },
-    {
-      "type": "content",
-      "source_heading": "`SettingWithCopy`"
-    },
-    {
-      "type": "content",
-      "source_heading": "Index"
     },
     {
       "type": "application",
@@ -101,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

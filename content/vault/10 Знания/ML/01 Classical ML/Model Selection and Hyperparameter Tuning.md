@@ -107,3 +107,24 @@ Iteration count является hyperparameter. Нужен validation fold вн
 - [[Validation Splits and Data Leakage]]
 - [[Regularization]]
 - [[Ensemble Comparison]]
+
+## Код: search без preprocessing leakage
+
+```python
+from scipy.stats import loguniform
+from sklearn.model_selection import RandomizedSearchCV
+
+search = RandomizedSearchCV(
+    pipeline,
+    {"classifier__C": loguniform(1e-3, 1e2)},
+    n_iter=30,
+    scoring="average_precision",
+    cv=5,
+    refit=True,
+    random_state=42,
+)
+search.fit(X_train, y_train)
+```
+
+Pipeline включает preprocessing: каждый fold обучает его заново. Test не
+участвует ни в выборе параметров, ни в выборе метрики.

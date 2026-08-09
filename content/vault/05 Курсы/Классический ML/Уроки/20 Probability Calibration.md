@@ -4,10 +4,10 @@ id: lesson.classic-ml.expansion.20
 schema_version: 2
 type: lesson
 area: classic-ml
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.classic-ml
 module_id: module.classic-ml.production
 module_order: 7
@@ -18,7 +18,7 @@ skill_ids:
 estimated_minutes: 45
 difficulty: beginner-core
 tags:
-- datapath/draft-lesson
+- datapath/lesson
 ---
 
 # 20 Probability Calibration
@@ -40,41 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Что значит calibrated"
-    },
-    {
-      "type": "content",
-      "source_heading": "Диагностика"
-    },
-    {
-      "type": "content",
-      "source_heading": "Методы"
-    },
-    {
       "type": "interactive",
       "component": "calibration-reliability-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Правильный split"
-    },
-    {
-      "type": "content",
-      "source_heading": "Drift и prevalence"
-    },
-    {
-      "type": "content",
-      "source_heading": "Частые ошибки"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
     },
     {
       "type": "application",
@@ -93,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

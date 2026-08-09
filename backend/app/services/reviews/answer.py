@@ -32,6 +32,7 @@ from app.db.models import ReviewAttempt, ReviewItem, SkillAssessment
 from app.db.session import SessionLocal
 from app.services.knowledge_model import HINT_WEIGHT_FACTOR, KnowledgeModelService
 from app.services.reviews.clock import ReviewClock
+from app.services.reviews.dynamic import build_dynamic_template
 from app.services.reviews.registry import (
     RATING_AGAIN,
     RATING_EASY,
@@ -263,7 +264,9 @@ class ReviewAnswerService:
                 raise ReviewNotFoundError(f"Review item {review_item_id!r} не найден")
             if item.status == "suspended":
                 raise ReviewSuspendedError("Элемент повторения приостановлен")
-            template = self.registry.get(item.template_id)
+            template = self.registry.get(item.template_id) or build_dynamic_template(
+                db, item.template_id
+            )
             if template is None:
                 raise ReviewNotFoundError(f"Шаблон {item.template_id!r} не найден")
             validate_answer_type(template, answer)
@@ -391,7 +394,9 @@ class ReviewAnswerService:
                 raise ReviewNotFoundError(f"Review item {review_item_id!r} не найден")
             if item.status == "suspended":
                 raise ReviewSuspendedError("Элемент повторения приостановлен")
-            template = self.registry.get(item.template_id)
+            template = self.registry.get(item.template_id) or build_dynamic_template(
+                db, item.template_id
+            )
             return {
                 "review_item_id": item.id,
                 "template_id": item.template_id,
@@ -412,7 +417,9 @@ class ReviewAnswerService:
             item = db.get(ReviewItem, review_item_id)
             if item is None:
                 raise ReviewNotFoundError(f"Review item {review_item_id!r} не найден")
-            template = self.registry.get(item.template_id)
+            template = self.registry.get(item.template_id) or build_dynamic_template(
+                db, item.template_id
+            )
             if template is None:
                 raise ReviewNotFoundError(f"Шаблон {item.template_id!r} не найден")
             spec = template.spec()

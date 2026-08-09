@@ -1,0 +1,4 @@
+dist/
+ios/
+public/data/release-snapshot.json
+public/vendor/

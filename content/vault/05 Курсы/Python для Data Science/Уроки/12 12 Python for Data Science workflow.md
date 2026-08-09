@@ -4,10 +4,10 @@ id: lesson.python-ds.12
 schema_version: 2
 type: lesson
 area: python-ds
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.python-ds
 module_id: module.python-ds.quality
 module_order: 3
@@ -40,37 +40,9 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Главная идея"
-    },
-    {
-      "type": "content",
-      "source_heading": "Базовый путь данных"
-    },
-    {
-      "type": "content",
-      "source_heading": "Чистые преобразования"
-    },
-    {
-      "type": "content",
-      "source_heading": "Воспроизводимость"
-    },
-    {
-      "type": "content",
-      "source_heading": "Конфигурация вместо магических чисел"
-    },
-    {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Организация проекта"
-    },
-    {
-      "type": "content",
-      "source_heading": "Частые ошибки"
     },
     {
       "type": "application",
@@ -89,7 +61,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

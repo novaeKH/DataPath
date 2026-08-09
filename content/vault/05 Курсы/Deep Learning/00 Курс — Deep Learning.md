@@ -4,17 +4,17 @@ id: course.deep-learning
 schema_version: 2
 type: course
 area: dl
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 difficulty: beginner-intermediate
 estimated_hours: 18
 accent: orange
 icon: layers
 tags:
 - course/dl
-- datapath/draft
+- datapath/lesson
 ---
 
 # Deep Learning — от tensor до Transformer

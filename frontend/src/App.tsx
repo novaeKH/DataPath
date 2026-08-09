@@ -1,9 +1,10 @@
-import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { MotionConfig } from 'framer-motion'
 import { Sidebar } from './components/Sidebar'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LoadingBlock } from './components/ui/PageState'
+import { PwaStatus } from './components/PwaStatus'
 
 /**
  * Маршруты загружаются лениво (route-level code splitting).
@@ -14,6 +15,12 @@ const TodayView = lazy(() =>
 )
 const AtlasView = lazy(() =>
   import('./views/AtlasView').then((module) => ({ default: module.AtlasView })),
+)
+const RoadmapView = lazy(() =>
+  import('./views/RoadmapView').then((module) => ({ default: module.RoadmapView })),
+)
+const LearnView = lazy(() =>
+  import('./views/LearnView').then((module) => ({ default: module.LearnView })),
 )
 const FocusView = lazy(() =>
   import('./views/FocusView').then((module) => ({ default: module.FocusView })),
@@ -30,6 +37,8 @@ const SystemStatusView = lazy(() =>
 
 const ROUTES = [
   { path: '/today', element: <TodayView />, label: 'Загрузка Today…' },
+  { path: '/learn', element: <LearnView />, label: 'Загрузка направлений…' },
+  { path: '/roadmap', element: <RoadmapView />, label: 'Загрузка маршрута…' },
   { path: '/atlas', element: <AtlasView />, label: 'Загрузка Atlas…' },
   { path: '/focus', element: <FocusView />, label: 'Загрузка Focus…' },
   { path: '/focus/:lessonId', element: <FocusView />, label: 'Загрузка урока…' },
@@ -38,16 +47,34 @@ const ROUTES = [
   { path: '/system', element: <SystemStatusView />, label: 'Загрузка статуса…' },
 ]
 
+function AppShortcuts() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!event.metaKey) return
+      if (event.key === ',') {
+        event.preventDefault()
+        navigate('/system')
+      } else if (event.key.toLowerCase() === 'r') {
+        event.preventDefault()
+        window.location.reload()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [navigate])
+  return null
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <MotionConfig reducedMotion="user">
+        <AppShortcuts />
         <div className="flex h-dvh overflow-hidden">
           <Sidebar />
-          <main
-            className="flex-1 overflow-y-auto pb-20 pt-14 md:pb-8 md:pt-8"
-            style={{ paddingLeft: '1.5rem', paddingRight: '1.5rem' }}
-          >
+          <main className="dp-app-main flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 md:pb-10 md:pt-9 xl:px-12">
+            <PwaStatus />
             <Routes>
               <Route path="/" element={<Navigate to="/today" replace />} />
               {ROUTES.map((route) => (

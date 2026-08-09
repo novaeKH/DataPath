@@ -29,6 +29,13 @@ Image содержит spatial structure. Полносвязный layer для 
 
 Для каждого output position kernel вычисляет weighted sum local patch. Parameters sharing позволяет обнаруживать pattern независимо от location.
 
+Числовой пример для patch $2\times2$: пусть patch равен `[[1, 2], [0, 3]]`, а
+kernel — `[[1, 0], [-1, 1]]`. Поэлементное произведение даёт
+`1·1 + 2·0 + 0·(-1) + 3·1 = 4`. Это одно число feature map. Затем kernel
+сдвигается на stride и повторяет тот же расчёт. Во время обучения backprop
+меняет четыре веса kernel так, чтобы нужные локальные patterns усиливали
+правильный класс.
+
 Input PyTorch:
 
 ```text
@@ -103,6 +110,16 @@ Pretrained backbone часто лучше обучения с нуля на ма
 - flatten dimension hard-coded;
 - слишком быстрый downsampling;
 - data leakage через near-duplicate images одного patient/user.
+
+## Self-check и собеседование
+
+- Почему sharing weights резко уменьшает число параметров относительно Linear?
+- Как padding влияет на spatial size и информацию у границ?
+- Почему pooling повышает устойчивость к небольшому сдвигу, но может потерять детали?
+- Что изменится в output, если увеличить stride с 1 до 2?
+
+Практика: вручную вычислите feature map для матрицы $3\times3$ и kernel
+$2\times2$, затем проверьте результат через `torch.nn.functional.conv2d`.
 
 ## Связи
 

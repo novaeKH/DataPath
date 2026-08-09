@@ -4,10 +4,10 @@ id: lesson.data-analysis.11
 schema_version: 2
 type: lesson
 area: data-analysis
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.data-analysis
 module_id: module.data-analysis.eda
 module_order: 4
@@ -40,45 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Связь не равна причинности"
-    },
-    {
-      "type": "content",
-      "source_heading": "Numerical–numerical"
-    },
-    {
-      "type": "content",
-      "source_heading": "Numerical–categorical"
-    },
-    {
       "type": "interactive",
       "component": "relationship-plot-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Categorical–categorical"
-    },
-    {
-      "type": "content",
-      "source_heading": "Высокая cardinality"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Время"
-    },
-    {
-      "type": "content",
-      "source_heading": "Groups и повторные наблюдения"
-    },
-    {
-      "type": "content",
-      "source_heading": "Simpson's paradox"
     },
     {
       "type": "application",
@@ -97,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

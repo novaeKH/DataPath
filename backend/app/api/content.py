@@ -104,6 +104,7 @@ class AtlasNode(BaseModel):
     area: str | None = None
     publish: bool
     status: str = "not_started"
+    mastery_percent: int = 0
     review_due: bool = False
     review_due_count: int = 0
     course_id: str | None = None
@@ -226,6 +227,9 @@ class LessonScene(BaseModel):
     question: str | None = None
     lab_id: str | None = None
     lab_title: str | None = None
+    demo_id: str | None = None
+    checkpoint_kind: str | None = None
+    assessment_type: str | None = None
     # Фаза 6A: метаданные сцены
     word_count: int = 0
     source_content_id: str | None = None

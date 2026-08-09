@@ -19,7 +19,21 @@ rag: include
 rag_collection: knowledge
 app: source
 ---
-# XGBoost LightGBM and CatBoost
+
+
+**Рекомендуемое время:** 85–110 минут.
+
+## Результаты обучения
+- понимать, чем библиотеки отличаются от базового Gradient Boosting
+- объяснять second-order optimization XGBoost
+- понимать histogram/leaf-wise growth LightGBM
+- объяснять ordered target statistics и ordered boosting CatBoost
+
+## Вход в тему
+
+Все три библиотеки строят boosting над деревьями, но оптимизируют разные узкие места: XGBoost — регуляризованный objective и точную работу с градиентами, LightGBM — скорость и histogram-based splits, CatBoost — категории и борьбу с target leakage.
+
+## Полная теория
 
 ## Идея за 30 секунд
 
@@ -102,7 +116,7 @@ $$
 
 Это объясняет `min_child_weight`, `gamma`, L1/L2 и роль Hessian.
 
-### XGBoost failure modes
+#### XGBoost failure modes
 
 - большой depth плюс слабая regularization;
 - неправильные missing/category assumptions;
@@ -131,15 +145,15 @@ Leaf-wise growth выбирает текущий leaf с максимальны�
 - `bagging_fraction`;
 - L1/L2 и `min_gain_to_split`.
 
-### GOSS
+#### GOSS
 
 Gradient-based One-Side Sampling сохраняет objects с большими $|g_i|$, subsample малые gradients и перевзвешивает их. Без reweighting estimator split statistics был бы biased.
 
-### EFB
+#### EFB
 
 Exclusive Feature Bundling объединяет sparse features, редко non-zero одновременно. Это сокращает effective dimension; полезность зависит от sparsity/conflicts.
 
-### Categories
+#### Categories
 
 Native categorical partitions не равны обычному integer threshold. Category mapping должен совпадать train/inference, а target-derived preprocessing всё равно выполняется внутри folds.
 
@@ -197,7 +211,7 @@ Current $y_i$ не участвует. Prior/smoothing снижает variance �
 
 Ordered boosting аналогично стремится считать gradient object через model, которая не обучалась на этом object. Это уменьшает prediction shift между train и unseen data.
 
-### Symmetric trees
+#### Symmetric trees
 
 На каждом depth используется одно условие для всех текущих leaves. Путь кодируется bits:
 
@@ -207,7 +221,7 @@ Ordered boosting аналогично стремится считать gradient
 - меньше flexibility, чем arbitrary tree;
 - число leaves до $2^d$.
 
-### CatBoost failure modes
+#### CatBoost failure modes
 
 - передать category как numeric continuous;
 - target-derived feature до split;
@@ -215,35 +229,9 @@ Ordered boosting аналогично стремится считать gradient
 - путать ordered statistics и ordered boosting;
 - считать strong defaults заменой validation.
 
-## Когда использовать
-
-- табличные данные, качество важнее простоты: XGBoost — надёжный стандарт; LightGBM — быстрее на больших данных, leaf-wise рост; CatBoost — категориальные признаки и устойчивость к переобучению;
-- соревнования и продакшен-табличные задачи;
-- НЕ использовать, если нужна простая интерпретация или данных мало (риск overfit — помогают regularization и CV).
-
 ## Ответ для собеседования
 
 XGBoost, LightGBM и CatBoost — три оптимизированные реализации Gradient Boosting. **XGBoost** использует вторые производные (Hessian) для более точного поиска splits и встроенную L1/L2-регуляризацию деревьев. **LightGBM** ускоряет обучение через histogram-based поиск splits и leaf-wise (вместо level-wise) рост деревьев — хорошо для больших данных, но глубокая ветка на малой выборке рискует overfit. **CatBoost** специализируется на категориальных признаках: ordered target statistic вычисляет encoding без утечки целевой переменной (data leakage), плюс symmetric trees для быстрого инференса. **Выбор:** CatBoost — когда много категорий, LightGBM — когда важна скорость на больших данных, XGBoost — когда нужна тонкая настройка и зрелая экосистема (Dask, Spark, MLOps-интеграции).
-
-## Простой пример
-
-Один датасет, три библиотеки — одинаковая идея градиентного бустинга, разный API:
-
-```python
-import xgboost as xgb
-import lightgbm as lgb
-from catboost import CatBoostClassifier
-
-xgb_model = xgb.XGBClassifier(n_estimators=300, learning_rate=0.05, max_depth=6)
-lgb_model = lgb.LGBMClassifier(n_estimators=300, learning_rate=0.05, num_leaves=31)
-cat_model = CatBoostClassifier(iterations=300, learning_rate=0.05, depth=6, verbose=0)
-
-for name, model in [("XGBoost", xgb_model), ("LightGBM", lgb_model), ("CatBoost", cat_model)]:
-    model.fit(X_train, y_train)
-    print(name, model.score(X_val, y_val))
-```
-
-На одном и том же сплите различия в качестве обычно небольшие; выбор библиотеки — про скорость, категориальные признаки и экосистему.
 
 ## Сравнение
 
@@ -273,29 +261,83 @@ for name, model in [("XGBoost", xgb_model), ("LightGBM", lgb_model), ("CatBoost"
 6. Усилить penalties при train/validation gap.
 7. Проверить calibration, threshold, segments и inference cost.
 
-## Визуализация
+## Обязательная визуальная демонстрация
 
-Компонент `ensemble-comparison-lab` сравнивает Decision Tree, Random Forest и Gradient Boosting на одном датасете (CatBoost — при наличии CPU-пакета): видно bias/variance и влияние параметров ансамблей.
+Три вкладки: XGBoost gradient/hessian gain, LightGBM histogram + leaf-wise growth, CatBoost ordered encoding по permutation.
 
-## Пример
+## Практика
 
-Задача оттока, один честный split: XGBoost дал PR-AUC 0.71, LightGBM — 0.72, CatBoost — 0.73. Разница небольшая, но LightGBM обучился втрое быстрее, а CatBoost не потребовал кодирования категорий. Выбор библиотеки — это в первую очередь компромисс скорости, работы с категориями и экосистемы, а не «какая лучше».
+#### Задание 1. Сравнение
 
-## Частые ошибки
+Какой алгоритм первым попробовать на таблице с большим числом категорий и почему?
 
-- настраивать только одну библиотеку и «доказывать», что она лучшая;
-- сравнивать модели на разных split/предобработке;
-- забывать про early stopping (переобучение при многих итерациях);
-- игнорировать масштаб признаков там, где он важен (linear models), или считать его ненужным для деревьев без проверки;
-- использовать категориальные признаки без учёта их обработки (one-hot раздувает, target encoding — утечка);
-- принимать результаты одного запуска без вариативности (seed, folds).
+#### Задание 2. LightGBM risk
 
-## Связи
+Почему leaf-wise growth может быстро переобучить маленький dataset?
 
-- [[Gradient Boosting]] — общий algorithmic owner.
-- [[Decision Trees]] — split mechanics.
-- [[Categorical Features]] — leakage-safe category handling.
-- [[Gradients Chain Rule and Optimization]] — gradients, Hessian и curvature.
-- [[Validation Splits and Data Leakage]] — fair comparison и early stopping.
-- [[Gradient Boosting — Interview]] — короткий формат.
-- [[Ensemble Comparison]] — полная таблица и decision framework.
+#### Задание 3. CatBoost leakage
+
+Почему обычный target mean по всей категории создаёт leakage?
+
+#### Задание 4. Experiment
+
+Сравни три модели на одном split и одинаковом budget; оцени не только metric, но и fit time, inference, stability.
+
+## Разбор практики
+
+**1.** CatBoost — сильный default при raw categories и умеренном размере данных, но решение подтверждается CV.
+
+**2.** Алгоритм углубляет самый выгодный leaf, создавая сложные локальные regions с малым support.
+
+**3.** Статистика объекта использует его собственный target и targets объектов, которые в реальном prediction неизвестны.
+
+**4.** Сравнение должно включать одинаковый preprocessing/split, early stopping и несколько seeds/folds.
+
+## Checkpoint для приложения
+
+#### Checkpoint 1
+
+**Вопрос:** Ключевая идея CatBoost для категорий?
+
+- A. Random integer codes
+- B. Ordered target statistics
+- C. Обязательный OHE
+- D. PCA
+
+**Правильный ответ:** B
+
+**Объяснение:** Статистики строятся без использования будущих/собственных labels.
+
+#### Checkpoint 2
+
+**Вопрос:** LightGBM обычно использует...
+
+- A. Histogram bins
+- B. Только linear models
+- C. KNN graph
+- D. SVD target
+
+**Правильный ответ:** A
+
+**Объяснение:** Histogram-based split search ускоряет обучение.
+
+#### Checkpoint 3
+
+**Вопрос:** XGBoost использует second-order information как...
+
+- A. Gradient и Hessian
+- B. Mean и median
+- C. TP и FP
+- D. PCA components
+
+**Правильный ответ:** A
+
+**Объяснение:** Objective аппроксимируется через градиенты и гессианы.
+
+## Мини-проект / применение
+
+Используй небольшой воспроизводимый dataset и оформи результат как карточку эксперимента: постановка задачи, split, baseline, pipeline, metric, результат, error analysis и ограничения. Код должен запускаться сверху вниз без ручных скрытых шагов.
+
+## Критерий завершения урока
+
+Ученик может своими словами объяснить механизм, решить хотя бы одно числовое задание, написать минимальный sklearn pipeline, назвать две типичные ошибки и обосновать, когда метод применять не стоит.

@@ -4,10 +4,10 @@ id: lesson.data-analysis.07
 schema_version: 2
 type: lesson
 area: data-analysis
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.data-analysis
 module_id: module.data-analysis.visualization
 module_order: 3
@@ -40,45 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Ментальная модель"
-    },
-    {
-      "type": "content",
-      "source_heading": "Выбор типа графика"
-    },
-    {
-      "type": "content",
-      "source_heading": "Несколько Axes"
-    },
-    {
       "type": "interactive",
       "component": "plot-design-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Подписи и единицы"
-    },
-    {
-      "type": "content",
-      "source_heading": "Масштаб"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Цвет"
-    },
-    {
-      "type": "content",
-      "source_heading": "Аннотации"
-    },
-    {
-      "type": "content",
-      "source_heading": "Layout и экспорт"
     },
     {
       "type": "application",
@@ -97,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

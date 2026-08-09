@@ -50,32 +50,8 @@ cssclasses:
       "title": "Зачем это нужно и какой результат получим"
     },
     {
-      "type": "content",
-      "source_heading": "Что решает K-Means"
-    },
-    {
-      "type": "content",
-      "source_heading": "Objective"
-    },
-    {
-      "type": "content",
-      "source_heading": "Lloyd algorithm"
-    },
-    {
       "type": "interactive",
       "component": "kmeans-canvas"
-    },
-    {
-      "type": "content",
-      "source_heading": "Числовой пример"
-    },
-    {
-      "type": "content",
-      "source_heading": "Initialization"
-    },
-    {
-      "type": "content",
-      "source_heading": "Сравнение с DBSCAN и hierarchical"
     },
     {
       "type": "retrieval",
@@ -83,41 +59,9 @@ cssclasses:
       "prompt": "Почему centroid является mean и почему inertia всегда уменьшается при росте K?"
     },
     {
-      "type": "content",
-      "source_heading": "Scaling и representation"
-    },
-    {
-      "type": "content",
-      "source_heading": "Geometry assumptions"
-    },
-    {
-      "type": "content",
-      "source_heading": "Как выбрать K"
-    },
-    {
-      "type": "content",
-      "source_heading": "Оценка без labels"
-    },
-    {
-      "type": "content",
-      "source_heading": "Prediction новых points"
-    },
-    {
       "type": "application",
       "mode": "micro-task",
       "prompt": "Для customer segmentation выбери features, scaling и критерии полезности clusters."
-    },
-    {
-      "type": "content",
-      "source_heading": "Визуализация"
-    },
-    {
-      "type": "content",
-      "source_heading": "sklearn пример"
-    },
-    {
-      "type": "content",
-      "source_heading": "Частые ошибки"
     },
     {
       "type": "interview",

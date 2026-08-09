@@ -4,10 +4,10 @@ id: lesson.deep-learning.08
 schema_version: 2
 type: lesson
 area: deep-learning
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.deep-learning
 module_id: module.dl.transformers
 module_order: 3
@@ -40,53 +40,13 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Общая схема"
-    },
-    {
-      "type": "content",
-      "source_heading": "Tokenization"
-    },
-    {
-      "type": "content",
-      "source_heading": "Input representation"
-    },
-    {
       "type": "interactive",
       "component": "transformer-block-lab"
-    },
-    {
-      "type": "content",
-      "source_heading": "Pre-Norm block"
-    },
-    {
-      "type": "content",
-      "source_heading": "Feed-forward network"
     },
     {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Causal language modeling"
-    },
-    {
-      "type": "content",
-      "source_heading": "Perplexity"
-    },
-    {
-      "type": "content",
-      "source_heading": "Generation"
-    },
-    {
-      "type": "content",
-      "source_heading": "KV cache"
-    },
-    {
-      "type": "content",
-      "source_heading": "Training stages"
     },
     {
       "type": "application",
@@ -105,7 +65,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

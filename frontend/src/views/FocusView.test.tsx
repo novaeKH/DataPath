@@ -227,7 +227,7 @@ describe('FocusView: урок', () => {
   it('shows first scene and scene indicator', async () => {
     renderFocus('/focus/lesson.classic-ml.trees.tree')
     expect((await screen.findAllByText(/Идея за 30 секунд/)).length).toBeGreaterThan(0)
-    expect(screen.getByText(/Сцена 1 из 5/)).toBeInTheDocument()
+    expect(screen.getByText(/Раздел 1 из 5/)).toBeInTheDocument()
   })
 
   it('navigates between scenes with Next/Back', async () => {
@@ -235,10 +235,10 @@ describe('FocusView: урок', () => {
     renderFocus('/focus/lesson.classic-ml.trees.tree')
     expect((await screen.findAllByText(/Идея за 30 секунд/)).length).toBeGreaterThan(0)
     await user.click(screen.getByRole('button', { name: /Далее/ }))
-    expect(screen.getByText(/Сцена 2 из 5/)).toBeInTheDocument()
+    expect(screen.getByText(/Раздел 2 из 5/)).toBeInTheDocument()
     expect(screen.getByText(/Gain — уменьшение impurity/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Назад/ }))
-    expect(screen.getByText(/Сцена 1 из 5/)).toBeInTheDocument()
+    expect(screen.getByText(/Раздел 1 из 5/)).toBeInTheDocument()
   })
 
   it('renders code scene with language and code', async () => {
@@ -274,7 +274,7 @@ describe('FocusView: урок', () => {
     // снова загружается урок Random Forest? нет — API отдаёт тот же lesson,
     // поэтому проверяем, что маршрут сменился (заголовок остался, id новый)
     await waitFor(() => {
-      expect(screen.getByText(/Сцена 1 из 1/)).toBeInTheDocument()
+      expect(screen.getByText(/Раздел 1 из 1/)).toBeInTheDocument()
     })
   })
 
@@ -467,7 +467,7 @@ describe('FocusView: прогресс (Фаза 4)', () => {
     stubWithProgress({ current_scene_id: 'scene-03', completed_scenes: ['scene-01', 'scene-02'] })
     renderFocus('/focus/lesson.classic-ml.trees.tree')
     // scene-03 — code сцена: показывается после восстановления.
-    expect(await screen.findByText(/Сцена 3 из 5/)).toBeInTheDocument()
+    expect(await screen.findByText(/Раздел 3 из 5/)).toBeInTheDocument()
     expect(screen.getByText('python')).toBeInTheDocument()
   })
 
@@ -475,9 +475,9 @@ describe('FocusView: прогресс (Фаза 4)', () => {
     const user = userEvent.setup()
     stubWithProgress({ current_scene_id: 'scene-01', completed_scenes: [] })
     renderFocus('/focus/lesson.classic-ml.trees.tree')
-    expect(await screen.findByText(/Сцена 1 из 5/)).toBeInTheDocument()
+    expect(await screen.findByText(/Раздел 1 из 5/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Далее/ }))
-    expect(await screen.findByText(/Сцена 2 из 5/)).toBeInTheDocument()
+    expect(await screen.findByText(/Раздел 2 из 5/)).toBeInTheDocument()
     // Индикатор «сохранено» появляется после POST scene complete.
     expect(await screen.findByText(/✓ сохранено/)).toBeInTheDocument()
   })
@@ -496,6 +496,22 @@ describe('FocusView: прогресс (Фаза 4)', () => {
       if (url.includes('/api/progress/lessons/') && method === 'GET') {
         return Promise.resolve(new Response('{}', { status: 404 }))
       }
+      if (url.includes('/scenes/') && method === 'POST') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              lesson_id: 'lesson.classic-ml.trees.tree',
+              scene_id: 'scene-04',
+              current_scene_id: 'scene-04',
+              completed_scenes: ['scene-01', 'scene-02', 'scene-03', 'scene-04'],
+              started_at: '2026-08-05T10:00:00+00:00',
+              completed_at: null,
+              event_id: 41,
+            }),
+            { status: 200 },
+          ),
+        )
+      }
       if (url.includes('/api/progress/lessons/lesson.classic-ml.trees.tree/complete')) {
         return Promise.resolve(
           new Response(
@@ -512,7 +528,10 @@ describe('FocusView: прогресс (Фаза 4)', () => {
     }) as unknown as typeof fetch
     vi.stubGlobal('fetch', fetchMock)
     renderFocus('/focus/lesson.classic-ml.trees.tree')
-    expect(await screen.findByText(/Сцена 1 из 5/)).toBeInTheDocument()
+    expect(await screen.findByText(/Раздел 1 из 5/)).toBeInTheDocument()
+    for (let index = 0; index < 4; index += 1) {
+      await user.click(screen.getByRole('button', { name: /Далее/ }))
+    }
     await user.click(screen.getByRole('button', { name: /Завершить урок/ }))
     // Уведомление о завершении + добавлении материала в расписание.
     expect(await screen.findByText(/материал добавлен в расписание повторений/)).toBeInTheDocument()
@@ -553,7 +572,7 @@ describe('FocusView: прогресс (Фаза 4)', () => {
     }) as unknown as typeof fetch
     vi.stubGlobal('fetch', fetchMock)
     renderFocus('/focus/lesson.classic-ml.trees.tree')
-    expect(await screen.findByText(/Сцена 1 из 5/)).toBeInTheDocument()
+    expect(await screen.findByText(/Раздел 1 из 5/)).toBeInTheDocument()
     expect(await screen.findByRole('link', { name: /Повторить тему \(2\)/ })).toBeInTheDocument()
   })
 })

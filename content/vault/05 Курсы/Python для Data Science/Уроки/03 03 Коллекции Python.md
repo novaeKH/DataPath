@@ -4,10 +4,10 @@ id: lesson.python-ds.03
 schema_version: 2
 type: lesson
 area: python-ds
-status: draft
+status: active
 language: ru
 rag: exclude
-app: exclude
+app: include
 course_id: course.python-ds
 module_id: module.python-ds.basics
 module_order: 1
@@ -40,41 +40,9 @@ tags:
       "title": "Зачем это нужно и что станет понятно"
     },
     {
-      "type": "content",
-      "source_heading": "Модель хеш-таблицы"
-    },
-    {
-      "type": "content",
-      "source_heading": "Коллизии"
-    },
-    {
-      "type": "content",
-      "source_heading": "Hashable-ключ"
-    },
-    {
-      "type": "content",
-      "source_heading": "Dict и порядок"
-    },
-    {
-      "type": "content",
-      "source_heading": "Set против dict"
-    },
-    {
       "type": "retrieval",
       "mode": "free-recall",
       "prompt": "Объясни ключевой механизм без терминов, которые не можешь определить."
-    },
-    {
-      "type": "content",
-      "source_heading": "Переносимые шаблоны"
-    },
-    {
-      "type": "content",
-      "source_heading": "Почему поиск не «гарантированно O(1)»"
-    },
-    {
-      "type": "content",
-      "source_heading": "Где это встречается в Data Science"
     },
     {
       "type": "application",
@@ -93,7 +61,3 @@ tags:
   ]
 }
 ```
-
-## Статус
-
-Контент готов как draft route. Включать в приложение после реализации реальных checkpoint и visual components.

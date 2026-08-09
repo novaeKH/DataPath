@@ -14,8 +14,30 @@
  * - reduced-motion support
  * - mobile fallback
  */
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
+import {
+  ActivationDemo,
+  AttentionDemo,
+  BackpropDemo,
+  BoostingDemo,
+  CnnDemo,
+  DecisionTreeDemo,
+  GradientDescentDemo,
+  KMeansDemo,
+  KnnDemo,
+  LinearFitDemo,
+  LogisticThresholdDemo,
+  MetricsDemo,
+  MlpDemo,
+  NeuronDemo,
+  PcaDemo,
+  PoolingDemo,
+  RandomForestDemo,
+  TransformerDemo,
+} from './PriorityDemos'
+import { APPLIED_DEMOS } from './AppliedDemos'
+import { SYSTEM_DEMOS } from './SystemDemos'
 
 /* ===============================================================
    VisualDemoFrame — shared shell for all demos.
@@ -40,7 +62,10 @@ interface VisualDemoFrameProps {
   goal: string
   controls: DemoControl[]
   defaults: DemoState
-  children: (state: DemoState, setParam: (name: string, value: number | string | boolean) => void) => React.ReactNode
+  children: (
+    state: DemoState,
+    setParam: (name: string, value: number | string | boolean) => void,
+  ) => React.ReactNode
   explanation?: string
   showReset?: boolean
 }
@@ -54,7 +79,12 @@ export function VisualDemoFrame({
   showReset = true,
 }: VisualDemoFrameProps) {
   const [state, setState] = useState<DemoState>({ ...defaults })
+  const [playing, setPlaying] = useState(false)
+  const [speed, setSpeed] = useState(1)
   const reduced = useReducedMotion()
+  const sequenceControl = controls.find(
+    (control) => control.type === 'slider' && ['step', 'stage', 'iteration'].includes(control.name),
+  )
 
   const setParam = useCallback((name: string, value: number | string | boolean) => {
     setState((prev) => {
@@ -64,14 +94,33 @@ export function VisualDemoFrame({
   }, [])
 
   const reset = () => {
+    setPlaying(false)
     setState({ ...defaults })
   }
 
+  const moveSequence = useCallback(
+    (direction: -1 | 1) => {
+      if (!sequenceControl) return
+      setState((previous) => {
+        const min = sequenceControl.min ?? 0
+        const max = sequenceControl.max ?? 100
+        const step = sequenceControl.step ?? 1
+        const current = Number(previous[sequenceControl.name])
+        const next = current + direction * step
+        return { ...previous, [sequenceControl.name]: next > max ? min : Math.max(min, next) }
+      })
+    },
+    [sequenceControl],
+  )
+
+  useEffect(() => {
+    if (!playing || !sequenceControl || reduced) return
+    const timer = window.setInterval(() => moveSequence(1), 1100 / speed)
+    return () => window.clearInterval(timer)
+  }, [moveSequence, playing, reduced, sequenceControl, speed])
+
   return (
-    <div
-      className="rounded-xl p-5 dp-surface-elevated"
-      style={{ background: 'var(--dp-surface)' }}
-    >
+    <div className="rounded-xl p-5 dp-surface-elevated" style={{ background: 'var(--dp-surface)' }}>
       {/* Goal */}
       <p className="text-sm font-medium mb-4" style={{ color: 'var(--dp-text-primary)' }}>
         {goal}
@@ -80,7 +129,11 @@ export function VisualDemoFrame({
       {/* Controls */}
       <div className="flex flex-wrap gap-4 mb-5">
         {controls.map((ctrl) => (
-          <label key={ctrl.name} className="flex flex-col gap-1 text-xs font-medium" style={{ color: 'var(--dp-text-secondary)' }}>
+          <label
+            key={ctrl.name}
+            className="flex flex-col gap-1 text-xs font-medium"
+            style={{ color: 'var(--dp-text-secondary)' }}
+          >
             {ctrl.label}
             {ctrl.type === 'slider' && (
               <div className="flex items-center gap-2">
@@ -98,7 +151,8 @@ export function VisualDemoFrame({
                   }}
                 />
                 <span className="font-mono text-[11px]" style={{ color: 'var(--dp-text-muted)' }}>
-                  {String(state[ctrl.name])}{ctrl.unit ?? ''}
+                  {String(state[ctrl.name])}
+                  {ctrl.unit ?? ''}
                 </span>
               </div>
             )}
@@ -114,7 +168,9 @@ export function VisualDemoFrame({
                 }}
               >
                 {ctrl.options.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             )}
@@ -123,7 +179,9 @@ export function VisualDemoFrame({
                 onClick={() => setParam(ctrl.name, !state[ctrl.name])}
                 className="rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors w-fit"
                 style={{
-                  background: state[ctrl.name] ? 'var(--dp-accent)' : 'var(--dp-surface-interactive)',
+                  background: state[ctrl.name]
+                    ? 'var(--dp-accent)'
+                    : 'var(--dp-surface-interactive)',
                   borderColor: state[ctrl.name] ? 'var(--dp-accent)' : 'var(--dp-border-subtle)',
                   color: state[ctrl.name] ? 'white' : 'var(--dp-text-secondary)',
                 }}
@@ -146,6 +204,54 @@ export function VisualDemoFrame({
           </button>
         )}
       </div>
+
+      {sequenceControl && (
+        <div
+          className="mb-4 flex flex-wrap items-center gap-2"
+          aria-label="Управление последовательностью"
+        >
+          <button
+            onClick={() => moveSequence(-1)}
+            className="rounded-lg border px-3 py-1.5 text-xs dp-hover-interactive"
+            style={{ borderColor: 'var(--dp-border-subtle)', color: 'var(--dp-text-secondary)' }}
+            aria-label="Предыдущий шаг"
+          >
+            ← Шаг
+          </button>
+          <button
+            onClick={() => setPlaying((value) => !value)}
+            className="rounded-lg px-3 py-1.5 text-xs font-semibold"
+            style={{ background: 'var(--dp-accent-subtle)', color: 'var(--dp-accent)' }}
+            aria-pressed={playing}
+          >
+            {playing ? 'Пауза' : 'Запустить'}
+          </button>
+          <button
+            onClick={() => moveSequence(1)}
+            className="rounded-lg border px-3 py-1.5 text-xs dp-hover-interactive"
+            style={{ borderColor: 'var(--dp-border-subtle)', color: 'var(--dp-text-secondary)' }}
+            aria-label="Следующий шаг"
+          >
+            Шаг →
+          </button>
+          <label
+            className="ml-auto flex items-center gap-2 text-[11px]"
+            style={{ color: 'var(--dp-text-muted)' }}
+          >
+            Скорость
+            <select
+              value={speed}
+              onChange={(event) => setSpeed(Number(event.target.value))}
+              className="rounded border px-2 py-1"
+              style={{ background: 'var(--dp-surface)', borderColor: 'var(--dp-border-subtle)' }}
+            >
+              <option value={0.5}>0.5×</option>
+              <option value={1}>1×</option>
+              <option value={2}>2×</option>
+            </select>
+          </label>
+        </div>
+      )}
 
       {/* Visualization */}
       <motion.div
@@ -196,8 +302,24 @@ export function TrainValTestSplitDemo() {
     <VisualDemoFrame
       goal="Настройте пропорции train/val/test. Включите group-aware split — увидите, как исключается leakage."
       controls={[
-        { name: 'trainPct', label: 'Train %', type: 'slider', min: 40, max: 80, step: 5, unit: '%' },
-        { name: 'valPct', label: 'Validation %', type: 'slider', min: 10, max: 40, step: 5, unit: '%' },
+        {
+          name: 'trainPct',
+          label: 'Train %',
+          type: 'slider',
+          min: 40,
+          max: 80,
+          step: 5,
+          unit: '%',
+        },
+        {
+          name: 'valPct',
+          label: 'Validation %',
+          type: 'slider',
+          min: 10,
+          max: 40,
+          step: 5,
+          unit: '%',
+        },
         { name: 'groupAware', label: 'Group-aware', type: 'toggle' },
       ]}
       defaults={defaults}
@@ -219,30 +341,101 @@ function SplitVisualization({ state }: { state: DemoState; nSamples: number }) {
 
   return (
     <div className="p-4">
-      <svg viewBox="0 0 600 200" className="w-full" role="img" aria-label="Визуализация train/val/test сплита">
+      <svg
+        viewBox="0 0 600 200"
+        className="w-full"
+        role="img"
+        aria-label="Визуализация train/val/test сплита"
+      >
         {/* Train block */}
-        <rect x={10} y={40} width={`${trainW * 5.6}px`} height={120} rx={6} fill="var(--dp-accent)" fillOpacity={0.3} stroke="var(--dp-accent)" strokeWidth={1.5} />
-        <text x={10 + (trainW * 2.8)} y={105} textAnchor="middle" fontSize={14} fontWeight={600} fill="var(--dp-accent)">
+        <rect
+          x={10}
+          y={40}
+          width={`${trainW * 5.6}px`}
+          height={120}
+          rx={6}
+          fill="var(--dp-accent)"
+          fillOpacity={0.3}
+          stroke="var(--dp-accent)"
+          strokeWidth={1.5}
+        />
+        <text
+          x={10 + trainW * 2.8}
+          y={105}
+          textAnchor="middle"
+          fontSize={14}
+          fontWeight={600}
+          fill="var(--dp-accent)"
+        >
           Train {Math.round(trainPct * 100)}%
         </text>
 
         {/* Val block */}
-        <rect x={10 + trainW * 5.6} y={40} width={`${valW * 5.6}px`} height={120} rx={6} fill="#f59e0b" fillOpacity={0.3} stroke="#f59e0b" strokeWidth={1.5} />
-        <text x={10 + (trainW * 5.6) + (valW * 2.8)} y={105} textAnchor="middle" fontSize={14} fontWeight={600} fill="#f59e0b">
+        <rect
+          x={10 + trainW * 5.6}
+          y={40}
+          width={`${valW * 5.6}px`}
+          height={120}
+          rx={6}
+          fill="#f59e0b"
+          fillOpacity={0.3}
+          stroke="#f59e0b"
+          strokeWidth={1.5}
+        />
+        <text
+          x={10 + trainW * 5.6 + valW * 2.8}
+          y={105}
+          textAnchor="middle"
+          fontSize={14}
+          fontWeight={600}
+          fill="#f59e0b"
+        >
           Val {Math.round(valPct * 100)}%
         </text>
 
         {/* Test block */}
-        <rect x={10 + (trainW + valW) * 5.6} y={40} width={`${testW * 5.6}px`} height={120} rx={6} fill="#ef4444" fillOpacity={0.2} stroke="#ef4444" strokeWidth={1.5} />
-        <text x={10 + ((trainW + valW + testW / 2) * 5.6)} y={105} textAnchor="middle" fontSize={14} fontWeight={600} fill="#ef4444">
+        <rect
+          x={10 + (trainW + valW) * 5.6}
+          y={40}
+          width={`${testW * 5.6}px`}
+          height={120}
+          rx={6}
+          fill="#ef4444"
+          fillOpacity={0.2}
+          stroke="#ef4444"
+          strokeWidth={1.5}
+        />
+        <text
+          x={10 + (trainW + valW + testW / 2) * 5.6}
+          y={105}
+          textAnchor="middle"
+          fontSize={14}
+          fontWeight={600}
+          fill="#ef4444"
+        >
           Test {Math.round(testPct * 100)}%
         </text>
 
         {/* Group-aware indicator */}
         {groupAware && (
           <g>
-            <line x1={10} y1={175} x2={590} y2={175} stroke="var(--dp-accent)" strokeWidth={2} strokeDasharray="6 3" />
-            <text x={300} y={192} textAnchor="middle" fontSize={11} fill="var(--dp-accent)" fontWeight={500}>
+            <line
+              x1={10}
+              y1={175}
+              x2={590}
+              y2={175}
+              stroke="var(--dp-accent)"
+              strokeWidth={2}
+              strokeDasharray="6 3"
+            />
+            <text
+              x={300}
+              y={192}
+              textAnchor="middle"
+              fontSize={11}
+              fill="var(--dp-accent)"
+              fontWeight={500}
+            >
               Строки одного пользователя — в одном fold (leakage исключён)
             </text>
           </g>
@@ -251,9 +444,23 @@ function SplitVisualization({ state }: { state: DemoState; nSamples: number }) {
         {!groupAware && (
           <g>
             {Array.from({ length: 8 }, (_, i) => (
-              <circle key={i} cx={20 + i * 72} cy={175} r={4} fill="var(--dp-warning)" opacity={0.5} />
+              <circle
+                key={i}
+                cx={20 + i * 72}
+                cy={175}
+                r={4}
+                fill="var(--dp-warning)"
+                opacity={0.5}
+              />
             ))}
-            <text x={300} y={192} textAnchor="middle" fontSize={11} fill="var(--dp-warning)" fontWeight={500}>
+            <text
+              x={300}
+              y={192}
+              textAnchor="middle"
+              fontSize={11}
+              fill="var(--dp-warning)"
+              fontWeight={500}
+            >
               Осторожно: строки одного user_id могут разойтись по train/test
             </text>
           </g>
@@ -272,8 +479,10 @@ export function BiasVarianceDemo() {
 
   const explanation = useMemo(() => {
     const c = Number(defaults.complexity)
-    if (c <= 1) return 'Низкая сложность модели → высокое смещение (bias). Модель не доучивается — не улавливает паттерн, предсказания далеки от истины на train и на test.'
-    if (c <= 3) return 'Умеренная сложность → хороший баланс. Модель улавливает паттерн, не переобучаясь на шум. Оптимальная зона.'
+    if (c <= 1)
+      return 'Низкая сложность модели → высокое смещение (bias). Модель не доучивается — не улавливает паттерн, предсказания далеки от истины на train и на test.'
+    if (c <= 3)
+      return 'Умеренная сложность → хороший баланс. Модель улавливает паттерн, не переобучаясь на шум. Оптимальная зона.'
     return 'Высокая сложность → высокая дисперсия (variance). Модель подстраивается под каждую точку train, включая шум — на test ошибка растёт.'
   }, [defaults.complexity])
 
@@ -300,8 +509,8 @@ function BiasVarianceChart({ state }: { state: DemoState }) {
   const pad = { l: 40, r: 16, t: 12, b: 24 }
 
   // Simulated curves
-  const trainErrors = [0.35, 0.22, 0.15, 0.12, 0.10, 0.09, 0.08]
-  const valErrors = [0.38, 0.26, 0.20, 0.19, 0.22, 0.28, 0.36]
+  const trainErrors = [0.35, 0.22, 0.15, 0.12, 0.1, 0.09, 0.08]
+  const valErrors = [0.38, 0.26, 0.2, 0.19, 0.22, 0.28, 0.36]
 
   const maxErr = 0.45
   const innerW = w - pad.l - pad.r
@@ -313,24 +522,64 @@ function BiasVarianceChart({ state }: { state: DemoState }) {
     <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img">
       {/* Grid */}
       {[0.1, 0.2, 0.3, 0.4].map((v) => (
-        <line key={v} x1={pad.l} y1={sy(v)} x2={pad.l + innerW} y2={sy(v)} stroke="var(--dp-border-subtle)" strokeWidth={0.5} />
+        <line
+          key={v}
+          x1={pad.l}
+          y1={sy(v)}
+          x2={pad.l + innerW}
+          y2={sy(v)}
+          stroke="var(--dp-border-subtle)"
+          strokeWidth={0.5}
+        />
       ))}
       {/* Error curves */}
       <polyline
         points={trainErrors.map((v, i) => `${sx(i)},${sy(v)}`).join(' ')}
-        fill="none" stroke="var(--dp-accent)" strokeWidth={2.5}
+        fill="none"
+        stroke="var(--dp-accent)"
+        strokeWidth={2.5}
       />
       <polyline
         points={valErrors.map((v, i) => `${sx(i)},${sy(v)}`).join(' ')}
-        fill="none" stroke="#f59e0b" strokeWidth={2.5} strokeDasharray="6 3"
+        fill="none"
+        stroke="#f59e0b"
+        strokeWidth={2.5}
+        strokeDasharray="6 3"
       />
       {/* Current complexity marker */}
-      <line x1={sx(complexity - 1)} y1={pad.t} x2={sx(complexity - 1)} y2={pad.t + innerH} stroke="var(--dp-text-primary)" strokeWidth={1} strokeDasharray="3 3" opacity={0.5} />
-      <circle cx={sx(complexity - 1)} cy={sy(trainErrors[complexity - 1])} r={5} fill="var(--dp-accent)" stroke="white" strokeWidth={2} />
-      <circle cx={sx(complexity - 1)} cy={sy(valErrors[complexity - 1])} r={5} fill="#f59e0b" stroke="white" strokeWidth={2} />
+      <line
+        x1={sx(complexity - 1)}
+        y1={pad.t}
+        x2={sx(complexity - 1)}
+        y2={pad.t + innerH}
+        stroke="var(--dp-text-primary)"
+        strokeWidth={1}
+        strokeDasharray="3 3"
+        opacity={0.5}
+      />
+      <circle
+        cx={sx(complexity - 1)}
+        cy={sy(trainErrors[complexity - 1])}
+        r={5}
+        fill="var(--dp-accent)"
+        stroke="white"
+        strokeWidth={2}
+      />
+      <circle
+        cx={sx(complexity - 1)}
+        cy={sy(valErrors[complexity - 1])}
+        r={5}
+        fill="#f59e0b"
+        stroke="white"
+        strokeWidth={2}
+      />
       {/* Legend */}
-      <text x={pad.l + 10} y={16} fontSize={10} fill="var(--dp-accent)" fontWeight={600}>— Train error</text>
-      <text x={pad.l + 10} y={30} fontSize={10} fill="#f59e0b" fontWeight={600}>- - Validation error</text>
+      <text x={pad.l + 10} y={16} fontSize={10} fill="var(--dp-accent)" fontWeight={600}>
+        — Train error
+      </text>
+      <text x={pad.l + 10} y={30} fontSize={10} fill="#f59e0b" fontWeight={600}>
+        - - Validation error
+      </text>
     </svg>
   )
 }
@@ -348,47 +597,122 @@ export function TreeSplitVisualDemo() {
   const innerH = h - pad.t - pad.b
 
   // Two classes separated by a vertical split
-  const leftClass0 = 10; const leftClass1 = 3
-  const rightClass0 = 2; const rightClass1 = 9
+  const leftClass0 = 10
+  const leftClass1 = 3
+  const rightClass0 = 2
+  const rightClass1 = 9
 
   // Gini calculations
-  const parentGini = 1 - ((12/24)**2 + (12/24)**2)
-  const leftGini = 1 - ((10/13)**2 + (3/13)**2)
-  const rightGini = 1 - ((2/11)**2 + (9/11)**2)
-  const weightedGini = (13/24) * leftGini + (11/24) * rightGini
+  const parentGini = 1 - ((12 / 24) ** 2 + (12 / 24) ** 2)
+  const leftGini = 1 - ((10 / 13) ** 2 + (3 / 13) ** 2)
+  const rightGini = 1 - ((2 / 11) ** 2 + (9 / 11) ** 2)
+  const weightedGini = (13 / 24) * leftGini + (11 / 24) * rightGini
   // Information gain = parent - weighted child impurity
   void (parentGini - weightedGini)
 
   return (
     <div className="p-4">
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="Визуализация разбиения дерева решений">
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="w-full"
+        role="img"
+        aria-label="Визуализация разбиения дерева решений"
+      >
         {/* Grid */}
-        <line x1={pad.l} y1={pad.t} x2={pad.l} y2={pad.t + innerH} stroke="var(--dp-border-subtle)" />
-        <line x1={pad.l} y1={pad.t + innerH} x2={pad.l + innerW} y2={pad.t + innerH} stroke="var(--dp-border-subtle)" />
+        <line
+          x1={pad.l}
+          y1={pad.t}
+          x2={pad.l}
+          y2={pad.t + innerH}
+          stroke="var(--dp-border-subtle)"
+        />
+        <line
+          x1={pad.l}
+          y1={pad.t + innerH}
+          x2={pad.l + innerW}
+          y2={pad.t + innerH}
+          stroke="var(--dp-border-subtle)"
+        />
         {/* Split line */}
-        <line x1={pad.l + innerW / 2} y1={pad.t} x2={pad.l + innerW / 2} y2={pad.t + innerH} stroke="#ef4444" strokeWidth={2} strokeDasharray="5 3" />
+        <line
+          x1={pad.l + innerW / 2}
+          y1={pad.t}
+          x2={pad.l + innerW / 2}
+          y2={pad.t + innerH}
+          stroke="#ef4444"
+          strokeWidth={2}
+          strokeDasharray="5 3"
+        />
         {/* Left points */}
         {Array.from({ length: leftClass0 }, (_, i) => (
-          <circle key={`l0-${i}`} cx={pad.l + 40 + Math.random() * 180} cy={pad.t + 20 + Math.random() * (innerH - 40)} r={4} fill="#3b82f6" opacity={0.8} />
+          <circle
+            key={`l0-${i}`}
+            cx={pad.l + 40 + Math.random() * 180}
+            cy={pad.t + 20 + Math.random() * (innerH - 40)}
+            r={4}
+            fill="#3b82f6"
+            opacity={0.8}
+          />
         ))}
         {Array.from({ length: leftClass1 }, (_, i) => (
-          <circle key={`l1-${i}`} cx={pad.l + 40 + Math.random() * 180} cy={pad.t + 20 + Math.random() * (innerH - 40)} r={4} fill="#f59e0b" opacity={0.8} />
+          <circle
+            key={`l1-${i}`}
+            cx={pad.l + 40 + Math.random() * 180}
+            cy={pad.t + 20 + Math.random() * (innerH - 40)}
+            r={4}
+            fill="#f59e0b"
+            opacity={0.8}
+          />
         ))}
         {/* Right points */}
         {Array.from({ length: rightClass0 }, (_, i) => (
-          <circle key={`r0-${i}`} cx={pad.l + innerW / 2 + 20 + Math.random() * 180} cy={pad.t + 20 + Math.random() * (innerH - 40)} r={4} fill="#3b82f6" opacity={0.8} />
+          <circle
+            key={`r0-${i}`}
+            cx={pad.l + innerW / 2 + 20 + Math.random() * 180}
+            cy={pad.t + 20 + Math.random() * (innerH - 40)}
+            r={4}
+            fill="#3b82f6"
+            opacity={0.8}
+          />
         ))}
         {Array.from({ length: rightClass1 }, (_, i) => (
-          <circle key={`r1-${i}`} cx={pad.l + innerW / 2 + 20 + Math.random() * 180} cy={pad.t + 20 + Math.random() * (innerH - 40)} r={4} fill="#f59e0b" opacity={0.8} />
+          <circle
+            key={`r1-${i}`}
+            cx={pad.l + innerW / 2 + 20 + Math.random() * 180}
+            cy={pad.t + 20 + Math.random() * (innerH - 40)}
+            r={4}
+            fill="#f59e0b"
+            opacity={0.8}
+          />
         ))}
         {/* Labels */}
-        <text x={pad.l + innerW / 4} y={pad.t + innerH - 8} textAnchor="middle" fontSize={10} fill="var(--dp-text-secondary)">Левая группа</text>
-        <text x={pad.l + 3 * innerW / 4} y={pad.t + innerH - 8} textAnchor="middle" fontSize={10} fill="var(--dp-text-secondary)">Правая группа</text>
+        <text
+          x={pad.l + innerW / 4}
+          y={pad.t + innerH - 8}
+          textAnchor="middle"
+          fontSize={10}
+          fill="var(--dp-text-secondary)"
+        >
+          Левая группа
+        </text>
+        <text
+          x={pad.l + (3 * innerW) / 4}
+          y={pad.t + innerH - 8}
+          textAnchor="middle"
+          fontSize={10}
+          fill="var(--dp-text-secondary)"
+        >
+          Правая группа
+        </text>
         {/* Legend */}
         <circle cx={pad.l + innerW - 80} cy={pad.t + 10} r={3} fill="#3b82f6" />
-        <text x={pad.l + innerW - 72} y={pad.t + 14} fontSize={9} fill="var(--dp-text-muted)">Класс 0</text>
+        <text x={pad.l + innerW - 72} y={pad.t + 14} fontSize={9} fill="var(--dp-text-muted)">
+          Класс 0
+        </text>
         <circle cx={pad.l + innerW - 10} cy={pad.t + 10} r={3} fill="#f59e0b" />
-        <text x={pad.l + innerW} y={pad.t + 14} fontSize={9} fill="var(--dp-text-muted)">Класс 1</text>
+        <text x={pad.l + innerW} y={pad.t + 14} fontSize={9} fill="var(--dp-text-muted)">
+          Класс 1
+        </text>
       </svg>
     </div>
   )
@@ -402,9 +726,36 @@ const DEMO_REGISTRY: Record<string, React.ComponentType> = {
   'train-val-test-split': TrainValTestSplitDemo,
   'bias-variance': BiasVarianceDemo,
   'tree-split-visual': TreeSplitVisualDemo,
+  'linear-fit-residual-lab': LinearFitDemo,
+  'gradient-descent-landscape': GradientDescentDemo,
+  'optimizer-landscape-lab': GradientDescentDemo,
+  'logistic-boundary-threshold-lab': LogisticThresholdDemo,
+  'decision-tree-split-lab': DecisionTreeDemo,
+  'bootstrap-forest-lab': RandomForestDemo,
+  'boosting-residuals-lab': BoostingDemo,
+  'knn-neighbourhood-lab': KnnDemo,
+  'kmeans-canvas': KMeansDemo,
+  'pca-projection-lab': PcaDemo,
+  'metrics-threshold-lab': MetricsDemo,
+  'threshold-cost-explorer': MetricsDemo,
+  'imbalance-threshold-lab': MetricsDemo,
+  'calibration-reliability-lab': LogisticThresholdDemo,
+  'neuron-computation-lab': NeuronDemo,
+  'mlp-neuron-lab': MlpDemo,
+  'activation-loss-explorer': ActivationDemo,
+  'backprop-computation-graph': BackpropDemo,
+  'training-loop-timeline': BackpropDemo,
+  'cnn-kernel-feature-map-lab': CnnDemo,
+  'pooling-window-lab': PoolingDemo,
+  'attention-matrix-lab': AttentionDemo,
+  'transformer-block-lab': TransformerDemo,
+  'validation-split-lab': TrainValTestSplitDemo,
 }
 
-export function getVisualDemo(id: string): React.ComponentType | null {
+Object.assign(DEMO_REGISTRY, APPLIED_DEMOS)
+Object.assign(DEMO_REGISTRY, SYSTEM_DEMOS)
+
+function getVisualDemo(id: string): React.ComponentType | null {
   return DEMO_REGISTRY[id] ?? null
 }
 
@@ -412,8 +763,12 @@ export function VisualDemoHost({ demoId }: { demoId: string }) {
   const Component = getVisualDemo(demoId)
   if (!Component) {
     return (
-      <div className="rounded-xl p-4 text-sm" style={{ color: 'var(--dp-text-muted)' }}>
-        Визуальная демонстрация «{demoId}» пока не реализована.
+      <div
+        role="alert"
+        className="rounded-xl p-4 text-sm"
+        style={{ background: 'var(--dp-error-subtle)', color: 'var(--dp-error)' }}
+      >
+        Ошибка контента: неизвестная visual demo «{demoId}».
       </div>
     )
   }

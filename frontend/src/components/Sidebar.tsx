@@ -1,27 +1,30 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useUiStore } from '../stores/ui'
 import {
   AtlasIcon,
   FocusIcon,
+  LearnIcon,
   MoonIcon,
   ReviewIcon,
+  RoadmapIcon,
   StudioIcon,
   SunIcon,
   SystemIcon,
   TodayIcon,
 } from './ui/icons'
 
-const MAIN_NAV: { to: string; label: string; Icon: typeof TodayIcon }[] = [
-  { to: '/today', label: 'Today', Icon: TodayIcon },
-  { to: '/focus', label: 'Focus', Icon: FocusIcon },
-  { to: '/review', label: 'Review', Icon: ReviewIcon },
-  { to: '/studio', label: 'Studio', Icon: StudioIcon },
-  { to: '/atlas', label: 'Atlas', Icon: AtlasIcon },
-]
-
-const SECONDARY_NAV = [
-  { to: '/system', label: 'Статус', Icon: SystemIcon },
-]
+const DIRECTIONS = [
+  ['Python', 'course.python-ds'],
+  ['NumPy & pandas', 'course.data-analysis'],
+  ['SQL & sklearn', 'course.data-tools'],
+  ['Математика', 'course.math-ds'],
+  ['Classic ML', 'course.classic-ml'],
+  ['Deep Learning', 'course.deep-learning'],
+  ['NLP', 'course.nlp'],
+  ['LLM / RAG', 'course.llm-rag'],
+  ['MLOps', 'course.mlops'],
+] as const
 
 function ThemeToggle() {
   const theme = useUiStore((s) => s.theme)
@@ -33,7 +36,7 @@ function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={label}
       title={label}
-      className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors dp-hover-interactive"
+      className="flex h-9 w-9 items-center justify-center rounded-xl dp-hover-interactive"
       style={{ color: 'var(--dp-text-muted)' }}
     >
       {isDark ? <SunIcon /> : <MoonIcon />}
@@ -41,136 +44,211 @@ function ThemeToggle() {
   )
 }
 
+function Brand({ collapsed }: { collapsed: boolean }) {
+  return (
+    <NavLink
+      to="/today"
+      className="flex min-w-0 items-center gap-3"
+      aria-label="DataPath — Сегодня"
+    >
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" className="shrink-0">
+        <rect width="30" height="30" rx="9" fill="var(--dp-accent)" />
+        <path d="M8 20V10l7 5-7 5z" fill="var(--dp-surface)" />
+        <path d="M15 20V10l7 5-7 5z" fill="var(--dp-surface)" fillOpacity="0.55" />
+      </svg>
+      {!collapsed && (
+        <div className="min-w-0 leading-tight">
+          <div className="text-[15px] font-semibold tracking-tight">DataPath</div>
+          <div className="text-[10px]" style={{ color: 'var(--dp-text-muted)' }}>
+            локальное обучение
+          </div>
+        </div>
+      )}
+    </NavLink>
+  )
+}
+
+function NavItem({
+  to,
+  label,
+  Icon,
+  collapsed,
+  end,
+}: {
+  to: string
+  label: string
+  Icon: typeof TodayIcon
+  collapsed: boolean
+  end?: boolean
+}) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      title={collapsed ? label : undefined}
+      className={({ isActive }) => `dp-sidebar-link ${isActive ? 'is-active' : ''}`}
+    >
+      <Icon width={18} height={18} className="shrink-0" />
+      {!collapsed && <span>{label}</span>}
+    </NavLink>
+  )
+}
+
 export function Sidebar() {
+  const collapsed = useUiStore((s) => s.sidebarCollapsed)
+  const learningOpen = useUiStore((s) => s.learningNavOpen)
+  const toggleSidebar = useUiStore((s) => s.toggleSidebar)
+  const toggleLearning = useUiStore((s) => s.toggleLearningNav)
+  const [moreOpen, setMoreOpen] = useState(false)
+
   return (
     <>
-      {/* Desktop sidebar */}
       <aside
-        className="hidden w-[220px] shrink-0 flex-col md:flex"
+        className={`hidden shrink-0 flex-col transition-[width] duration-200 md:flex ${collapsed ? 'w-[72px]' : 'w-[248px]'}`}
         style={{
-          background: 'var(--dp-surface)',
+          background: 'var(--dp-sidebar-bg)',
           borderRight: '1px solid var(--dp-border-subtle)',
         }}
       >
-        {/* Brand */}
-        <div className="px-5 pt-5 pb-3">
-          <div className="flex items-center gap-2.5">
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <rect width="28" height="28" rx="7" fill="var(--dp-accent)" />
-              <path d="M7 19V9l7 5-7 5z" fill="var(--dp-surface)" />
-              <path d="M14 19V9l7 5-7 5z" fill="var(--dp-surface)" fillOpacity="0.6" />
-            </svg>
-            <div className="leading-tight">
-              <div className="text-sm font-bold tracking-tight" style={{ color: 'var(--dp-text-primary)' }}>
-                DataPath
-              </div>
-              <div className="text-[10px]" style={{ color: 'var(--dp-text-muted)' }}>
-                DS learning
-              </div>
-            </div>
-          </div>
+        <div
+          className={`flex items-center px-5 pb-4 pt-5 ${collapsed ? 'justify-center px-0' : 'justify-between'}`}
+        >
+          <Brand collapsed={collapsed} />
         </div>
 
-        {/* Main navigation */}
-        <nav aria-label="Основная навигация" className="flex-1 px-3 py-1 space-y-0.5">
-          {MAIN_NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ${
-                  isActive ? '' : 'dp-hover-interactive'
-                }`
-              }
-              style={({ isActive }) => ({
-                color: isActive ? 'var(--dp-accent)' : 'var(--dp-text-secondary)',
-                background: isActive ? 'var(--dp-accent-subtle)' : 'transparent',
-              })}
-            >
-              <item.Icon
-                width={18}
-                height={18}
-                className="shrink-0"
-                style={{ opacity: 0.9 }}
-              />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+        <nav aria-label="Основная навигация" className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+          <div className="space-y-1">
+            <NavItem to="/today" label="Сегодня" Icon={TodayIcon} collapsed={collapsed} />
+            <NavItem to="/learn" label="Курсы" Icon={LearnIcon} collapsed={collapsed} />
+            <NavItem to="/roadmap" label="Мой путь" Icon={RoadmapIcon} collapsed={collapsed} />
+            <NavItem to="/focus" label="Focus" Icon={FocusIcon} collapsed={collapsed} />
+          </div>
+
+          {!collapsed && (
+            <div className="mt-5">
+              <button
+                onClick={toggleLearning}
+                className="flex w-full items-center justify-between px-3 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                style={{ color: 'var(--dp-text-muted)' }}
+                aria-expanded={learningOpen}
+              >
+                Обучение
+                <span className={`transition-transform ${learningOpen ? 'rotate-90' : ''}`}>›</span>
+              </button>
+              {learningOpen && (
+                <div
+                  className="mt-2 space-y-0.5 border-l pl-3"
+                  style={{ borderColor: 'var(--dp-border-subtle)' }}
+                >
+                  {DIRECTIONS.map(([label, id]) => (
+                    <NavLink
+                      key={id}
+                      to={`/focus?course=${encodeURIComponent(id)}`}
+                      className="block rounded-lg px-3 py-1.5 text-[12px] transition-colors dp-hover-interactive"
+                      style={{ color: 'var(--dp-text-secondary)' }}
+                    >
+                      {label}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="mt-5 space-y-1">
+            {!collapsed && <div className="dp-sidebar-group">Практика</div>}
+            <NavItem to="/studio" label="Studio" Icon={StudioIcon} collapsed={collapsed} />
+          </div>
+          <div className="mt-5 space-y-1">
+            {!collapsed && <div className="dp-sidebar-group">Повторение</div>}
+            <NavItem to="/review" label="Review" Icon={ReviewIcon} collapsed={collapsed} />
+          </div>
+          <div className="mt-5 space-y-1">
+            {!collapsed && <div className="dp-sidebar-group">Прогресс</div>}
+            <NavItem to="/atlas" label="Карта знаний" Icon={AtlasIcon} collapsed={collapsed} />
+          </div>
         </nav>
 
-        {/* Secondary items */}
-        <div className="px-3 pb-1 space-y-0.5">
-          {SECONDARY_NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 dp-hover-interactive"
-              style={({ isActive }) => ({
-                color: isActive ? 'var(--dp-text-primary)' : 'var(--dp-text-muted)',
-              })}
-            >
-              <item.Icon width={16} height={16} className="shrink-0" />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
-        </div>
-
-        {/* Footer */}
         <div
-          className="flex items-center justify-between px-5 py-3"
-          style={{ borderTop: '1px solid var(--dp-border-subtle)' }}
+          className="flex items-center justify-between gap-2 border-t px-3 py-3"
+          style={{ borderColor: 'var(--dp-border-subtle)' }}
         >
-          <span className="text-[10px]" style={{ color: 'var(--dp-text-muted)' }}>
-            v0.1
-          </span>
+          <button
+            onClick={toggleSidebar}
+            aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
+            title={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
+            className="flex h-9 w-9 items-center justify-center rounded-xl dp-hover-interactive"
+            style={{ color: 'var(--dp-text-muted)' }}
+          >
+            {collapsed ? '›' : '‹'}
+          </button>
+          {!collapsed && (
+            <NavLink
+              to="/system"
+              className="flex flex-1 items-center gap-2 rounded-xl px-2 py-2 text-xs dp-hover-interactive"
+              style={{ color: 'var(--dp-text-muted)' }}
+            >
+              <SystemIcon width={15} height={15} /> Настройки
+            </NavLink>
+          )}
           <ThemeToggle />
         </div>
       </aside>
 
-      {/* Mobile top bar */}
       <header
-        className="fixed inset-x-0 top-0 z-40 flex h-12 items-center justify-between px-4 backdrop-blur md:hidden"
+        className="dp-mobile-header fixed inset-x-0 top-0 z-40 flex items-center justify-between px-4 backdrop-blur md:hidden"
         style={{
-          background: 'color-mix(in srgb, var(--dp-surface) 94%, transparent)',
+          background: 'color-mix(in srgb, var(--dp-app-bg) 90%, transparent)',
           borderBottom: '1px solid var(--dp-border-subtle)',
         }}
       >
-        <div className="flex items-center gap-2">
-          <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
-            <rect width="28" height="28" rx="7" fill="var(--dp-accent)" />
-            <path d="M7 19V9l7 5-7 5z" fill="var(--dp-surface)" />
-            <path d="M14 19V9l7 5-7 5z" fill="var(--dp-surface)" fillOpacity="0.6" />
-          </svg>
-          <span className="text-sm font-bold" style={{ color: 'var(--dp-text-primary)' }}>
-            DataPath
-          </span>
-        </div>
+        <Brand collapsed={false} />
         <ThemeToggle />
       </header>
 
-      {/* Mobile bottom navigation */}
       <nav
-        aria-label="Навигация"
-        className="fixed inset-x-0 bottom-0 z-40 flex h-14 items-stretch backdrop-blur md:hidden"
+        aria-label="Мобильная навигация"
+        className="dp-mobile-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 backdrop-blur md:hidden"
         style={{
-          background: 'color-mix(in srgb, var(--dp-surface) 96%, transparent)',
+          background: 'color-mix(in srgb, var(--dp-app-bg) 94%, transparent)',
           borderTop: '1px solid var(--dp-border-subtle)',
         }}
       >
-        {MAIN_NAV.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className="flex flex-1 flex-col items-center justify-center gap-0.5"
-            style={({ isActive }) => ({
-              color: isActive ? 'var(--dp-accent)' : 'var(--dp-text-muted)',
-            })}
-          >
-            <item.Icon width={20} height={20} />
-            <span className="text-[10px] font-medium">{item.label}</span>
-          </NavLink>
-        ))}
+        <NavItem to="/today" label="Сегодня" Icon={TodayIcon} collapsed={false} />
+        <NavItem to="/learn" label="Курсы" Icon={LearnIcon} collapsed={false} />
+        <NavItem to="/studio" label="Studio" Icon={StudioIcon} collapsed={false} />
+        <NavItem to="/review" label="Review" Icon={ReviewIcon} collapsed={false} />
+        <button
+          type="button"
+          className="dp-sidebar-link flex-col justify-center gap-0.5 rounded-none px-1 text-[10px]"
+          aria-expanded={moreOpen}
+          aria-controls="mobile-more-menu"
+          onClick={() => setMoreOpen((open) => !open)}
+        >
+          <SystemIcon width={18} height={18} />
+          Ещё
+        </button>
       </nav>
+
+      {moreOpen && (
+        <div
+          id="mobile-more-menu"
+          className="dp-mobile-more fixed inset-x-3 z-50 rounded-2xl p-2 shadow-xl md:hidden dp-surface-elevated"
+        >
+          <NavLink to="/roadmap" className="dp-sidebar-link" onClick={() => setMoreOpen(false)}>
+            <RoadmapIcon /> Мой путь
+          </NavLink>
+          <NavLink to="/focus" className="dp-sidebar-link" onClick={() => setMoreOpen(false)}>
+            <FocusIcon /> Focus
+          </NavLink>
+          <NavLink to="/atlas" className="dp-sidebar-link" onClick={() => setMoreOpen(false)}>
+            <AtlasIcon /> Карта знаний
+          </NavLink>
+          <NavLink to="/system" className="dp-sidebar-link" onClick={() => setMoreOpen(false)}>
+            <SystemIcon /> Настройки и данные
+          </NavLink>
+        </div>
+      )}
     </>
   )
 }

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { SceneView } from './SceneView'
 import type { LessonScene } from '../../lib/api'
@@ -33,5 +33,26 @@ describe('SceneView code scenes', () => {
       expect(screen.getByText(language)).toBeInTheDocument()
       unmount()
     }
+  })
+})
+
+describe('SceneView visual demos', () => {
+  it('renders demo_id and recomputes the visualization after a slider change', async () => {
+    render(
+      <SceneView
+        scene={{
+          id: 'scene-visual',
+          type: 'visual_demo',
+          title: 'Интерактивная визуализация',
+          demo_id: 'boosting-residuals-lab',
+        }}
+      />,
+    )
+
+    expect(await screen.findByText('1.188')).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('slider', { name: /Learning rate/ }), {
+      target: { value: '1' },
+    })
+    expect(screen.getByText('0.750')).toBeInTheDocument()
   })
 })

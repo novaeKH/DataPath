@@ -13,6 +13,7 @@ import {
 import { EmptyState, ErrorState, LoadingBlock, PageHeader } from '../components/ui/PageState'
 import { Button } from '../components/ui/Button'
 import { buttonClassNames } from '../components/ui/buttonStyles'
+import { PracticeLibrary, PracticeWorkspace } from '../components/practice/PracticeWorkspace'
 
 type Mode = 'guided' | 'standard' | 'interview'
 
@@ -38,10 +39,20 @@ const MODE_LIKE_DIFFICULTY = new Set(['guided', 'standard', 'interview'])
 export function StudioView() {
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedCaseId = searchParams.get('case')
+  const selectedPracticeId = searchParams.get('practice')
 
   if (selectedCaseId) {
     return (
       <CaseRunner key={selectedCaseId} caseId={selectedCaseId} onBack={() => setSearchParams({})} />
+    )
+  }
+  if (selectedPracticeId) {
+    return (
+      <PracticeWorkspace
+        key={selectedPracticeId}
+        exerciseId={selectedPracticeId}
+        onBack={() => setSearchParams({})}
+      />
     )
   }
   return <CaseList />
@@ -84,13 +95,19 @@ function CaseList() {
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
       <PageHeader
         title="Studio"
-        subtitle="Структурированные кейсы: проверка навыков на практике. Оценка и разбор — на backend."
+        subtitle="SQL, pandas, NumPy, scikit-learn, DL и mini-cases. Результаты сохраняются в учебном прогрессе."
         actions={
           <Link to="/atlas" className={buttonClassNames('outline', 'sm')}>
             ← Atlas
           </Link>
         }
       />
+
+      <PracticeLibrary />
+
+      <h2 className="mt-10 text-lg font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
+        Mini-cases
+      </h2>
 
       {cases.length === 0 ? (
         <div className="mt-6">
@@ -102,10 +119,7 @@ function CaseList() {
       ) : (
         <div className="mt-6 flex flex-col gap-4">
           {cases.map((caseSpec) => (
-            <section
-              key={caseSpec.id}
-              className="rounded-xl p-5 dp-surface"
-            >
+            <section key={caseSpec.id} className="rounded-xl p-5 dp-surface">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
