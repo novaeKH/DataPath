@@ -302,7 +302,24 @@ function todayPayload(data: ReleaseSnapshot, state: LocalReleaseState) {
         estimated_minutes: detail?.estimated_minutes,
       }
     : null
-  base.next_lesson = roadmap.current_lesson
+  const nextLesson = roadmap.current_lesson
+  const nextLessonId = String((nextLesson as { id?: string } | null)?.id ?? '')
+  const nextLessonDetail = nextLessonId
+    ? (data.reads[`/api/content/lessons/${nextLessonId}`] as
+        { skills?: unknown; estimated_minutes?: number } | undefined)
+    : undefined
+  base.next_lesson = nextLesson
+    ? {
+        ...nextLesson,
+        skills: Array.isArray(nextLesson.skills)
+          ? nextLesson.skills
+          : Array.isArray(nextLessonDetail?.skills)
+            ? nextLessonDetail.skills
+            : [],
+        estimated_minutes:
+          nextLesson.estimated_minutes ?? nextLessonDetail?.estimated_minutes ?? null,
+      }
+    : null
   base.roadmap_context = {
     current_stage: roadmap.current_stage,
     current_lesson: roadmap.current_lesson,

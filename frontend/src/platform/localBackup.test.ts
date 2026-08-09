@@ -11,6 +11,50 @@ const snapshot = {
     '/api/practice': { exercises: [] },
     '/api/reviews/queue?limit=30': { items: [] },
     '/api/atlas': { nodes: [] },
+    '/api/today': {
+      continue_lesson: null,
+      next_lesson: null,
+      weak_skills: [],
+      recent_activity: [],
+      suggested_case: null,
+      progress_summary: {
+        lessons_started: 0,
+        lessons_completed: 0,
+        labs_completed: 0,
+        cases_completed: 0,
+        skill_distribution: {},
+      },
+    },
+    '/api/roadmap': {
+      stages: [
+        {
+          id: 'stage-1',
+          title: 'Ориентация',
+          depth: 'foundation',
+          modules: [
+            {
+              lessons: [
+                {
+                  id: 'lesson.test',
+                  title: 'Тестовый урок',
+                  estimated_minutes: 20,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      total_lessons: 1,
+      completed_lessons: 0,
+      current_lesson: null,
+      current_stage: null,
+    },
+    '/api/content/lessons/lesson.test': {
+      id: 'lesson.test',
+      title: 'Тестовый урок',
+      estimated_minutes: 20,
+      skills: ['python.basics'],
+    },
   },
   practice_runtime: {},
   case_runtime: {},
@@ -66,5 +110,17 @@ describe('local backup safety', () => {
 
     await expect(localPost('/api/system/restore', invalid)).rejects.toThrow(/Checksum/)
     expect(loadLocalState().notes.safe).toBe('keep me')
+  })
+
+  it('hydrates Today roadmap lessons with the full offline skill contract', async () => {
+    const payload = await localRead<{
+      next_lesson: { id: string; skills: string[]; estimated_minutes: number } | null
+    }>('/api/today')
+
+    expect(payload.next_lesson).toMatchObject({
+      id: 'lesson.test',
+      skills: ['python.basics'],
+      estimated_minutes: 20,
+    })
   })
 })
