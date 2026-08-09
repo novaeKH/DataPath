@@ -1,4 +1,4 @@
-const VERSION = 'datapath-v9'
+const VERSION = 'datapath-v10'
 const SHELL_CACHE = `${VERSION}-shell`
 const STATIC_CACHE = `${VERSION}-static`
 const DATA_CACHE = `${VERSION}-data`
@@ -69,7 +69,7 @@ function isCacheableApi(url) {
 async function networkFirst(request, cacheName, fallback) {
   const cache = await caches.open(cacheName)
   try {
-    const response = await fetch(request)
+    const response = await fetch(request, { cache: 'no-store' })
     if (response.ok) await cache.put(request, response.clone())
     return response
   } catch (error) {
