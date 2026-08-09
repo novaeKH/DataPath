@@ -33,13 +33,15 @@ Roadmap устроен как три последовательных прохо
 
 ## Интерфейс
 
-| Ежедневная сессия | Режим Focus |
-| --- | --- |
+| Ежедневная сессия                                   | Режим Focus                                                |
+| --------------------------------------------------- | ---------------------------------------------------------- |
 | ![Today](docs/screenshots/phase7-today-desktop.png) | ![Focus](docs/screenshots/phase7-focus-or-lesson-dark.png) |
 
 ![Интерактивная ML-лаборатория](docs/screenshots/lab-ensemble.png)
 
 ## Web / PWA
+
+**[Открыть DataPath PWA](https://novaekh.github.io/DataPath/)**
 
 ```bash
 make sync-content
@@ -49,8 +51,8 @@ make build-web
 Production bundle появляется в `frontend/dist`. После первой успешной загрузки PWA сохраняет
 application shell, весь release snapshot и SQLite WASM для работы без сети.
 
-В репозитории подготовлен GitHub Actions workflow для GitHub Pages. Публичный адрес будет указан
-здесь после успешного первого deployment и проверки установленной PWA.
+GitHub Actions публикует production PWA в GitHub Pages из `main`. Hash routing и base-aware assets
+позволяют открывать все экраны под repository subpath без отдельного backend.
 
 ### Установка PWA на iPhone
 
@@ -65,16 +67,17 @@ application shell, весь release snapshot и SQLite WASM для работы 
 
 ## macOS
 
+**[Скачать DataPath 1.0.0 для Apple Silicon (DMG)](https://github.com/novaeKH/DataPath/releases/download/v1.0.0/DataPath_1.0.0_aarch64.dmg)**
+
 ```bash
 make build-macos
 ```
 
 Готовый unsigned bundle:
 `desktop/src-tauri/target/release/bundle/macos/DataPath.app`. Он работает без Terminal и FastAPI.
-Релизный DMG или ZIP будет прикреплён к GitHub Release. Перенесите `DataPath.app` в
-`/Applications`. Поскольку версия 1.0.0 не подписана и не notarized, при первом запуске нажмите по
-приложению с удержанием Control, выберите **Открыть**, затем подтвердите **Открыть**. Не отключайте
-Gatekeeper глобально.
+Откройте DMG и перенесите `DataPath.app` в `/Applications`. Поскольку версия 1.0.0 не подписана и
+не notarized, при первом запуске нажмите по приложению с удержанием Control, выберите **Открыть**,
+затем подтвердите **Открыть**. Не отключайте Gatekeeper глобально.
 
 ## iPhone / iOS
 

@@ -31,15 +31,14 @@ cd frontend && npm run preview
 SQLite WASM входят в offline cache. PWA становится offline-capable после первой успешной загрузки.
 
 Repository workflow `.github/workflows/pages.yml` строит приложение с repository base path,
-публикует artifact и использует GitHub Pages Actions. Реальный публичный URL фиксируется в README
-только после успешного deployment и browser smoke-test.
+публикует artifact и использует GitHub Pages Actions.
 
-После создания репозитория:
+Публичная PWA:
 
-1. Добавьте remote и отправьте `main`.
-2. В GitHub откройте **Settings → Pages** и выберите **Source: GitHub Actions**.
-3. Запустите workflow `Deploy GitHub Pages` или отправьте новый commit в `main`.
-4. Возьмите фактический URL из environment `github-pages` job `deploy` и проверьте install/offline.
+`https://novaekh.github.io/DataPath/`
+
+Pages настроен с **Source: GitHub Actions**. Каждый push в `main` запускает deployment; фактический
+URL также публикуется environment `github-pages` job `deploy`.
 
 Hash routing и base-aware manifest/service worker позволяют открывать вложенные экраны под путём
 `/<repository>/` без server rewrite rules.
@@ -62,7 +61,11 @@ Artifact:
 
 ```text
 desktop/src-tauri/target/release/bundle/macos/DataPath.app
+desktop/src-tauri/target/release/bundle/dmg/DataPath_1.0.0_aarch64.dmg
 ```
+
+GitHub Release download:
+`https://github.com/novaeKH/DataPath/releases/download/v1.0.0/DataPath_1.0.0_aarch64.dmg`.
 
 Bundle unsigned и предназначен для личной установки. Его можно перенести в `/Applications` и
 запускать без Terminal/FastAPI. При первом запуске нужно использовать **Control-click → Открыть →

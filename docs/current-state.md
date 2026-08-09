@@ -31,8 +31,10 @@
 - GitHub Actions CI проверяет content/backend и frontend независимо.
 - GitHub Pages workflow собирает repository-subpath-safe PWA с hash routing. Vite генерирует
   manifest 74 hashed assets; service worker pre-caches их вместе со snapshot и SQLite WASM.
-- Собран unsigned macOS bundle 11 МБ:
-  `desktop/src-tauri/target/release/bundle/macos/DataPath.app`.
+- Исходники опубликованы в `https://github.com/novaeKH/DataPath`; CI и Pages deployment проходят.
+- Публичная PWA: `https://novaekh.github.io/DataPath/`.
+- Собран и проверен unsigned Apple Silicon DMG 4.2 МБ:
+  `desktop/src-tauri/target/release/bundle/dmg/DataPath_1.0.0_aarch64.dmg`.
 - Capacitor iOS target синхронизирован: `frontend/ios/App/App.xcodeproj`, iOS 15+.
 - Добавлены README, MIT license для software, отдельное content notice, changelog, release notes,
   privacy/backup и source attribution documentation.
@@ -42,25 +44,22 @@
 - Content sync: 441 файлов, 365 catalogued items, 0 ошибок, 0 предупреждений.
 - Content quality: 103 урока, 0 ошибок, 0 предупреждений, 62 необязательные рекомендации.
 - Backend: 219/219 tests; одно upstream deprecation warning Starlette TestClient.
-- Frontend: 109/109 tests.
+- Frontend: 110/110 tests.
 - Ruff check/format, ESLint, TypeScript, Prettier, root production build и GitHub Pages base-path
   build проходят.
 - `npm audit --omit=dev`: 0 vulnerabilities. Workflow YAML и `git diff --check` проходят.
-- Browser production smoke: Today, Learn, Roadmap, Studio, Review, Atlas, Settings, Focus и
-  критические visualizers открываются без FastAPI.
+- Public Pages browser smoke: Today → Focus, regression visualizer, Studio SQLite execution,
+  Review и Atlas открываются без FastAPI и console errors.
 - Packaged macOS smoke: Today → Focus → note → close → reopen → note restored. Тестовая заметка
   удалена после проверки.
 
 ## Release blockers / optional / post-release
 
-### Блокирует публичный tag/publish
+### Публичная проверка
 
-- В checkout нет Git remote, поэтому Pages deployment, его реальный URL и GitHub-hosted Actions ещё
-  не запущены. URL не выдуман, tag `v1.0.0` не создан.
-- In-app browser Codex не подтвердил настоящий Service Worker offline runtime: build-time precache
-  manifest и все его URL проверены, но после отключения preview lazy routes не обслуживались в этом
-  browser sandbox. Перед публичным tag нужен один install → DevTools Offline → reload smoke в
-  обычном Chrome/Safari на опубликованном Pages URL.
+- Source push, GitHub-hosted CI, Pages deployment и публичный representative browser flow прошли.
+- Service worker использует versioned cache `v10`, pre-cache manifest и network-first navigation;
+  install → авиарежим → reload на физическом iPhone остаётся пользовательской acceptance-проверкой.
 
 ### Не блокирует локальный 1.0.0
 
