@@ -43,6 +43,7 @@ def ensure_database_ready(settings: Settings | None = None) -> None:
     _ensure_data_dir(settings or get_settings())
 
 
+_ensure_data_dir(_settings)
 engine = create_engine_for(_settings)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 

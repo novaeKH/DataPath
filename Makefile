@@ -1,6 +1,6 @@
 # DataPath 1.0.0 — development, validation and native release commands.
 
-.PHONY: dev dev-backend dev-frontend sync-content validate-content release-snapshot test lint build build-web build-macos ios-sync ios-open check prod
+.PHONY: dev dev-backend dev-frontend migrate sync-content validate-content release-snapshot test lint build build-web build-macos ios-sync ios-open check prod
 
 BACKEND = cd backend && PYTHONPATH=
 FRONTEND = cd frontend
@@ -17,8 +17,12 @@ dev-backend:
 dev-frontend:
 	$(FRONTEND) && npm run dev
 
+## Подготовить локальную SQLite schema (безопасно повторяется на существующей базе).
+migrate:
+	$(BACKEND) uv run alembic upgrade head
+
 ## Синхронизация content/vault → SQLite каталог
-sync-content:
+sync-content: migrate
 	$(BACKEND) uv run python -m app.cli.content sync
 
 ## Валидация vault (без изменения БД)
@@ -27,7 +31,7 @@ validate-content:
 	$(BACKEND) uv run python -m app.cli.content quality
 
 ## Канонический offline snapshot для PWA, macOS и iOS.
-release-snapshot:
+release-snapshot: sync-content
 	$(BACKEND) .venv/bin/python -m app.cli.release_snapshot
 
 ## Все тесты (backend pytest + frontend vitest)
