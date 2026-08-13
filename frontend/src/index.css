@@ -188,11 +188,30 @@ html.theme-transition * {
 }
 
 .dp-lesson-document .dp-prose-flow .dp-scene {
-  padding: 14px 0;
+  padding: 10px 0;
 }
 
 .dp-lesson-document .dp-prose-flow + .dp-prose-flow .dp-scene {
-  padding-top: 6px;
+  padding-top: 4px;
+}
+
+.dp-lesson-section-title {
+  margin: 42px 0 10px;
+  padding-top: 24px;
+  border-top: 1px solid var(--dp-border-subtle);
+  color: var(--dp-text-primary);
+  font-size: clamp(1.2rem, 1rem + 0.55vw, 1.5rem);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.018em;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.dp-lesson-document .dp-prose-flow:first-child .dp-lesson-section-title {
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .dp-lesson-document .dp-focus-surface {

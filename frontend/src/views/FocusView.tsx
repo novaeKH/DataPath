@@ -16,6 +16,7 @@ import { SceneView } from '../components/lesson/SceneView'
 import type { AssessmentAttempt } from '../components/lesson/CheckpointScene'
 import { LessonNotes } from '../components/lesson/LessonNotes'
 import { LessonOutline } from '../components/lesson/LessonOutline'
+import { InlineMarkdownContent } from '../components/lesson/MarkdownContent'
 import { EmptyState, ErrorState, LoadingBlock } from '../components/ui/PageState'
 import { Button } from '../components/ui/Button'
 import { buttonClassNames } from '../components/ui/buttonStyles'
@@ -782,9 +783,19 @@ function ExistingLessonView({
             <div className="min-w-0 flex-1 dp-reading">
               <article aria-label="Материал урока" className="dp-lesson-document">
                 {scenes.map((scene, index) => {
-                  const proseLike = ['markdown', 'formula', 'code', 'table', 'visual'].includes(
-                    scene.type,
-                  )
+                  const proseLike = [
+                    'markdown',
+                    'formula',
+                    'code',
+                    'callout',
+                    'table',
+                    'visual',
+                  ].includes(scene.type)
+                  const sourceHeading = scene.source_heading?.trim() || null
+                  const previousHeading =
+                    index > 0 ? scenes[index - 1]?.source_heading?.trim() : null
+                  const startsSourceSection =
+                    proseLike && sourceHeading !== null && sourceHeading !== previousHeading
                   return (
                     <div
                       key={scene.id}
@@ -795,7 +806,16 @@ function ExistingLessonView({
                       data-scene-index={index}
                       className={proseLike ? 'dp-prose-flow' : 'dp-focus-surface'}
                     >
-                      <SceneView scene={scene} onAssessmentAttempt={handleAssessmentAttempt} />
+                      {startsSourceSection && (
+                        <h2 className="dp-lesson-section-title">
+                          <InlineMarkdownContent markdown={sourceHeading} />
+                        </h2>
+                      )}
+                      <SceneView
+                        scene={scene}
+                        showTitle={!proseLike || scene.source_content_id == null}
+                        onAssessmentAttempt={handleAssessmentAttempt}
+                      />
                     </div>
                   )
                 })}

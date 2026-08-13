@@ -201,3 +201,25 @@ export function MarkdownContent({ markdown }: { markdown: string }) {
     </div>
   )
 }
+
+/** Компактный Markdown/KaTeX для заголовков без дополнительного paragraph wrapper. */
+export function InlineMarkdownContent({ markdown }: { markdown: string }) {
+  // Заголовок вида "3. Механика" не должен превращаться в ordered list.
+  const inlineMarkdown = markdown.replace(/^(\s*\d+)\.\s+/, '$1\\. ')
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[
+        [rehypeKatex, { throwOnError: false }],
+        [rehypeSanitize, sanitizeSchema],
+      ]}
+      components={{
+        p: ({ children }) => <>{children}</>,
+        a: SafeLink,
+        code: ({ children }) => <code className="rounded px-1 font-mono">{children}</code>,
+      }}
+    >
+      {inlineMarkdown}
+    </ReactMarkdown>
+  )
+}

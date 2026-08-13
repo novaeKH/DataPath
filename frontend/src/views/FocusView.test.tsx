@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -228,6 +228,39 @@ describe('FocusView: урок', () => {
     renderFocus('/focus/lesson.classic-ml.trees.tree')
     expect((await screen.findAllByText(/Идея за 30 секунд/)).length).toBeGreaterThan(0)
     expect(screen.getByText(/Раздел 1 из 5/)).toBeInTheDocument()
+  })
+
+  it('renders one structural section heading without repeating generated scene titles', async () => {
+    const duplicatedLine = 'Дерево выбирает лучший порог по уменьшению impurity.'
+    const lesson = makeLesson({
+      scenes: [
+        {
+          id: 'scene-01',
+          type: 'markdown',
+          title: '3. Как дерево выбирает split',
+          source_heading: '3. Как дерево выбирает split',
+          source_content_id: 'concept.datapath-v2.046',
+          display_title: duplicatedLine,
+          markdown: duplicatedLine,
+        },
+        {
+          id: 'scene-02',
+          type: 'formula',
+          title: '3. Как дерево выбирает split',
+          source_heading: '3. Как дерево выбирает split',
+          source_content_id: 'concept.datapath-v2.046',
+          display_title: 'Gini gain',
+          formula: '\\operatorname{Gain}=0.2',
+        },
+      ],
+    })
+    stubFetch(lesson)
+    renderFocus('/focus/lesson.classic-ml.trees.tree')
+
+    const article = await screen.findByRole('article', { name: 'Материал урока' })
+    expect(within(article).getAllByText('3. Как дерево выбирает split')).toHaveLength(1)
+    expect(within(article).getAllByText(duplicatedLine)).toHaveLength(1)
+    expect(within(article).queryByText('Gini gain')).toBeNull()
   })
 
   it('navigates between scenes with Next/Back', async () => {

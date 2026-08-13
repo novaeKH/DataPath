@@ -20,6 +20,11 @@
 - Focus показывает prose-like scenes (Markdown, formula, code, table, inline figure) единым
   непрерывным документом. Checkpoint, self-assessment, interactive lab и visual demo остаются
   отдельными учебными surfaces.
+- Внутри документа показывается один source-backed H2 на смысловой раздел; автоматически
+  сгенерированные scene titles не дублируют первую строку или вложенный H3. Outline строится по
+  разделам, ограничен 12 пунктами и компактно отображает длинные названия.
+- Canonical LaTeX delimiters `\[…\]` и `\(...\)` нормализуются parser-ом и отображаются через
+  KaTeX, включая формулы и математические заголовки.
 - Outline выводит не больше 12 смысловых точек вместо десятков технических scenes; desktop rail и
   mobile details используют одинаковую навигацию.
 - Resume position, scene progress, lesson completion, notes, previous/next lesson и Review scheduling
@@ -33,7 +38,7 @@
   Dropout, CNN, pooling, RNN, LSTM, embeddings, Attention и Transformer.
 - Assets лежат в `frontend/public/content-assets/datapath-v2/figures/`; Markdown renderer добавляет
   base-path-safe URL, lazy loading, alt и caption.
-- Service worker cache поднят до `datapath-v11-content-v2` и pre-cache-ит все 21 figure вместе с
+- Service worker cache поднят до `datapath-v12-lesson-reading` и pre-cache-ит все 21 figure вместе с
   release snapshot, не затрагивая localStorage.
 
 ## Local state migration

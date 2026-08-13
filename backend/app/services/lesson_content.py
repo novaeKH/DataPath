@@ -280,7 +280,7 @@ def _contains_formula(text: str) -> bool:
     """Есть ли LaTeX-формулы в тексте."""
     return bool(
         re.search(
-            r"\$\$|\$[^$]+\$|\\operatorname|\\frac|\\sum|\\int|\\alpha|\\beta|\\theta"
+            r"\$\$|\$[^$]+\$|\\operatorname|\\frac|\\sum|\\int|\\cdot|\\alpha|\\beta|\\theta"
             r"|\\widehat|\\sigma|\\Omega|\\lambda|\\gamma|\\eta|\\mathcal|\\text\{|\\left|\\right",
             text,
         )
@@ -309,6 +309,11 @@ def _contains_code(text: str) -> bool:
 def _contains_visual(text: str) -> bool:
     """Есть ли изображения/embeds в тексте."""
     return bool(re.search(r"!\[|!\[\[", text))
+
+
+def _normalize_inline_math_delimiters(text: str) -> str:
+    r"""Convert canonical LaTeX \(...\) to remark-math-compatible $...$."""
+    return re.sub(r"\\\((.+?)\\\)", r"$\1$", text, flags=re.DOTALL)
 
 
 def _normalize_heading(heading: str) -> str:
@@ -390,7 +395,7 @@ def _split_blocks(text: str) -> list[_Block]:
     """Детерминированное блочное разбиение Markdown.
 
     Поддерживает: H1/H2/H3-заголовки, параграфы, списки, таблицы, blockquote,
-    fenced code blocks, LaTeX-блоки ($$...$$) и Obsidian callouts.
+    fenced code blocks, LaTeX-блоки ($$...$$ и \\[...\\]) и Obsidian callouts.
     """
     lines = text.splitlines()
     blocks: list[_Block] = []
@@ -402,6 +407,10 @@ def _split_blocks(text: str) -> list[_Block]:
         if buffer:
             content = "\n".join(buffer).strip()
             if content:
+                # remark-math понимает $...$, но canonical chapters также используют
+                # LaTeX-разделители \(...\). Нормализуем только prose blocks: fenced
+                # code уже извлечён выше и остаётся байт-в-байт неизменным.
+                content = _normalize_inline_math_delimiters(content)
                 blocks.append(_Block(kind="markdown", text=content))
             buffer.clear()
 
@@ -413,7 +422,13 @@ def _split_blocks(text: str) -> list[_Block]:
         if re.match(r"^#{1,4}\s+", stripped):
             flush_markdown()
             level = len(re.match(r"^(#+)", stripped).group(1))
-            blocks.append(_Block(kind="heading", level=level, text=stripped.lstrip("#").strip()))
+            blocks.append(
+                _Block(
+                    kind="heading",
+                    level=level,
+                    text=_normalize_inline_math_delimiters(stripped.lstrip("#").strip()),
+                )
+            )
             i += 1
             continue
 
@@ -452,6 +467,26 @@ def _split_blocks(text: str) -> list[_Block]:
                 blocks.append(_Block(kind="math", text=formula))
             continue
 
+        # Стандартный LaTeX display math: \[...\]. Canonical DataPath v2
+        # использует этот синтаксис вместо $$ в сотнях формул.
+        if stripped == r"\[" or (stripped.startswith(r"\[") and stripped.endswith(r"\]")):
+            flush_markdown()
+            formula_lines = []
+            if stripped == r"\[":
+                i += 1
+                while i < n and lines[i].strip() != r"\]":
+                    formula_lines.append(lines[i])
+                    i += 1
+                if i < n:
+                    i += 1  # закрывающий \]
+            else:
+                formula_lines.append(stripped[2:-2])
+                i += 1
+            formula = "\n".join(formula_lines).strip()
+            if formula:
+                blocks.append(_Block(kind="math", text=formula))
+            continue
+
         # Obsidian callout.
         callout_match = re.match(r"^>\s*\[!(\w+)\](.*)$", stripped)
         if callout_match:
@@ -472,7 +507,7 @@ def _split_blocks(text: str) -> list[_Block]:
                 _Block(
                     kind="callout",
                     callout_type=callout_type,
-                    text="\n".join(callout_lines).strip(),
+                    text=_normalize_inline_math_delimiters("\n".join(callout_lines).strip()),
                 )
             )
             continue
@@ -841,7 +876,7 @@ def _scene_metadata(
     scene["source_content_id"] = source_content_id
     scene["source_heading"] = source_heading
     scene["semantic_role"] = semantic_role
-    scene["contains_formula"] = _contains_formula(full_text)
+    scene["contains_formula"] = stype == "formula" or _contains_formula(full_text)
     scene["contains_code"] = _contains_code(full_text)
     scene["contains_visual"] = _contains_visual(full_text)
     return scene

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { MarkdownContent } from './MarkdownContent'
+import { InlineMarkdownContent, MarkdownContent } from './MarkdownContent'
 import { SceneView } from './SceneView'
 import { LessonOutline } from './LessonOutline'
 import type { LessonScene } from '../../lib/api'
@@ -80,6 +80,29 @@ describe('MarkdownContent — inline math (Фаза 6A)', () => {
       />,
     )
     expect(katexCount(container)).toBeGreaterThanOrEqual(1)
+  })
+
+  it('renders canonical multiplication instead of showing raw \\cdot text', () => {
+    const { container } = render(<MarkdownContent markdown={'$$\n2\\cdot16+16=48.\n$$'} />)
+    expect(katexCount(container)).toBeGreaterThanOrEqual(1)
+    const visibleFormula = container.querySelector('.katex-html')?.textContent ?? ''
+    expect(visibleFormula).not.toContain('\\cdot')
+    expect(visibleFormula).toContain('2⋅16')
+  })
+
+  it('renders inline math inside a compact scene heading', () => {
+    const { container } = render(
+      <InlineMarkdownContent markdown={'Почему делим на $\\sqrt{d_k}$'} />,
+    )
+    expect(katexCount(container)).toBe(1)
+    expect(container.querySelector('p')).toBeNull()
+    expect(container.querySelector('.katex-html')?.textContent).toContain('dk')
+  })
+
+  it('keeps a numbered section title inline instead of creating a list', () => {
+    const { container } = render(<InlineMarkdownContent markdown="3. Механика split" />)
+    expect(container.querySelector('ol')).toBeNull()
+    expect(container.textContent).toBe('3. Механика split')
   })
 
   it('renders Gain fraction with n_L and n_R as real subscripts', () => {
@@ -210,6 +233,43 @@ describe('LessonOutline — display_title (Фаза 6A)', () => {
     render(<LessonOutline scenes={scenes} currentIndex={0} onSelect={onSelect} />)
     expect(screen.getByRole('button', { name: /Лаба/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Проверка 1/ })).toBeTruthy()
+  })
+
+  it('uses one source heading for all scenes in the same section', () => {
+    const scenes = [
+      scene({
+        id: 'scene-01',
+        type: 'markdown',
+        source_heading: '4. Механика split',
+        display_title: 'Первое предложение сцены, которое не должно стать пунктом',
+      }),
+      scene({
+        id: 'scene-02',
+        type: 'formula',
+        source_heading: '4. Механика split',
+        display_title: 'Gini',
+      }),
+    ]
+    render(<LessonOutline scenes={scenes} currentIndex={1} onSelect={onSelect} />)
+    const section = screen.getByRole('button', { name: '4. Механика split' })
+    expect(section).toHaveAttribute('aria-current', 'step')
+    expect(screen.queryByRole('button', { name: /Первое предложение/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Gini' })).toBeNull()
+  })
+
+  it('compacts an overflowing outline label but keeps the full title', () => {
+    const full =
+      '10. Почему calibrator нельзя обучать на тех же predictions, где base model уже обучалась'
+    render(
+      <LessonOutline
+        scenes={[scene({ source_heading: full, display_title: full })]}
+        currentIndex={0}
+        onSelect={onSelect}
+      />,
+    )
+    const button = screen.getByRole('button')
+    expect(button).toHaveAttribute('title', full)
+    expect(button).toHaveTextContent('…')
   })
 })
 

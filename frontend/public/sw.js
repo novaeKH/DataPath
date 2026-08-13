@@ -1,4 +1,4 @@
-const VERSION = 'datapath-v11-content-v2'
+const VERSION = 'datapath-v12-lesson-reading'
 const SHELL_CACHE = `${VERSION}-shell`
 const STATIC_CACHE = `${VERSION}-static`
 const DATA_CACHE = `${VERSION}-data`

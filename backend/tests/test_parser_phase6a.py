@@ -137,6 +137,41 @@ Pure node имеет zero impurity."""
     assert formulas[1]["title"] == "Classification criteria"
 
 
+def test_latex_bracket_formula_is_a_formula_scene():
+    md = r"""## Числовой пример
+
+Параметры первого слоя:
+
+\[
+2\cdot16+16=48.
+\]
+
+Два входа, шестнадцать нейронов и bias каждого нейрона."""
+    scenes = build_source_scenes(md)
+    formulas = [scene for scene in scenes if scene["type"] == "formula"]
+
+    assert len(formulas) == 1
+    assert formulas[0]["formula"] == r"2\cdot16+16=48."
+    assert formulas[0]["contains_formula"] is True
+    assert "Два входа" in formulas[0]["explanation"]
+
+
+def test_inline_latex_parentheses_are_normalized_but_code_is_untouched():
+    md = r"""## Производная
+
+Для функции \(f(x)=x^2\) производная равна \(2x\).
+
+```python
+literal = r"\(not math inside code\)"
+    ```"""
+    scenes = build_source_scenes(md)
+    code = next(scene for scene in scenes if scene["type"] == "code")
+
+    assert "$f(x)=x^2$" in code["caption"]
+    assert "$2x$" in code["caption"]
+    assert r"\(not math inside code\)" in code["code"]
+
+
 # ======================================================================
 # Code merge
 # ======================================================================

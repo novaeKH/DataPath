@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from 'react'
 import type { LessonScene } from '../../lib/api'
 import { isPackagedRuntime } from '../../platform/localApi'
-import { MarkdownContent } from './MarkdownContent'
+import { InlineMarkdownContent, MarkdownContent } from './MarkdownContent'
 import { CheckpointScene, type AssessmentAttempt } from './CheckpointScene'
 
 const LabHost = lazy(() =>
@@ -23,6 +23,14 @@ function InteractiveFallback() {
 /** Пользовательский заголовок сцены: display_title (Фаза 6A) → title. */
 function sceneTitle(scene: LessonScene): string | null {
   return scene.display_title ?? scene.title ?? null
+}
+
+function SceneHeading({ title, className }: { title: string; className: string }) {
+  return (
+    <h3 className={className} style={{ color: 'var(--dp-text-primary)' }}>
+      <InlineMarkdownContent markdown={title} />
+    </h3>
+  )
 }
 
 /* ===============================================================
@@ -62,16 +70,12 @@ function SceneRoleBadge({ role, type }: { role?: string | null; type: string }) 
 }
 
 /** Markdown theory scene with optional role badge. */
-function MarkdownScene({ scene }: { scene: LessonScene }) {
+function MarkdownScene({ scene, showTitle }: { scene: LessonScene; showTitle: boolean }) {
   const title = sceneTitle(scene)
   return (
     <section className="dp-scene">
       <SceneRoleBadge role={scene.semantic_role} type={scene.type} />
-      {title && (
-        <h3 className="mb-3 text-lg font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
-          {title}
-        </h3>
-      )}
+      {showTitle && title && <SceneHeading title={title} className="mb-3 text-lg font-semibold" />}
       {scene.markdown && (
         <div className="dp-content">
           <MarkdownContent markdown={scene.markdown} />
@@ -82,17 +86,13 @@ function MarkdownScene({ scene }: { scene: LessonScene }) {
 }
 
 /** Formula scene with explanation — unescapes double-backslashes from backend. */
-function FormulaScene({ scene }: { scene: LessonScene }) {
+function FormulaScene({ scene, showTitle }: { scene: LessonScene; showTitle: boolean }) {
   const title = sceneTitle(scene)
   const formula = scene.formula ? scene.formula.replace(/\\\\/g, '\\') : null
   return (
     <section className="dp-scene">
       <SceneRoleBadge role={scene.semantic_role} type={scene.type} />
-      {title && (
-        <h3 className="mb-2 text-lg font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
-          {title}
-        </h3>
-      )}
+      {showTitle && title && <SceneHeading title={title} className="mb-2 text-lg font-semibold" />}
       {formula && (
         <div className="dp-formula-block">
           <div className="overflow-x-auto">
@@ -110,7 +110,7 @@ function FormulaScene({ scene }: { scene: LessonScene }) {
 }
 
 /** Code scene with language label, copy button, line wrapping. */
-function CodeSceneComponent({ scene }: { scene: LessonScene }) {
+function CodeSceneComponent({ scene, showTitle }: { scene: LessonScene; showTitle: boolean }) {
   const title = sceneTitle(scene)
   const [copied, setCopied] = useState(false)
   const languageLabel = scene.language && scene.language !== 'text' ? scene.language : null
@@ -126,11 +126,7 @@ function CodeSceneComponent({ scene }: { scene: LessonScene }) {
   return (
     <section className="dp-scene">
       <SceneRoleBadge role={scene.semantic_role} type={scene.type} />
-      {title && (
-        <h3 className="mb-2 text-lg font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
-          {title}
-        </h3>
-      )}
+      {showTitle && title && <SceneHeading title={title} className="mb-2 text-lg font-semibold" />}
       <div className="dp-code-block">
         <div
           className="flex items-center justify-between px-4 py-1.5 text-xs"
@@ -166,7 +162,7 @@ function CodeSceneComponent({ scene }: { scene: LessonScene }) {
 }
 
 /** Callout scene: warning, tip, important note. */
-function CalloutScene({ scene }: { scene: LessonScene }) {
+function CalloutScene({ scene, showTitle }: { scene: LessonScene; showTitle: boolean }) {
   const title = sceneTitle(scene)
   const type = scene.callout_type ?? 'note'
   const typeStyles: Record<string, { bg: string; border: string; icon: string }> = {
@@ -179,11 +175,7 @@ function CalloutScene({ scene }: { scene: LessonScene }) {
 
   return (
     <section className="dp-scene">
-      {title && (
-        <h3 className="mb-2 text-lg font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
-          {title}
-        </h3>
-      )}
+      {showTitle && title && <SceneHeading title={title} className="mb-2 text-lg font-semibold" />}
       <div
         className="rounded-lg px-4 py-3 text-sm"
         style={{
@@ -208,20 +200,22 @@ function CalloutScene({ scene }: { scene: LessonScene }) {
 
 export function SceneView({
   scene,
+  showTitle = true,
   onAssessmentAttempt,
 }: {
   scene: LessonScene
+  showTitle?: boolean
   onAssessmentAttempt?: (attempt: AssessmentAttempt) => void | Promise<void>
 }) {
   switch (scene.type) {
     case 'markdown':
-      return <MarkdownScene scene={scene} />
+      return <MarkdownScene scene={scene} showTitle={showTitle} />
     case 'formula':
-      return <FormulaScene scene={scene} />
+      return <FormulaScene scene={scene} showTitle={showTitle} />
     case 'code':
-      return <CodeSceneComponent scene={scene} />
+      return <CodeSceneComponent scene={scene} showTitle={showTitle} />
     case 'callout':
-      return <CalloutScene scene={scene} />
+      return <CalloutScene scene={scene} showTitle={showTitle} />
     case 'checkpoint':
       return <CheckpointScene scene={scene} onAttempt={onAssessmentAttempt} />
     case 'interactive_lab':
@@ -249,9 +243,9 @@ export function SceneView({
         </Suspense>
       ) : null
     case 'table':
-      return <MarkdownScene scene={scene} />
+      return <MarkdownScene scene={scene} showTitle={showTitle} />
     case 'visual':
-      return <MarkdownScene scene={scene} />
+      return <MarkdownScene scene={scene} showTitle={showTitle} />
     default:
       return null
   }
