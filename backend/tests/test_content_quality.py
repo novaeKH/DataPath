@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import json
 
-from app.services.content_quality import ContentQualityAuditor
+from app.services.content_quality import (
+    ContentQualityAuditor,
+    _incomplete_python_examples,
+    _invalid_python_examples,
+    _unpaired_contrast_sections,
+)
 from app.services.content_sync import ContentSyncService
 
 LESSON_ONE = "lesson.classic-ml.one.one"
@@ -154,3 +159,65 @@ def test_quality_warnings_do_not_fail_exit(tmp_path, fixture_vault, db_session_f
     # CLI возвращает 1 только при errors
     exit_code = 1 if result["errors"] else 0
     assert exit_code == 0
+
+
+def test_readability_rules_find_incomplete_examples() -> None:
+    incomplete = """## Example
+
+```python
+if value is None:
+    ...
+```"""
+    complete = """## Example
+
+```python
+if value is None:
+    value = "default"
+```"""
+
+    assert _incomplete_python_examples(incomplete) == [3]
+    assert _incomplete_python_examples(complete) == []
+
+
+def test_readability_rules_require_both_sides_of_contrast() -> None:
+    incomplete = """## Mutable default
+
+Плохо:
+
+```python
+def f(items=[]):
+    return items
+```"""
+    complete = (
+        incomplete
+        + """
+
+Правильно:
+
+```python
+def f(items=None):
+    return [] if items is None else items
+```"""
+    )
+
+    assert _unpaired_contrast_sections(incomplete) == ["Mutable default"]
+    assert _unpaired_contrast_sections(complete) == []
+
+
+def test_readability_rules_compile_python_examples() -> None:
+    invalid = """## Example
+
+```python
+def predict(x):
+```
+"""
+    valid = """## Example
+
+```python
+def predict(x):
+    return x * 2
+```
+"""
+
+    assert _invalid_python_examples(invalid)[0][0] == 3
+    assert _invalid_python_examples(valid) == []

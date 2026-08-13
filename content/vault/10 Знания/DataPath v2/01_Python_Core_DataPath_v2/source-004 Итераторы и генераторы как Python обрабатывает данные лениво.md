@@ -160,7 +160,10 @@ def flatten(parts):
 
 ```python
 def read_rows(path):
-    ...
+    with open(path, encoding="utf-8") as file:
+        for line in file:
+            name, age, x = line.rstrip().split(",")
+            yield {"name": name, "age": int(age), "x": float(x)}
 
 def valid(rows):
     for row in rows:
@@ -190,7 +193,7 @@ disk → validate → transform → aggregate
 
 ```python
 for i, row in enumerate(rows):
-    ...
+    print(i, row["name"])
 ```
 
 не нужен manual counter.
@@ -199,7 +202,7 @@ for i, row in enumerate(rows):
 
 ```python
 for x, y in zip(xs, ys):
-    ...
+    print(x, y)
 ```
 
 Итерация прекращается по shortest iterable.

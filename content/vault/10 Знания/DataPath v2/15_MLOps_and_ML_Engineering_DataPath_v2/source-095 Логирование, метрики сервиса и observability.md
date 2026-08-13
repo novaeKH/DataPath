@@ -444,8 +444,10 @@ return safe 500
 
 Do not:
 ```python
+try:
+    prediction = model.predict(features)
 except Exception:
-    return {"prediction": 0}
+    return {"prediction": 0}  # реальная ошибка замаскирована под корректный ответ
 ```
 
 Silent fallback corrupts business behavior.

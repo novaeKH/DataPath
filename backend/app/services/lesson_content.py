@@ -49,7 +49,17 @@ from app.db.session import SessionLocal
 from app.services.labs.registry import LabRegistry, get_default_registry
 
 # Заголовки-мета, которые не становятся учебными сценами.
-META_SECTION_TITLES = {"Связи", "Источники", "Ссылки", "Links", "Sources"}
+META_SECTION_TITLES = {
+    "Связи",
+    "Источники",
+    "Ссылки",
+    "Links",
+    "Sources",
+    # Эти canonical-разделы описывают будущий UI словами. В production
+    # вместо такого технического ТЗ уже подключён настоящий visual_demo.
+    "Визуализация DataPath",
+    "Интерактивная визуализация DataPath",
+}
 
 # Типы сцен, поддерживаемые frontend.
 SCENE_TYPES = (
@@ -339,6 +349,12 @@ def _normalize_heading(heading: str) -> str:
     return h
 
 
+def _is_meta_section_title(heading: str) -> bool:
+    """Служебный H2 с учётом регистра и canonical-нумерации."""
+    normalized = _normalize_heading(heading)
+    return any(normalized == _normalize_heading(title) for title in META_SECTION_TITLES)
+
+
 def _normalized_match(heading: str, candidates: list[str]) -> str | None:
     """Ищет совпадение нормализованного заголовка среди кандидатов.
 
@@ -549,23 +565,6 @@ def _consume_next_short_text(
     return None, False
 
 
-def _consume_prev_short_text(blocks: list[_Block], idx: int, max_len: int) -> str | None:
-    """Поглощает короткий текст НЕПОСРЕДСТВЕННО перед формулой/кодом (intro).
-
-    Смотрим только соседний блок: вводная строка относится к ближайшему
-    специальному блоку, а не к формуле через одну.
-    """
-    j = idx - 1
-    if j >= 0:
-        block = blocks[j]
-        if block.kind == "markdown" and not block.consumed:
-            text = block.text.strip()
-            if len(text) <= max_len and not text.startswith("|"):
-                block.consumed = True
-                return text
-    return None
-
-
 def _strip_frontmatter(text: str) -> str:
     """Убирает YAML frontmatter (--- ... ---), если он есть в начале текста."""
     if text.startswith("---"):
@@ -745,9 +744,9 @@ def _assign_display_titles(scenes: list[dict]) -> list[dict]:
         if not display and stype == "formula":
             display = _formula_label(scene)
             if not display:
-                display = _first_sentence(scene.get("explanation") or "")
+                display = _first_sentence(scene.get("intro") or scene.get("explanation") or "")
         if not display and stype == "code":
-            display = _first_sentence(scene.get("caption") or "")
+            display = _first_sentence(scene.get("intro") or scene.get("caption") or "")
         if not display and stype == "table":
             display = (
                 "Сравнение"
@@ -856,9 +855,9 @@ def _scene_metadata(
     if stype == "markdown" or stype == "callout":
         wc = _word_count(scene.get("markdown", ""))
     elif stype == "formula":
-        wc = _word_count(scene.get("explanation", ""))
+        wc = _word_count(scene.get("intro", "")) + _word_count(scene.get("explanation", ""))
     elif stype == "code":
-        wc = _word_count(scene.get("caption", ""))
+        wc = _word_count(scene.get("intro", "")) + _word_count(scene.get("caption", ""))
     else:
         wc = 0
 
@@ -867,7 +866,21 @@ def _scene_metadata(
     if stype == "markdown" or stype == "callout":
         full_text = scene.get("markdown", "")
     elif stype == "formula":
-        full_text = (scene.get("formula", "") or "") + " " + (scene.get("explanation", "") or "")
+        full_text = " ".join(
+            (
+                scene.get("intro", "") or "",
+                scene.get("formula", "") or "",
+                scene.get("explanation", "") or "",
+            )
+        )
+    elif stype == "code":
+        full_text = " ".join(
+            (
+                scene.get("intro", "") or "",
+                scene.get("code", "") or "",
+                scene.get("caption", "") or "",
+            )
+        )
 
     title = scene.get("title")
     semantic_role = _detect_semantic_role(title, full_text, stype)
@@ -877,7 +890,7 @@ def _scene_metadata(
     scene["source_heading"] = source_heading
     scene["semantic_role"] = semantic_role
     scene["contains_formula"] = stype == "formula" or _contains_formula(full_text)
-    scene["contains_code"] = _contains_code(full_text)
+    scene["contains_code"] = stype == "code" or _contains_code(full_text)
     scene["contains_visual"] = _contains_visual(full_text)
     return scene
 
@@ -1000,8 +1013,8 @@ def _merge_two_markdown_scenes(first: dict, second: dict) -> dict:
 def _merge_intro_with_special(intro: dict, special: dict) -> dict:
     """Сливает короткий intro с formula/code/visual сценой.
 
-    Для formula: intro + explanation объединяются.
-    Для code: intro становится частью caption.
+    Вводный текст хранится отдельно от пояснения после специального блока,
+    чтобы renderer мог сохранить исходный порядок чтения Markdown.
     """
     intro_text = (intro.get("markdown") or "").strip()
     intro_title = intro.get("title")
@@ -1009,14 +1022,13 @@ def _merge_intro_with_special(intro: dict, special: dict) -> dict:
 
     result = dict(special)  # копируем специальную сцену
 
-    if special_type == "formula":
-        expl = (special.get("explanation") or "").strip()
-        combined = f"{intro_text}\n\n{expl}".strip() if intro_text else expl
-        result["explanation"] = combined
-    elif special_type == "code":
-        cap = (special.get("caption") or "").strip()
-        combined = f"{intro_text}\n\n{cap}".strip() if intro_text else cap
-        result["caption"] = combined
+    if special_type in ("formula", "code"):
+        existing_intro = (special.get("intro") or "").strip()
+        result["intro"] = (
+            f"{intro_text}\n\n{existing_intro}".strip()
+            if intro_text and existing_intro
+            else intro_text or existing_intro
+        )
 
     # Сохраняем заголовок intro если у special нет своего
     if intro_title and not special.get("title"):
@@ -1082,7 +1094,7 @@ def build_source_scenes(
                 current_title = None
                 skipping = False
             elif block.level == 2:
-                if block.text.strip() in META_SECTION_TITLES:
+                if _is_meta_section_title(block.text):
                     skipping = True
                 else:
                     skipping = False
@@ -1100,51 +1112,38 @@ def build_source_scenes(
             current_buffer.append(block.text)
 
         elif block.kind == "math":
-            # Не сбрасываем короткий буфер в отдельную сцену — используем как intro.
+            # Короткая вводная относится к формуле; длинное объяснение остаётся
+            # самостоятельной markdown-сценой ПЕРЕД формулой.
             intro_text = _drain_short_buffer()
-            if not intro_text:
-                intro_text = _consume_prev_short_text(blocks, idx, max_len=100)
+            if intro_text is None and current_buffer:
+                flush_current()
             # Поглощаем текст ПОСЛЕ формулы (explanation) — consume, не peek!
             explanation, _ = _consume_next_short_text(blocks, idx, max_len=400)
-
-            combined_expl = ""
-            if intro_text:
-                combined_expl = intro_text
-            if explanation:
-                combined_expl = (
-                    f"{combined_expl}\n\n{explanation}".strip() if combined_expl else explanation
-                )
 
             scene = {
                 "type": "formula",
                 "title": current_title,
+                "intro": intro_text,
                 "formula": block.text,
-                "explanation": combined_expl,
+                "explanation": explanation,
             }
             scenes.append(_scene_metadata(scene, source_content_id, current_title))
 
         elif block.kind == "code":
-            # Не сбрасываем короткий буфер в отдельную сцену — используем как intro.
+            # Сохраняем исходный порядок: intro → code → caption.
             intro_text = _drain_short_buffer()
-            if not intro_text:
-                intro_text = _consume_prev_short_text(blocks, idx, max_len=100)
+            if intro_text is None and current_buffer:
+                flush_current()
             # Поглощаем текст ПОСЛЕ кода (caption) — consume!
             caption, _ = _consume_next_short_text(blocks, idx, max_len=200)
-
-            combined_caption = ""
-            if intro_text:
-                combined_caption = intro_text
-            if caption:
-                combined_caption = (
-                    f"{combined_caption}\n\n{caption}".strip() if combined_caption else caption
-                )
 
             scene = {
                 "type": "code",
                 "title": current_title,
+                "intro": intro_text,
                 "language": block.language,
                 "code": block.text,
-                "caption": combined_caption,
+                "caption": caption,
             }
             scenes.append(_scene_metadata(scene, source_content_id, current_title))
 

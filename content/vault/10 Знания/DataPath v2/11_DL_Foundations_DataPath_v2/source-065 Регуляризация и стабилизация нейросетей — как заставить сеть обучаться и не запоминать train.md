@@ -222,7 +222,8 @@ model.eval()
 
 ```python
 with torch.no_grad():
-    ...
+    validation_logits = model(X_valid)
+    validation_loss = loss_fn(validation_logits, y_valid)
 ```
 
 `eval()` и `no_grad()` решают разные задачи.
@@ -257,7 +258,7 @@ torch.no_grad()
 ```python
 model.eval()
 with torch.no_grad():
-    ...
+    probabilities = model(X_new).softmax(dim=1)
 ```
 
 ---

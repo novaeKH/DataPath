@@ -264,9 +264,12 @@ PyTorch операции вроде matrix multiplication реализованы
 Плохо:
 
 ```python
+outputs = []
 for sample in batch:
-    for neuron in neurons:
-        ...
+    row = []
+    for weights, bias in neurons:
+        row.append(sum(x * w for x, w in zip(sample, weights)) + bias)
+    outputs.append(row)
 ```
 
 Лучше:

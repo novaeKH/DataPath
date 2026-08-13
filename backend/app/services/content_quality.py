@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 from pathlib import Path
@@ -47,6 +48,53 @@ PLACEHOLDER_MARKERS = (
     "контент готов как draft",
     "включать в приложение после реализации",
 )
+
+_BAD_EXAMPLE_MARKER = re.compile(r"(?mi)^(?:Плохо|Неправильно):\s*$")
+_GOOD_EXAMPLE_MARKER = re.compile(r"(?mi)^(?:Правильно|Хорошо|Лучше):\s*$")
+_PYTHON_FENCED_BLOCK = re.compile(
+    r"```(?:python|py)[ \t]*\n(.*?)\n```",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+_INCOMPLETE_PYTHON_BLOCK = re.compile(
+    r"(?:^[ \t]*(?:\.\.\.|…)(?:[ \t]*#.*)?$|(?:\+=|=|return)[ \t]*(?:\.\.\.|…)(?:[ \t]*#.*)?$)",
+    flags=re.MULTILINE,
+)
+
+
+def _unpaired_contrast_sections(markdown: str) -> list[str]:
+    """Разделы, где показана только одна половина пары «ошибка → исправление»."""
+    result: list[str] = []
+    for section in re.split(r"(?m)^##\s+", markdown)[1:]:
+        lines = section.splitlines()
+        if not lines:
+            continue
+        body = "\n".join(lines[1:])
+        has_bad = bool(_BAD_EXAMPLE_MARKER.search(body))
+        has_good = bool(_GOOD_EXAMPLE_MARKER.search(body))
+        if has_bad != has_good:
+            result.append(lines[0].strip())
+    return result
+
+
+def _invalid_python_examples(markdown: str) -> list[tuple[int, str]]:
+    """Синтаксические ошибки в fenced Python-примерах с номером строки source."""
+    result: list[tuple[int, str]] = []
+    for match in _PYTHON_FENCED_BLOCK.finditer(markdown):
+        line = markdown[: match.start()].count("\n") + 1
+        try:
+            ast.parse(match.group(1))
+        except SyntaxError as exc:
+            result.append((line, exc.msg))
+    return result
+
+
+def _incomplete_python_examples(markdown: str) -> list[int]:
+    """Строки fenced Python-блоков с учебным пропуском вместо действия."""
+    return [
+        markdown[: match.start()].count("\n") + 1
+        for match in _PYTHON_FENCED_BLOCK.finditer(markdown)
+        if _INCOMPLETE_PYTHON_BLOCK.search(match.group(1))
+    ]
 
 
 class ContentQualityAuditor:
@@ -232,6 +280,59 @@ class ContentQualityAuditor:
                     )
                     break
 
+            incomplete_python = _incomplete_python_examples(source_body)
+            if incomplete_python:
+                errors.append(
+                    {
+                        "lesson_id": lid,
+                        "code": "incomplete_python_example",
+                        "message": (
+                            "Python-пример содержит исполняемый пропуск `...` вместо действия "
+                            f"(строки: {', '.join(map(str, incomplete_python))})"
+                        ),
+                    }
+                )
+
+            invalid_python = _invalid_python_examples(source_body)
+            if invalid_python:
+                details = ", ".join(f"строка {line}: {message}" for line, message in invalid_python)
+                errors.append(
+                    {
+                        "lesson_id": lid,
+                        "code": "invalid_python_example",
+                        "message": f"Python-пример не разбирается интерпретатором ({details})",
+                    }
+                )
+
+            unpaired_sections = _unpaired_contrast_sections(source_body)
+            if unpaired_sections:
+                errors.append(
+                    {
+                        "lesson_id": lid,
+                        "code": "unpaired_contrast_example",
+                        "message": (
+                            "Неполная пара «неправильно/правильно» в разделах: "
+                            + ", ".join(unpaired_sections)
+                        ),
+                    }
+                )
+
+            for scene in scenes:
+                if scene.get("type") != "code":
+                    continue
+                caption = scene.get("caption") or ""
+                if _BAD_EXAMPLE_MARKER.search(caption) or _GOOD_EXAMPLE_MARKER.search(caption):
+                    errors.append(
+                        {
+                            "lesson_id": lid,
+                            "scene_id": scene.get("id"),
+                            "code": "misordered_example_label",
+                            "message": (
+                                "Метка примера попала после code block вместо позиции перед ним"
+                            ),
+                        }
+                    )
+
             # --- Warnings ---
 
             # Repeated level-2 headings usually indicate a mechanical merge or
@@ -407,9 +508,13 @@ class ContentQualityAuditor:
 
             semantic_roles = {s.get("semantic_role") for s in scenes}
 
-            has_example = "example" in semantic_roles or any(
-                marker in combined_body
-                for marker in ("пример", "например", "example", "mini-case", "мини-кейс")
+            has_example = (
+                "example" in semantic_roles
+                or any(
+                    marker in combined_body
+                    for marker in ("пример", "например", "example", "mini-case", "мини-кейс")
+                )
+                or any(scene.get("type") == "code" for scene in scenes)
             )
             if not has_example:
                 suggestions.append(
@@ -421,7 +526,7 @@ class ContentQualityAuditor:
                 )
             has_visual = bool(
                 {"visual", "visual_demo", "interactive_lab"} & {s.get("type") for s in scenes}
-            )
+            ) or any(scene.get("contains_visual") for scene in scenes)
             if "visualization" not in semantic_roles and not has_visual:
                 suggestions.append(
                     {
@@ -441,9 +546,13 @@ class ContentQualityAuditor:
                         "message": "Урок без кода",
                     }
                 )
-            has_pitfalls = "pitfalls" in semantic_roles or any(
-                marker in combined_body
-                for marker in ("частые ошибки", "типичные ошибки", "pitfall")
+            has_pitfalls = (
+                "pitfalls" in semantic_roles
+                or any(
+                    marker in combined_body
+                    for marker in ("частые ошибки", "типичные ошибки", "pitfall")
+                )
+                or bool(re.search(r"(?mi)^##\s+.*ошиб", source_body))
             )
             if not has_pitfalls:
                 suggestions.append(

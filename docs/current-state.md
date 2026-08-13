@@ -1,6 +1,6 @@
 # DataPath — текущее состояние
 
-> Обновлено 2026-08-13. Рабочая ветка `content/datapath-v2-integration`; release/tag не создаётся.
+> Обновлено 2026-08-13. Рабочая ветка `agent/lesson-reading-quality`; release/tag не создаётся.
 
 ## Canonical curriculum v2
 
@@ -25,6 +25,13 @@
   разделам, ограничен 12 пунктами и компактно отображает длинные названия.
 - Canonical LaTeX delimiters `\[…\]` и `\(...\)` нормализуются parser-ом и отображаются через
   KaTeX, включая формулы и математические заголовки.
+- Parser сохраняет исходный учебный порядок `вводная → code/formula → объяснение`: метки
+  «Неправильно» и «Правильно» больше не оказываются после чужого примера. Контрастные примеры
+  оформлены отдельными спокойными error/success-карточками.
+- Технические source-разделы с описанием будущей визуализации скрыты из урока; вместо текстового
+  mock/spec ученик сразу видит подключённый интерактивный visual demo.
+- 421 fenced Python-пример синтаксически валиден; исполняемые пропуски `...` устранены. Все
+  сравнительные разделы содержат полную пару «неправильно → правильно».
 - Outline выводит не больше 12 смысловых точек вместо десятков технических scenes; desktop rail и
   mobile details используют одинаковую навигацию.
 - Resume position, scene progress, lesson completion, notes, previous/next lesson и Review scheduling
@@ -38,7 +45,7 @@
   Dropout, CNN, pooling, RNN, LSTM, embeddings, Attention и Transformer.
 - Assets лежат в `frontend/public/content-assets/datapath-v2/figures/`; Markdown renderer добавляет
   base-path-safe URL, lazy loading, alt и caption.
-- Service worker cache поднят до `datapath-v12-lesson-reading` и pre-cache-ит все 21 figure вместе с
+- Service worker cache поднят до `datapath-v13-teaching-examples` и pre-cache-ит все 21 figure вместе с
   release snapshot, не затрагивая localStorage.
 
 ## Local state migration
@@ -56,9 +63,9 @@
   сбалансированы.
 - Content sync: 531 scanned, 0 errors, 0 warnings после slug separation source/manifest.
 - Content validator: 0 errors, 0 warnings.
-- Content quality: 100 lessons, 0 errors; остаются только advisory suggestions после устранения
-  единственного `very_short_scene` warning.
-- Полный backend suite проходит: 219 tests. Полный frontend suite проходит: 112 tests.
+- Content quality: 100 lessons, 0 errors, 0 warnings; остаются 38 advisory suggestions по
+  дополнительным визуализациям во вспомогательных темах.
+- Полный backend suite проходит: 227 tests. Полный frontend suite проходит: 120 tests.
 - Ruff, ESLint, TypeScript, Prettier, обычный production build и build с
   `VITE_BASE_PATH=/DataPath/` проходят.
 
@@ -66,5 +73,7 @@
 
 - Non-SQL practice по-прежнему проверяет структуру, но не исполняет arbitrary Python.
 - macOS bundle unsigned/not notarized; это не относится к content v2 migration.
+- Локальный `/Applications/DataPath.app` обновлён той же unsigned-сборкой 1.0.0; после обновления
+  запущенное приложение нужно закрыть и открыть снова.
 - Focus bundle остаётся крупнейшим lazy chunk (~471 kB / ~140 kB gzip).
 - Release snapshot собран и проверен локально; внешний deployment status фиксируется в GitHub.

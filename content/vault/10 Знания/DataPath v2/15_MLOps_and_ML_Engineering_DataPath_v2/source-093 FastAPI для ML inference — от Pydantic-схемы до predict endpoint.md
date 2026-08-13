@@ -45,7 +45,8 @@ JSON input
 ```python
 @app.post("/predict")
 def predict(x: dict):
-    ...
+    probability = float(model.predict_proba([x])[0, 1])
+    return {"probability": probability}
 ```
 
 Нужно правильно решить:
@@ -84,6 +85,7 @@ FastAPI:
 
 ```python
 def predict(payload: dict):
+    return model.predict_proba([payload])[0, 1]
 ```
 
 перекладывает validation на manual code.
@@ -114,6 +116,9 @@ Then:
     "/predict",
     response_model=PredictResponse,
 )
+def predict(request: PredictRequest) -> PredictResponse:
+    score = float(model.predict_proba([request.model_dump()])[0, 1])
+    return PredictResponse(score=score, decision="review", model_version="1.0.0")
 ```
 
 Response schema helps prevent accidental output drift.
@@ -126,13 +131,25 @@ Response schema helps prevent accidental output drift.
 
 ```python
 @app.post("/predict")
-def predict(...):
+def predict(payload: dict):
     model = joblib.load("model.joblib")
+    return {"score": float(model.predict_proba([payload])[0, 1])}
 ```
 
 Each request pays disk/deserialization cost.
 
 Model should load at application startup/lifespan.
+
+Правильно:
+
+```python
+model = joblib.load("model.joblib")
+
+@app.post("/predict")
+def predict(request: PredictionRequest):
+    probability = float(model.predict_proba([request.model_dump()])[0, 1])
+    return {"probability": probability}
+```
 
 ---
 
@@ -399,6 +416,8 @@ Otherwise one client can send million rows and exhaust memory.
 Could expose:
 ```python
 @app.get("/model-info")
+def model_info():
+    return {"name": "churn", "version": "1.4.0"}
 ```
 
 Return non-sensitive:

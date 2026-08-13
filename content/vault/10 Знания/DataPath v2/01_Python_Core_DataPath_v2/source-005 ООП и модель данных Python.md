@@ -29,7 +29,13 @@ tags:
 Пример:
 ```python
 class Standardizer:
-    ...
+    def fit(self, values):
+        self.mean_ = sum(values) / len(values)
+        self.scale_ = (sum((x - self.mean_) ** 2 for x in values) / len(values)) ** 0.5
+        return self
+
+    def transform(self, values):
+        return [(x - self.mean_) / self.scale_ for x in values]
 ```
 
 после `fit` объект хранит mean/std и затем `transform` использует это состояние.
@@ -75,7 +81,7 @@ class Model:
 
 `framework` живёт на class, `name` обычно на instance.
 
-Опасно:
+Неправильно:
 
 ```python
 class Team:
@@ -84,7 +90,7 @@ class Team:
 
 Все instances разделяют один mutable list.
 
-Лучше:
+Правильно:
 ```python
 def __init__(self):
     self.members = []
@@ -135,10 +141,12 @@ class Account:
 
 ```python
 class BaseModel:
-    ...
+    def predict(self, X):
+        raise NotImplementedError
 
 class CatModel(BaseModel):
-    ...
+    def predict(self, X):
+        return ["cat" for _ in X]
 ```
 
 Inheritance полезно для real "is-a" relation, но composition часто проще.

@@ -41,6 +41,8 @@ Python прекращает normal control flow и ищет handler.
 
 ## 2. `try/except`
 
+Правильно:
+
 ```python
 try:
     value = int(raw)
@@ -53,8 +55,10 @@ except ValueError:
 Плохо:
 
 ```python
+try:
+    value = risky_operation()
 except Exception:
-    pass
+    pass  # ошибка потеряна, а программа продолжает работу
 ```
 
 Вы потеряете реальные bugs.
@@ -64,8 +68,8 @@ except Exception:
 ```python
 try:
     data = parse()
-except ValueError:
-    ...
+except ValueError as exc:
+    print(f"Не удалось разобрать данные: {exc}")
 else:
     use(data)
 finally:
@@ -88,7 +92,7 @@ if age < 0:
 
 ```python
 try:
-    ...
+    model_path = config["model_path"]
 except KeyError as exc:
     raise ConfigError("missing field") from exc
 ```
@@ -113,13 +117,17 @@ __exit__
 ## 7. Свой context manager
 
 ```python
+from time import perf_counter
 from contextlib import contextmanager
 
 @contextmanager
 def timer():
-    ...
-    yield
-    ...
+    started = perf_counter()
+    try:
+        yield
+    finally:
+        elapsed = perf_counter() - started
+        print(f"Выполнено за {elapsed:.3f} с")
 ```
 
 Полезен для resources:
@@ -187,7 +195,8 @@ Module code executes on first import in process and result caches in `sys.module
 
 ```python
 def main():
-    ...
+    data = load_data("data.csv")
+    print(f"Загружено строк: {len(data)}")
 
 if __name__ == "__main__":
     main()

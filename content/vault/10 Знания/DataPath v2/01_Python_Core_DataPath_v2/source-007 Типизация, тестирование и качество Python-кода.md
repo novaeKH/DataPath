@@ -50,8 +50,8 @@ Type hints предназначены для:
 ## 2. Optional
 
 ```python
-def find_user(...) -> User | None:
-    ...
+def find_user(user_id: int, users: dict[int, User]) -> User | None:
+    return users.get(user_id)
 ```
 
 Теперь caller обязан подумать о `None`.
@@ -111,7 +111,8 @@ Good tests:
 
 ```python
 def test_clean_age():
-    ...
+    assert clean_age("42") == 42
+    assert clean_age("") is None
 ```
 
 `pytest` discovers tests by conventions and gives readable failures.
@@ -147,7 +148,7 @@ Failure behavior is part of contract.
 assert result == 0.1 + 0.2
 ```
 
-Use tolerance:
+Правильно:
 ```python
 assert result == pytest.approx(0.3)
 ```
@@ -213,7 +214,7 @@ Static checks are cheap.
 
 One-liner:
 ```python
-...
+result = [transform(x) for x in values if is_valid(x) and x not in excluded]
 ```
 is not automatically better than clear loop.
 
@@ -246,8 +247,11 @@ save_artifact
 Docstring useful when function behavior not obvious:
 
 ```python
-def split_by_time(...):
+def split_by_time(rows, cutoff):
     """Split observations before cutoff into train and later into validation."""
+    train = [row for row in rows if row["timestamp"] < cutoff]
+    validation = [row for row in rows if row["timestamp"] >= cutoff]
+    return train, validation
 ```
 
 Don't write docstring repeating `x: input x`.

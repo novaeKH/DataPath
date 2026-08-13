@@ -36,7 +36,9 @@ def square(x):
 
 ```python
 def train(model, X, y, epochs=10):
-    ...
+    for _ in range(epochs):
+        model.update(X, y)
+    return model
 ```
 
 Вызовы:
@@ -52,7 +54,7 @@ Keyword arguments делают вызов понятнее, особенно д�
 
 ```python
 def f(a, /, b, *, c):
-    ...
+    return a + b * c
 ```
 
 - `a` — positional-only;
@@ -236,6 +238,15 @@ predict = log_call(predict)
 
 Wrapper скрывает metadata original function.
 
+Неправильно:
+
+```python
+def log_call(func):
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+    return wrapper
+```
+
 Правильно:
 
 ```python
@@ -244,7 +255,8 @@ from functools import wraps
 def log_call(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        ...
+        print(f"Вызов {func.__name__}")
+        return func(*args, **kwargs)
     return wrapper
 ```
 

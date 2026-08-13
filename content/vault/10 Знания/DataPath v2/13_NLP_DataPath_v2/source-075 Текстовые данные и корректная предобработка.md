@@ -579,7 +579,7 @@ minimal normalization expected by tokenizer
 
 ## 24. Pipeline philosophy
 
-Лучше:
+Правильно:
 
 ```text
 raw text
@@ -588,7 +588,7 @@ raw text
 → model
 ```
 
-чем:
+Неправильно:
 
 ```text
 ручная серия notebook replaces

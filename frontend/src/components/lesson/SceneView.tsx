@@ -33,6 +33,45 @@ function SceneHeading({ title, className }: { title: string; className: string }
   )
 }
 
+type TeachingIntent = 'incorrect' | 'correct' | null
+
+/**
+ * Выносит короткую метку «Плохо/Правильно» из Markdown в спокойный
+ * визуальный badge. Остальной авторский текст остаётся без изменений.
+ */
+function splitTeachingIntent(markdown: string | null | undefined): {
+  markdown: string | null
+  label: string | null
+  intent: TeachingIntent
+} {
+  if (!markdown) return { markdown: null, label: null, intent: null }
+  const match = markdown.match(/(?:^|\n\n)(Плохо|Неправильно|Правильно|Хорошо):\s*$/i)
+  if (!match || match.index == null) return { markdown, label: null, intent: null }
+
+  const normalized = match[1].toLocaleLowerCase('ru-RU')
+  return {
+    markdown: markdown.slice(0, match.index).trim() || null,
+    label: match[1],
+    intent: normalized === 'плохо' || normalized === 'неправильно' ? 'incorrect' : 'correct',
+  }
+}
+
+function TeachingIntentBadge({ label, intent }: { label: string; intent: TeachingIntent }) {
+  if (!intent) return null
+  return (
+    <div className={`dp-example-label dp-example-label--${intent}`}>
+      <span aria-hidden="true">{intent === 'correct' ? '✓' : '×'}</span>
+      {label}
+    </div>
+  )
+}
+
+function codeLanguageLabel(scene: LessonScene): string {
+  const language = scene.language?.trim().toLocaleLowerCase('ru-RU')
+  if (!language || language === 'text' || language === 'plaintext') return 'код'
+  return language
+}
+
 /* ===============================================================
    Semantic scene renderers
    =============================================================== */
@@ -93,6 +132,11 @@ function FormulaScene({ scene, showTitle }: { scene: LessonScene; showTitle: boo
     <section className="dp-scene">
       <SceneRoleBadge role={scene.semantic_role} type={scene.type} />
       {showTitle && title && <SceneHeading title={title} className="mb-2 text-lg font-semibold" />}
+      {scene.intro && (
+        <div className="dp-example-intro dp-content">
+          <MarkdownContent markdown={scene.intro} />
+        </div>
+      )}
       {formula && (
         <div className="dp-formula-block">
           <div className="overflow-x-auto">
@@ -101,7 +145,7 @@ function FormulaScene({ scene, showTitle }: { scene: LessonScene; showTitle: boo
         </div>
       )}
       {scene.explanation && (
-        <div className="mt-3 dp-content">
+        <div className="dp-example-caption dp-content">
           <MarkdownContent markdown={scene.explanation} />
         </div>
       )}
@@ -113,7 +157,8 @@ function FormulaScene({ scene, showTitle }: { scene: LessonScene; showTitle: boo
 function CodeSceneComponent({ scene, showTitle }: { scene: LessonScene; showTitle: boolean }) {
   const title = sceneTitle(scene)
   const [copied, setCopied] = useState(false)
-  const languageLabel = scene.language && scene.language !== 'text' ? scene.language : null
+  const intro = splitTeachingIntent(scene.intro)
+  const languageLabel = codeLanguageLabel(scene)
 
   const handleCopy = () => {
     if (scene.code) {
@@ -127,33 +172,34 @@ function CodeSceneComponent({ scene, showTitle }: { scene: LessonScene; showTitl
     <section className="dp-scene">
       <SceneRoleBadge role={scene.semantic_role} type={scene.type} />
       {showTitle && title && <SceneHeading title={title} className="mb-2 text-lg font-semibold" />}
-      <div className="dp-code-block">
-        <div
-          className="flex items-center justify-between px-4 py-1.5 text-xs"
-          style={{ background: 'var(--dp-surface-interactive)', color: 'var(--dp-text-secondary)' }}
-        >
-          {languageLabel ? (
-            <span className="font-mono font-semibold">{languageLabel}</span>
-          ) : (
-            <span>код</span>
-          )}
-          <button
-            onClick={handleCopy}
-            className="rounded px-2 py-0.5 text-[11px] font-medium transition-colors dp-hover-interactive"
-            style={{ color: 'var(--dp-text-muted)' }}
-          >
-            {copied ? '✓ Скопировано' : 'Копировать'}
-          </button>
+      {intro.markdown && (
+        <div className="dp-example-intro dp-content">
+          <MarkdownContent markdown={intro.markdown} />
         </div>
-        <pre
-          className="overflow-x-auto p-4 text-[13px] leading-relaxed"
-          style={{ color: 'var(--dp-text-primary)' }}
-        >
-          <code>{scene.code}</code>
-        </pre>
+      )}
+      <div className={`dp-code-example${intro.intent ? ` dp-code-example--${intro.intent}` : ''}`}>
+        {intro.label && <TeachingIntentBadge label={intro.label} intent={intro.intent} />}
+        <div className="dp-code-block">
+          <div className="dp-code-toolbar flex items-center justify-between px-4 py-2 text-xs">
+            <span className="font-mono font-semibold">{languageLabel}</span>
+            <button
+              onClick={handleCopy}
+              className="rounded px-2 py-0.5 text-[11px] font-medium transition-colors dp-hover-interactive"
+              style={{ color: 'var(--dp-text-muted)' }}
+            >
+              {copied ? '✓ Скопировано' : 'Копировать'}
+            </button>
+          </div>
+          <pre
+            className="overflow-x-auto p-4 text-[13px] leading-relaxed"
+            style={{ color: 'var(--dp-text-primary)' }}
+          >
+            <code>{scene.code}</code>
+          </pre>
+        </div>
       </div>
       {scene.caption && (
-        <div className="mt-2 text-sm dp-content">
+        <div className="dp-example-caption dp-content">
           <MarkdownContent markdown={scene.caption} />
         </div>
       )}

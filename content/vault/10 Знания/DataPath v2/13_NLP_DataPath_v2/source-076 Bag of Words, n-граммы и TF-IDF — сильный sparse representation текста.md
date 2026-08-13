@@ -427,7 +427,7 @@ term присутствует?
 
 ## 20. Vocabulary fit только на train
 
-Нельзя:
+Неправильно:
 
 ```text
 fit TF-IDF на train+validation

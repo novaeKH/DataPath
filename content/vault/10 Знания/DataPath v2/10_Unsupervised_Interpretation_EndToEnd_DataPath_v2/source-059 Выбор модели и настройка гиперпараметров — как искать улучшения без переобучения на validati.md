@@ -111,7 +111,11 @@ Cat    → random split C
 
 Правильно:
 
-> candidate models получают одинаковую validation scheme.
+```text
+LogReg ─┐
+RF     ─┼→ одинаковая validation scheme
+Cat    ─┘
+```
 
 Для time/group data — одинаковые time/group folds.
 

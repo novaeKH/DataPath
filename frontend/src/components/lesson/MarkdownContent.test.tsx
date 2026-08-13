@@ -160,8 +160,9 @@ describe('SceneView — display_title и inline math в explanation (Фаза 6A
     const formulaScene = scene({
       type: 'formula',
       display_title: 'Split gain',
+      intro: 'Для node с $n$ objects:',
       formula: '\\operatorname{Gain} = I(\\text{parent}) - \\frac{n_L}{n}I(\\text{left})',
-      explanation: 'Для node с $n$ objects: $I$ — impurity.',
+      explanation: '$I$ — impurity.',
     })
     const { container } = render(<SceneView scene={formulaScene} />)
     expect(container.textContent).toContain('Split gain')
@@ -169,6 +170,16 @@ describe('SceneView — display_title и inline math в explanation (Фаза 6A
     expect(container.textContent).not.toContain('$n$')
     expect(container.textContent).not.toContain('$I$')
     expect(katexCount(container)).toBeGreaterThanOrEqual(3)
+    const intro = container.querySelector('.dp-example-intro')
+    const formula = container.querySelector('.dp-formula-block')
+    const caption = container.querySelector('.dp-example-caption')
+    if (!intro || !formula || !caption) throw new Error('formula learning sequence is incomplete')
+    expect(intro.compareDocumentPosition(formula) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(formula.compareDocumentPosition(caption) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
   })
 
   it('code scene renders caption with inline math', () => {
@@ -181,6 +192,53 @@ describe('SceneView — display_title и inline math в explanation (Фаза 6A
     })
     const { container } = render(<SceneView scene={codeScene} />)
     expect(container.textContent).not.toContain('$\\lambda$')
+  })
+
+  it('keeps explanation before code and result after code', () => {
+    const codeScene = scene({
+      type: 'code',
+      intro: 'Сначала создаём независимый список:',
+      language: 'python',
+      code: 'items = list(source)',
+      caption: 'Теперь изменение не затронет source.',
+    })
+    const { container } = render(<SceneView scene={codeScene} />)
+    const intro = container.querySelector('.dp-example-intro')
+    const code = container.querySelector('.dp-code-example')
+    const caption = container.querySelector('.dp-example-caption')
+
+    expect(intro?.textContent).toContain('Сначала')
+    expect(caption?.textContent).toContain('Теперь')
+    if (!intro || !code || !caption) throw new Error('code learning sequence is incomplete')
+    expect(intro.compareDocumentPosition(code) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(code.compareDocumentPosition(caption) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+  })
+
+  it('turns bad and good labels into accessible contrast cards', () => {
+    const { rerender } = render(
+      <SceneView
+        scene={scene({ type: 'code', intro: 'Плохо:', language: 'python', code: 'users=[]' })}
+      />,
+    )
+    expect(screen.getByText('Плохо')).toBeInTheDocument()
+    expect(document.querySelector('.dp-code-example--incorrect')).not.toBeNull()
+
+    rerender(
+      <SceneView
+        scene={scene({
+          type: 'code',
+          intro: 'Правильно:',
+          language: 'python',
+          code: 'users=None',
+        })}
+      />,
+    )
+    expect(screen.getByText('Правильно')).toBeInTheDocument()
+    expect(document.querySelector('.dp-code-example--correct')).not.toBeNull()
   })
 
   it('markdown scene prefers display_title over title', () => {

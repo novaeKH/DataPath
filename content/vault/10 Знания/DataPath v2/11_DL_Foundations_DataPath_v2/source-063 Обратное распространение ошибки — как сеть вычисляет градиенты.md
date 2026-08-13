@@ -435,9 +435,9 @@ Graph строится из operations, реально выполненных в
 
 ```python
 if condition:
-    ...
+    y = x.relu()
 else:
-    ...
+    y = x.sigmoid()
 ```
 
 и graph будет соответствовать пройденному path.
@@ -676,7 +676,7 @@ Autograd иногда сохраняет intermediate tensors для backward.
 Например:
 
 ```python
-x += ...
+x += bias
 ```
 
 на graph-critical tensor требует осторожности.

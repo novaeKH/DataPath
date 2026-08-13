@@ -91,7 +91,7 @@ $$
     assert scenes[0]["title"] == "Split gain"
     assert "Gain" in scenes[0]["formula"]
     assert "impurity" in scenes[0]["explanation"]
-    assert "Для узла" in scenes[0]["explanation"]
+    assert "Для узла" in scenes[0]["intro"]
     # No duplicate — explanation should appear once
     assert scenes[0]["explanation"].count("impurity") == 1
 
@@ -113,6 +113,7 @@ $$
     assert scenes[0]["type"] == "formula"
     assert "mathcal" in scenes[0]["formula"]
     assert "измеряет fit" in scenes[0]["explanation"]
+    assert scenes[0]["intro"] == "Objective:"
 
 
 def test_two_independent_formulas():
@@ -154,6 +155,7 @@ def test_latex_bracket_formula_is_a_formula_scene():
     assert formulas[0]["formula"] == r"2\cdot16+16=48."
     assert formulas[0]["contains_formula"] is True
     assert "Два входа" in formulas[0]["explanation"]
+    assert formulas[0]["intro"] == "Параметры первого слоя:"
 
 
 def test_inline_latex_parentheses_are_normalized_but_code_is_untouched():
@@ -167,8 +169,8 @@ literal = r"\(not math inside code\)"
     scenes = build_source_scenes(md)
     code = next(scene for scene in scenes if scene["type"] == "code")
 
-    assert "$f(x)=x^2$" in code["caption"]
-    assert "$2x$" in code["caption"]
+    assert "$f(x)=x^2$" in code["intro"]
+    assert "$2x$" in code["intro"]
     assert r"\(not math inside code\)" in code["code"]
 
 
@@ -194,8 +196,52 @@ model.fit(X_train, y_train)
     assert len(codes) == 1
     assert codes[0]["language"] == "python"
     assert "DecisionTreeClassifier" in codes[0]["code"]
-    assert "Базовый код" in codes[0]["caption"]
+    assert "Базовый код" in codes[0]["intro"]
     assert "Объяснение" in codes[0]["caption"]
+
+
+def test_code_keeps_bad_good_labels_before_the_matching_example():
+    md = """## Mutable default
+
+Плохо:
+
+```python
+def add_user(name, users=[]):
+    users.append(name)
+```
+
+Список сохраняется между вызовами.
+
+Правильно:
+
+```python
+def add_user(name, users=None):
+    users = [] if users is None else users
+    users.append(name)
+```"""
+    codes = [scene for scene in build_source_scenes(md) if scene["type"] == "code"]
+
+    assert len(codes) == 2
+    assert codes[0]["intro"] == "Плохо:"
+    assert not codes[0].get("caption")
+    assert codes[1]["intro"] == "Список сохраняется между вызовами.\n\nПравильно:"
+    assert not codes[1].get("caption")
+
+
+def test_long_prose_remains_before_code_as_its_own_scene():
+    md = """## Порядок
+
+Это подробное объяснение из большого количества слов должно читаться до примера, потому что оно
+задаёт контекст операции и объясняет ученику, на какие значения смотреть в следующем блоке.
+
+```python
+result = transform(data)
+```"""
+    scenes = build_source_scenes(md)
+
+    assert [scene["type"] for scene in scenes] == ["markdown", "code"]
+    assert "подробное объяснение" in scenes[0]["markdown"]
+    assert scenes[1]["code"] == "result = transform(data)"
 
 
 def test_code_without_intro():
@@ -333,7 +379,7 @@ $$
     # "Intro:" (1 word) should be merged into the formula, not a separate scene
     formulas = [s for s in scenes if s["type"] == "formula"]
     assert len(formulas) == 1
-    assert "Intro" in formulas[0]["explanation"]
+    assert "Intro" in formulas[0]["intro"]
 
 
 def test_single_word_merged():
@@ -377,6 +423,24 @@ def test_service_sections_excluded():
     assert markdowns[0]["title"] == "Основное"
     assert "Связи" not in [s.get("title") for s in scenes]
     assert "Источники" not in [s.get("title") for s in scenes]
+
+
+def test_visualizer_design_spec_is_not_rendered_as_lesson_prose():
+    md = """## Основное
+
+Здесь ученик получает полноценное объяснение механизма.
+
+## 19. Интерактивная визуализация DataPath
+
+Показать slider и добавить будущий график.
+
+### Режим 1
+
+Пользователь двигает параметр."""
+    scenes = build_source_scenes(md)
+
+    assert [scene.get("title") for scene in scenes] == ["Основное"]
+    assert "Показать slider" not in str(scenes)
 
 
 # ======================================================================

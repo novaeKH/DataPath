@@ -192,6 +192,18 @@ result = [
 
 если это ухудшает понимание.
 
+Правильно:
+
+```python
+result = []
+for x in xs:
+    transformed = transform(x)
+    if cond1(x) and cond2(transformed):
+        result.append(complicated(x))
+```
+
+Здесь промежуточное значение и условия можно прочитать и отладить по отдельности.
+
 ## 10. Generator expression
 
 ```python

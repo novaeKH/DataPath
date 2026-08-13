@@ -350,6 +350,7 @@ export interface LessonScene {
   title?: string | null
   display_title?: string | null
   markdown?: string | null
+  intro?: string | null
   formula?: string | null
   explanation?: string | null
   language?: string | null

@@ -68,7 +68,7 @@ raw input
 Если training notebook делал:
 
 ```python
-df["age"] = ...
+df["age"] = pd.to_numeric(df["age"], errors="coerce").fillna(train_age_median)
 df = pd.get_dummies(df)
 df = scaler.transform(df)
 ```
@@ -422,10 +422,17 @@ Instead of exposing estimator directly:
 ```python
 class ChurnPredictor:
     def __init__(self, pipeline, threshold, version):
-        ...
+        self.pipeline = pipeline
+        self.threshold = threshold
+        self.version = version
 
     def predict_one(self, data):
-        ...
+        probability = float(self.pipeline.predict_proba([data])[0, 1])
+        return {
+            "probability": probability,
+            "prediction": int(probability >= self.threshold),
+            "model_version": self.version,
+        }
 ```
 
 Wrapper can centralize:

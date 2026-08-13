@@ -218,6 +218,7 @@ class LessonScene(BaseModel):
     title: str | None = None
     display_title: str | None = None
     markdown: str | None = None
+    intro: str | None = None
     formula: str | None = None
     explanation: str | None = None
     language: str | None = None

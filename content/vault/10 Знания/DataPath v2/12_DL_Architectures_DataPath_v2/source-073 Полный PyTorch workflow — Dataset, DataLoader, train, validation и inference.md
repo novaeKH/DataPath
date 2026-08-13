@@ -220,7 +220,9 @@ model.eval()
 
 ```python
 with torch.no_grad():
-    ...
+    for xb, yb in valid_loader:
+        logits = model(xb)
+        valid_loss += loss_fn(logits, yb).item()
 ```
 
 `eval()` меняет layer behavior.

@@ -521,7 +521,7 @@ ap = average_precision_score(y_valid, proba)
 → готово
 ```
 
-Правильнее:
+Правильно:
 
 ```text
 prediction moment
