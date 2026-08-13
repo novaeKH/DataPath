@@ -8,6 +8,34 @@ const TYPE_META: Record<string, { label: string; dot: string }> = {
   checkpoint: { label: 'Проверка', dot: 'bg-indigo-400' },
   interactive_lab: { label: 'Лаборатория', dot: 'bg-emerald-400' },
   visual_demo: { label: 'Визуализация', dot: 'bg-violet-400' },
+  visual: { label: 'Иллюстрация', dot: 'bg-violet-400' },
+  table: { label: 'Таблица', dot: 'bg-cyan-400' },
+}
+
+const SPECIAL_TYPES = new Set(['checkpoint', 'interactive_lab', 'visual_demo'])
+const MAX_OUTLINE_ENTRIES = 12
+
+function outlineEntries(scenes: LessonScene[]): { scene: LessonScene; index: number }[] {
+  const seenLabels = new Set<string>()
+  const candidates = scenes.flatMap((scene, index) => {
+    const label = scene.display_title ?? scene.source_heading ?? scene.title ?? null
+    if (SPECIAL_TYPES.has(scene.type)) return [{ scene, index }]
+    if (!label || seenLabels.has(label)) return []
+    seenLabels.add(label)
+    return [{ scene, index }]
+  })
+  if (candidates.length <= MAX_OUTLINE_ENTRIES) return candidates
+
+  const special = candidates.filter(({ scene }) => SPECIAL_TYPES.has(scene.type))
+  const prose = candidates.filter(({ scene }) => !SPECIAL_TYPES.has(scene.type))
+  const slots = Math.max(2, MAX_OUTLINE_ENTRIES - special.length)
+  const selected = new Map<number, { scene: LessonScene; index: number }>()
+  for (let position = 0; position < slots; position += 1) {
+    const candidate = prose[Math.round((position * (prose.length - 1)) / (slots - 1))]
+    if (candidate) selected.set(candidate.index, candidate)
+  }
+  for (const candidate of special) selected.set(candidate.index, candidate)
+  return [...selected.values()].sort((left, right) => left.index - right.index).slice(0, 12)
 }
 
 /** Компактное содержание разделов урока с навигацией и прогрессом. */
@@ -24,9 +52,10 @@ export function LessonOutline({
 }) {
   const completed = new Set(completedScenes ?? [])
   let checkpointNumber = 0
+  const entries = outlineEntries(scenes)
   return (
     <nav aria-label="Разделы урока" className="flex flex-col gap-1">
-      {scenes.map((scene, index) => {
+      {entries.map(({ scene, index }) => {
         const meta = TYPE_META[scene.type] ?? { label: scene.type, dot: 'bg-slate-400' }
         const active = index === currentIndex
         const done = completed.has(scene.id)

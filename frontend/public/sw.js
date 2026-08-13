@@ -1,9 +1,32 @@
-const VERSION = 'datapath-v10'
+const VERSION = 'datapath-v11-content-v2'
 const SHELL_CACHE = `${VERSION}-shell`
 const STATIC_CACHE = `${VERSION}-static`
 const DATA_CACHE = `${VERSION}-data`
 const SCOPE_PATH = new URL(self.registration.scope).pathname
 const scoped = (path = '') => `${SCOPE_PATH}${path.replace(/^\/+/, '')}`
+const CONTENT_FIGURES = [
+  '42_logistic_regression.png',
+  '43_knn.png',
+  '45_svm.png',
+  '46_decision_tree.png',
+  '47_random_forest.png',
+  '48_gradient_boosting.png',
+  '52_class_imbalance.png',
+  '53_probability_calibration.png',
+  '56_pca.png',
+  '61_neuron.png',
+  '62_mlp.png',
+  '63_backpropagation.png',
+  '64_optimizers.png',
+  '65_dropout.png',
+  '66_cnn_convolution.png',
+  '67_max_pooling.png',
+  '68_rnn_unrolled.png',
+  '69_lstm_gates.png',
+  '70_embeddings.png',
+  '71_attention.png',
+  '72_transformer.png',
+].map((file) => scoped(`content-assets/datapath-v2/figures/${file}`))
 const SHELL = [
   scoped(),
   scoped('index.html'),
@@ -12,6 +35,7 @@ const SHELL = [
   scoped('datapath-icon.svg'),
   scoped('data/release-snapshot.json'),
   scoped('vendor/sql-wasm.wasm'),
+  ...CONTENT_FIGURES,
 ]
 
 self.addEventListener('install', (event) => {

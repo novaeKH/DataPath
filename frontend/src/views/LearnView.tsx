@@ -11,9 +11,9 @@ type LoadState =
 
 const SHORT_TITLE: Record<string, string> = {
   'course.python-ds': 'Python',
+  'course.math-ds': 'Математика',
   'course.data-analysis': 'NumPy & pandas',
   'course.data-tools': 'SQL & scikit-learn',
-  'course.math-ds': 'Математика',
   'course.classic-ml': 'Classic ML',
   'course.deep-learning': 'Deep Learning',
   'course.nlp': 'NLP',
@@ -69,6 +69,11 @@ function CourseLibrary({ courses, atlas }: { courses: CourseSummary[]; atlas: At
       <div className="mt-8 grid gap-x-10 gap-y-3 md:grid-cols-2">
         {courses
           .filter((course) => RELEASE_COURSE_IDS.has(course.id))
+          .sort(
+            (left, right) =>
+              Object.keys(SHORT_TITLE).indexOf(left.id) -
+              Object.keys(SHORT_TITLE).indexOf(right.id),
+          )
           .map((course, index) => {
             const nodes = lessonNodes.filter((node) => node.course_id === course.id)
             const completed = nodes.filter((node) => node.status === 'strong').length

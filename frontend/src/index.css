@@ -187,6 +187,37 @@ html.theme-transition * {
   border-top: 1px solid var(--dp-border-subtle);
 }
 
+.dp-lesson-document .dp-prose-flow .dp-scene {
+  padding: 14px 0;
+}
+
+.dp-lesson-document .dp-prose-flow + .dp-prose-flow .dp-scene {
+  padding-top: 6px;
+}
+
+.dp-lesson-document .dp-focus-surface {
+  margin: 28px 0;
+}
+
+.dp-teaching-figure {
+  margin: 28px 0;
+}
+
+.dp-teaching-figure img {
+  display: block;
+  height: auto;
+  max-width: 100%;
+  border: 1px solid var(--dp-border-subtle);
+  background: var(--dp-surface-interactive);
+}
+
+.dp-teaching-figure figcaption {
+  margin-top: 10px;
+  color: var(--dp-text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
 .dp-formula-block {
   background: var(--dp-surface-interactive);
   border: 1px solid var(--dp-border-subtle);

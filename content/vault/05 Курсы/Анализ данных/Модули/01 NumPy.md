@@ -1,21 +1,24 @@
 ---
-title: 01 NumPy
+title: "NumPy"
 id: module.data-analysis.numpy
 schema_version: 2
 type: module
-area: data
+area: datapath-v2
 status: active
 language: ru
 rag: exclude
 app: include
 course_id: course.data-analysis
 module_order: 1
-estimated_minutes: 150
+estimated_minutes: 115
 tags:
-- course/data
-- datapath/lesson
+- datapath/v2
+- course/module
 ---
 
-# 01 NumPy
+# NumPy
 
-Draft-модуль курса анализа данных.
+## Уроки
+
+1. [[009 NumPy изнутри ndarray, shape, dtype, strides и векторизация]]
+2. [[010 Broadcasting и векторные вычисления в NumPy]]

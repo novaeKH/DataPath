@@ -16,9 +16,9 @@ import {
 
 const DIRECTIONS = [
   ['Python', 'course.python-ds'],
+  ['Математика', 'course.math-ds'],
   ['NumPy & pandas', 'course.data-analysis'],
   ['SQL & sklearn', 'course.data-tools'],
-  ['Математика', 'course.math-ds'],
   ['Classic ML', 'course.classic-ml'],
   ['Deep Learning', 'course.deep-learning'],
   ['NLP', 'course.nlp'],

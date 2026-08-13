@@ -422,6 +422,9 @@ function ExistingLessonView({
   const [completedFlash, setCompletedFlash] = useState(false)
   const [reviewCount, setReviewCount] = useState<number | null>(null)
   const saveTimerRef = useRef<number | null>(null)
+  const sceneElementsRef = useRef<Record<string, HTMLDivElement | null>>({})
+  const activeSceneIndexRef = useRef(0)
+  const restoredLessonRef = useRef<string | null>(null)
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -509,6 +512,12 @@ function ExistingLessonView({
   const handleSelectScene = (index: number) => {
     void saveScene(sceneIndex)
     setSceneIndex(index)
+    const scene = state.kind === 'ready' ? state.lesson.scenes[index] : null
+    if (scene) {
+      window.requestAnimationFrame(() => {
+        sceneElementsRef.current[scene.id]?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+      })
+    }
   }
 
   const handleAssessmentAttempt = useCallback(
@@ -524,6 +533,15 @@ function ExistingLessonView({
     setSceneIndex((index) => {
       const next = Math.min(state.kind === 'ready' ? state.lesson.scenes.length - 1 : 0, index + 1)
       void saveScene(index)
+      const scene = state.kind === 'ready' ? state.lesson.scenes[next] : null
+      if (scene) {
+        window.requestAnimationFrame(() => {
+          sceneElementsRef.current[scene.id]?.scrollIntoView?.({
+            behavior: 'smooth',
+            block: 'start',
+          })
+        })
+      }
       return next
     })
   }
@@ -532,6 +550,15 @@ function ExistingLessonView({
     setSceneIndex((index) => {
       const next = Math.max(0, index - 1)
       void saveScene(index)
+      const scene = state.kind === 'ready' ? state.lesson.scenes[next] : null
+      if (scene) {
+        window.requestAnimationFrame(() => {
+          sceneElementsRef.current[scene.id]?.scrollIntoView?.({
+            behavior: 'smooth',
+            block: 'start',
+          })
+        })
+      }
       return next
     })
   }
@@ -566,7 +593,45 @@ function ExistingLessonView({
   }
 
   const scenes = useMemo(() => (state.kind === 'ready' ? state.lesson.scenes : []), [state])
-  const currentScene = scenes[sceneIndex] ?? null
+
+  useEffect(() => {
+    activeSceneIndexRef.current = sceneIndex
+  }, [sceneIndex])
+
+  useEffect(() => {
+    if (state.kind !== 'ready' || sceneIndex <= 0 || restoredLessonRef.current === lessonId) return
+    const scene = scenes[sceneIndex]
+    if (!scene) return
+    restoredLessonRef.current = lessonId
+    window.requestAnimationFrame(() => {
+      sceneElementsRef.current[scene.id]?.scrollIntoView?.({ block: 'start' })
+    })
+  }, [lessonId, sceneIndex, scenes, state.kind])
+
+  useEffect(() => {
+    if (state.kind !== 'ready' || !('IntersectionObserver' in window)) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0]
+        const rawIndex = visible?.target.getAttribute('data-scene-index')
+        if (rawIndex == null) return
+        const nextIndex = Number(rawIndex)
+        const previousIndex = activeSceneIndexRef.current
+        if (!Number.isFinite(nextIndex) || nextIndex === previousIndex) return
+        activeSceneIndexRef.current = nextIndex
+        setSceneIndex(nextIndex)
+        if (nextIndex > previousIndex) void saveScene(previousIndex)
+      },
+      { rootMargin: '-16% 0px -66% 0px', threshold: [0.1, 0.35, 0.7] },
+    )
+    for (const scene of scenes) {
+      const element = sceneElementsRef.current[scene.id]
+      if (element) observer.observe(element)
+    }
+    return () => observer.disconnect()
+  }, [saveScene, scenes, state.kind])
 
   if (state.kind === 'loading') {
     return <LoadingBlock label="Загрузка урока…" rows={4} />
@@ -594,9 +659,6 @@ function ExistingLessonView({
   }
 
   const lesson = state.lesson
-  const canComplete = scenes.every(
-    (scene, index) => index === sceneIndex || progress?.completed_scenes.includes(scene.id),
-  )
   const goToLesson = (id: string | null) => {
     if (id) onNavigate(`/focus/${id}`)
   }
@@ -718,9 +780,26 @@ function ExistingLessonView({
             </details>
             {/* Main reading area */}
             <div className="min-w-0 flex-1 dp-reading">
-              {currentScene && (
-                <SceneView scene={currentScene} onAssessmentAttempt={handleAssessmentAttempt} />
-              )}
+              <article aria-label="Материал урока" className="dp-lesson-document">
+                {scenes.map((scene, index) => {
+                  const proseLike = ['markdown', 'formula', 'code', 'table', 'visual'].includes(
+                    scene.type,
+                  )
+                  return (
+                    <div
+                      key={scene.id}
+                      id={`lesson-${scene.id}`}
+                      ref={(element) => {
+                        sceneElementsRef.current[scene.id] = element
+                      }}
+                      data-scene-index={index}
+                      className={proseLike ? 'dp-prose-flow' : 'dp-focus-surface'}
+                    >
+                      <SceneView scene={scene} onAssessmentAttempt={handleAssessmentAttempt} />
+                    </div>
+                  )
+                })}
+              </article>
 
               <LessonNotes lessonId={lesson.id} />
 
@@ -743,16 +822,14 @@ function ExistingLessonView({
                   ) : (
                     <button
                       onClick={() => void handleCompleteLesson()}
-                      disabled={completing || progress?.completed_at != null || !canComplete}
+                      disabled={completing || progress?.completed_at != null}
                       className={buttonClassNames('primary', 'md')}
                     >
                       {progress?.completed_at
                         ? '✓ Урок завершён'
                         : completing
                           ? 'Завершаем…'
-                          : canComplete
-                            ? 'Завершить урок'
-                            : 'Пройдите все сцены'}
+                          : 'Завершить урок'}
                     </button>
                   )}
                 </div>

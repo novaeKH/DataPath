@@ -1,31 +1,29 @@
 ---
-title: Deep Learning — от tensor до Transformer
+title: "Deep Learning"
 id: course.deep-learning
 schema_version: 2
 type: course
-area: dl
+area: datapath-v2
 status: active
 language: ru
 rag: exclude
 app: include
-difficulty: beginner-intermediate
-estimated_hours: 18
-accent: orange
-icon: layers
+course_order: 6
+difficulty: foundation-advanced
+estimated_hours: 17.4
+accent: rose
+icon: network
 tags:
-- course/dl
-- datapath/lesson
+- datapath/v2
+- course/canonical
 ---
 
-# Deep Learning — от tensor до Transformer
+# Deep Learning
 
-## Результат
-
-Пользователь понимает tensor shapes, forward/backprop, losses, optimizers, CNN/RNN/Transformer и умеет построить честный PyTorch training pipeline.
+Канонический маршрут DataPath v2: 14 полноценных учебных глав.
 
 ## Модули
 
-1. [[01 Foundations]]
-2. [[02 Architectures]]
-3. [[03 Attention and Transformers]]
-4. [[04 Training and Fine-tuning]]
+1. [[01 Deep Learning Foundations]] — уроки 61–65.
+2. [[02 Neural Architectures]] — уроки 66–72.
+3. [[03 PyTorch Workflow & Fine-tuning]] — уроки 73–74.

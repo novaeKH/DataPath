@@ -43,15 +43,14 @@ from app.services.reviews.dynamic import template_id
 # Неизвестные курсы остаются доступны и идут после явно заданных направлений.
 COURSE_PRIORITY = (
     "course.python-ds",
-    "course.data-analysis",
     "course.math-ds",
+    "course.data-analysis",
     "course.data-tools",
     "course.classic-ml",
     "course.deep-learning",
     "course.nlp",
     "course.llm-rag",
     "course.mlops",
-    "course.algorithms",
 )
 
 

@@ -5,6 +5,7 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import 'katex/dist/katex.min.css'
+import { bundledAssetUrl } from '../../platform/paths'
 
 // KaTeX позиционирует подстрочные/надстрочные символы и дроби через INLINE
 // style (top/height/margin). rehype-sanitize по умолчанию вырезает style —
@@ -34,6 +35,25 @@ function SafeLink(props: React.AnchorHTMLAttributes<HTMLAnchorElement>) {
     >
       {children}
     </a>
+  )
+}
+
+function FigureImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
+  const { src, alt, title, ...rest } = props
+  const resolved =
+    typeof src === 'string' && !/^(?:[a-z]+:|\/\/|#)/i.test(src) ? bundledAssetUrl(src) : src
+  return (
+    <figure className="dp-teaching-figure">
+      <img
+        {...rest}
+        src={resolved}
+        alt={alt ?? ''}
+        loading="lazy"
+        decoding="async"
+        className="max-w-full rounded-xl"
+      />
+      {title && <figcaption>{title}</figcaption>}
+    </figure>
   )
 }
 
@@ -133,9 +153,7 @@ export function MarkdownContent({ markdown }: { markdown: string }) {
           p: (props) => <p {...props} className="my-3 leading-relaxed" />,
           strong: (props) => <strong {...props} className="font-semibold" />,
           hr: (props) => <hr {...props} className="my-6" />,
-          img: (props) => (
-            <img {...props} className="my-3 max-w-full rounded-lg" alt={props.alt ?? ''} />
-          ),
+          img: FigureImage,
           pre: (props) => (
             <pre
               {...props}

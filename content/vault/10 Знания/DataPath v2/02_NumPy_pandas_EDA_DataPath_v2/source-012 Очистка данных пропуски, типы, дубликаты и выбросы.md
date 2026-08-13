@@ -1,0 +1,95 @@
+---
+title: "Очистка данных: пропуски, типы, дубликаты и выбросы"
+id: concept.datapath-v2.012
+schema_version: 2
+type: concept
+area: datapath-v2
+status: active
+language: ru
+rag: include
+rag_collection: datapath-v2
+app: source
+canonical_number: 12
+canonical_course: "NumPy / pandas / EDA"
+source_provenance: "DataPath v2 canonical corpus"
+tags:
+- datapath/v2
+- canonical/source
+---
+
+# Очистка данных: пропуски, типы, дубликаты и выбросы
+
+Очистка данных — не набор команд `dropna/drop_duplicates`. Пропуск, отрицательное число или повторная строка имеют смысл только относительно процесса, который создал данные.
+
+## Пропуски
+
+`NaN`, пустая строка, `unknown`, `-999` могут означать разные вещи. Сначала нормализуйте технические markers и определите семантику. Imputation fit-ится только на train, если статистика используется моделью.
+
+## Типы
+
+Используйте `pd.to_numeric`/`pd.to_datetime` с осознанной обработкой ошибок. Строковая дата и numeric-looking string должны стать корректными типами до анализа.
+
+## Дубликаты
+
+Exact duplicate и несколько событий одного клиента — не одно и то же. Dedup rule должен отвечать бизнес-смыслу: последний record, первый, aggregate или оставить все события.
+
+## Выбросы
+
+IQR/Z-score — способы отметить необычные значения для исследования, а не автоматическая команда удаления. Fraud, крупный заказ или редкая патология могут быть главным signal.
+
+## Категории
+
+Пробелы, регистр и варианты написания нормализуют только после понимания semantics. Нельзя слить разные категории ради красивого `value_counts`.
+
+## Leakage при cleaning
+
+Median imputer, clip thresholds, rare-category thresholds и другие data-dependent transformations должны обучаться на train/fold, а не на всей выборке.
+
+## Практический код
+
+```python
+import pandas as pd
+
+df["age"] = pd.to_numeric(df["age"], errors="coerce")
+df["date"] = pd.to_datetime(df["date"], errors="coerce")
+
+missing = df.isna().mean()
+dupes = df.duplicated().sum()
+
+q1 = df["income"].quantile(0.25)
+q3 = df["income"].quantile(0.75)
+iqr = q3 - q1
+flag = (df["income"] < q1 - 1.5*iqr) | (df["income"] > q3 + 1.5*iqr)
+```
+
+## Интерактивная визуализация DataPath
+
+Визуализация должна показывать механизм пошагово, позволять менять ключевые параметры и связывать результат с тем, что происходит в коде. Она не должна быть статичной декоративной карточкой.
+
+## Типичные ошибки
+
+- делать `dropna()` без семантики
+- удалять все outliers
+- считать повторный `client_id` ошибкой без проверки гранулярности
+- fit cleaning thresholds на validation/test
+- путать zero и missing
+
+## Проверка понимания
+
+1. Почему пропуск может быть signal?
+2. Exact duplicate vs repeated entity?
+3. Что IQR даёт и чего не даёт?
+4. Какие cleaning steps могут leakage?
+5. Почему отрицательная сумма не всегда ошибка?
+
+## Мини-практика
+
+Для грязного customer dataset составьте таблицу: проблема → как обнаружить → как проверить семантику → решение → должен ли шаг быть внутри ML Pipeline.
+
+## Что нужно унести
+
+Cleaning — это формализованное понимание data-generating process. Сильный DS сначала объясняет, почему значение плохое, и только потом меняет его.
+
+## Куда дальше
+
+Дальше — GroupBy/merge: как перейти от событий к ML-таблице правильной гранулярности.

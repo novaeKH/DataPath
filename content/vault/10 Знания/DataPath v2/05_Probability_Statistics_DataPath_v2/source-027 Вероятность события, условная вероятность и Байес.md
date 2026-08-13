@@ -1,0 +1,98 @@
+---
+title: "Вероятность: события, условная вероятность и Байес"
+id: concept.datapath-v2.027
+schema_version: 2
+type: concept
+area: datapath-v2
+status: active
+language: ru
+rag: include
+rag_collection: datapath-v2
+app: source
+canonical_number: 27
+canonical_course: "Вероятность и статистика"
+source_provenance: "DataPath v2 canonical corpus"
+tags:
+- datapath/v2
+- canonical/source
+---
+
+# Вероятность: события, условная вероятность и Байес
+
+Вероятность нужна не ради карточных задач. Она даёт язык для неопределённости: насколько вероятен класс, как меняется риск после нового evidence и почему base rate важен для интерпретации модели.
+
+## События и вероятность
+
+Событие A — подмножество возможных исходов. Вероятность P(A) лежит между 0 и 1. Для несовместимых событий probabilities можно складывать; в общем случае используется inclusion-exclusion.
+
+## Условная вероятность
+
+P(A|B) означает probability A при условии, что B уже известно. Формула: P(A|B)=P(A∩B)/P(B). Условие меняет пространство, относительно которого считаем вероятность.
+
+## Независимость
+
+A и B независимы, если P(A∩B)=P(A)P(B), эквивалентно P(A|B)=P(A) при ненулевом P(B). Нулевая корреляция не равна независимости в общем случае.
+
+## Формула полной вероятности
+
+Если случаи B_i образуют разбиение, P(A)=sum_i P(A|B_i)P(B_i). Это позволяет собирать общую вероятность из сегментов.
+
+## Байес
+
+P(B|A)=P(A|B)P(B)/P(A). В ML это мост от likelihood к posterior: prior belief обновляется evidence. Base rate P(B) критичен.
+
+## Base-rate example
+
+Редкая болезнь 1%, тест sensitivity 99%, false-positive 5%. Положительный тест не означает 99% вероятность болезни: большинство людей здоровы, поэтому даже небольшая false-positive rate создаёт много positives.
+
+## Практический код
+
+```python
+# Байес для диагностического примера
+p_disease = 0.01
+p_pos_given_disease = 0.99
+p_pos_given_healthy = 0.05
+
+p_pos = (
+    p_pos_given_disease * p_disease
+    + p_pos_given_healthy * (1 - p_disease)
+)
+
+posterior = (
+    p_pos_given_disease * p_disease / p_pos
+)
+print(posterior)
+```
+
+## Интерактивная визуализация DataPath
+
+Визуализация должна показывать механизм пошагово, позволять менять ключевые параметры и связывать результат с тем, что происходит в коде. Она не должна быть статичной декоративной карточкой.
+
+## Типичные ошибки
+
+- путать P(A|B) и P(B|A)
+- считать independent событиями просто потому, что они разные
+- игнорировать base rate
+- принимать model probability за causal probability
+- путать mutually exclusive и independent
+
+## Проверка понимания
+
+1. Что означает conditional probability?
+2. Формула Байеса?
+3. Что такое prior?
+4. Почему base rate важен?
+5. Независимость vs несовместимость?
+6. Почему P(A|B) не равна P(B|A)?
+
+## Мини-практика
+
+Посчитайте posterior fraud probability: fraud prevalence 0.5%, detector catches 90% fraud and flags 2% normal transactions.
+
+## Что нужно унести
+
+Байес — механизм обновления вероятности после evidence. В прикладных задачах base rate часто важнее интуитивно яркого сигнала.
+
+## Куда дальше
+
+Следующий урок — случайные величины и distributions: как описывать не одно событие, а числовой случайный результат.

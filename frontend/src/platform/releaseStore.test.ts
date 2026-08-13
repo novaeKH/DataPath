@@ -25,4 +25,46 @@ describe('release storage migrations', () => {
   it('не открывает state из будущей версии', () => {
     expect(() => migrateLocalState({ schema_version: 999 })).toThrow(/более новой версией/)
   })
+
+  it('консервативно переносит merged progress и сохраняет notes', () => {
+    const migrated = migrateLocalState({
+      schema_version: 2,
+      lesson_progress: {
+        'lesson.python-ds.04': {
+          lesson_id: 'lesson.python-ds.04',
+          current_scene_id: 'scene-04',
+          completed_scenes: ['scene-01', 'scene-02'],
+          started_at: '2026-01-01T00:00:00Z',
+          completed_at: '2026-01-02T00:00:00Z',
+          updated_at: '2026-01-02T00:00:00Z',
+        },
+      },
+      notes: {
+        'lesson.python-ds.04': 'Функции',
+        'lesson.python-ds.08': 'Decorators',
+      },
+    })
+    expect(migrated.lesson_progress['lesson.python-ds.04'].completed_at).toBeNull()
+    expect(migrated.lesson_progress['lesson.python-ds.04'].completed_scenes).toEqual([])
+    expect(migrated.notes['lesson.python-ds.04']).toContain('Функции')
+    expect(migrated.notes['lesson.python-ds.04']).toContain('Decorators')
+  })
+
+  it('переписывает Review references и удаляет Algorithms из active queue', () => {
+    const migrated = migrateLocalState({
+      schema_version: 2,
+      review_items: {
+        '1': {
+          source_lesson_id: 'lesson.data-tools.sql-foundations',
+          source_id: 'lesson.data-tools.sql-foundations',
+          template_id: 'lesson.data-tools.sql-foundations:scene-01:self',
+        },
+        '2': { source_lesson_id: 'lesson.algorithms.dp' },
+      },
+      current_roadmap_position: 'lesson.data-tools.sql-foundations',
+    })
+    expect(migrated.review_items['1'].source_lesson_id).toBe('lesson.sql.select-where')
+    expect(migrated.review_items['2']).toBeUndefined()
+    expect(migrated.current_roadmap_position).toBe('lesson.sql.select-where')
+  })
 })
