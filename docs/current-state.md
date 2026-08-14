@@ -49,7 +49,9 @@
   mobile details используют одинаковую навигацию.
 - Resume position, scene progress, lesson completion, notes, previous/next lesson и Review scheduling
   сохранены. Canonical chapters заканчиваются неоцениваемой трёхуровневой self-assessment.
-- 57 существующих interactive visual demos и 3 backend ML labs сохранены. Дополнительно 38
+- 57 существующих interactive visual demos и 3 ML labs сохранены. В release/PWA все три
+  лаборатории рассчитываются локально: Gini/Entropy split, глубина дерева и сравнение
+  Decision Tree/Random Forest/Gradient Boosting больше не требуют API. Дополнительно 38
   уроков получили topic-specific step-by-step visual flows с ручным переходом, autoplay, pause и
   reset. Теперь 98 из 100 lessons имеют interactive visual demo; оставшиеся 2 используют
   встроенные teaching figures, поэтому визуальное объяснение есть у всех 100 уроков.
@@ -61,8 +63,8 @@
   Dropout, CNN, pooling, RNN, LSTM, embeddings, Attention и Transformer.
 - Assets лежат в `frontend/public/content-assets/datapath-v2/figures/`; Markdown renderer добавляет
   base-path-safe URL, lazy loading, alt и caption.
-- Service worker cache поднят до `datapath-v14-complete-lesson-visuals` и pre-cache-ит все 21 figure вместе с
-  release snapshot, не затрагивая localStorage.
+- Service worker cache поднят до `datapath-v15-offline-visual-labs` и pre-cache-ит все 21 figure
+  вместе с release snapshot, не затрагивая localStorage.
 
 ## Local state migration
 
@@ -81,7 +83,8 @@
 - Content sync: 531 scanned, 0 errors, 0 warnings после slug separation source/manifest.
 - Content validator: 0 errors, 0 warnings.
 - Content quality: 100 lessons, 0 errors, 0 warnings, 0 suggestions.
-- Полный backend suite проходит: 230 tests. Полный frontend suite проходит: 123 tests.
+- Полный backend suite проходит: 230 tests. Полный frontend suite проходит: 127 tests, включая
+  offline regression для Gini/Entropy и максимальные параметры ensemble-лаборатории.
 - Ruff, ESLint, TypeScript, Prettier, обычный production build и build с
   `VITE_BASE_PATH=/DataPath/` проходят.
 

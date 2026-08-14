@@ -1,4 +1,5 @@
 import { runLocalSql } from './localSql'
+import { runLocalLab } from './localLabs'
 import { bundledAssetUrl } from './paths'
 import {
   loadLocalState,
@@ -455,6 +456,18 @@ export async function localRead<T>(path: string): Promise<T> {
     const id = decodeURIComponent(attemptsMatch[1])
     return { case_id: id, attempts: state.case_attempts[id] ?? [] } as T
   }
+  const labMatch = path.match(/^\/api\/labs\/([^/]+)$/)
+  if (labMatch) {
+    const stored = data.reads[path]
+    if (stored === undefined) local404(path)
+    const spec = clone(stored) as { description?: string }
+    if (spec.description) {
+      spec.description = spec.description
+        .replace('Backend считает', 'Локальный движок PWA считает')
+        .replace('backend обучает', 'локальный движок PWA обучает')
+    }
+    return spec as T
+  }
   const exact = data.reads[path]
   if (exact !== undefined) return clone(exact) as T
   if (path.startsWith('/api/cases/') && path.includes('?mode=')) {
@@ -560,6 +573,15 @@ function evaluateCase(
 
 export async function localPost<T>(path: string, body: unknown): Promise<T> {
   const data = await snapshot()
+  const labRunMatch = path.match(/^\/api\/labs\/([^/]+)\/run$/)
+  if (labRunMatch) {
+    const labId = decodeURIComponent(labRunMatch[1])
+    const spec = data.reads[`/api/labs/${labId}`] as
+      { initial_result?: Record<string, unknown> } | undefined
+    if (!spec?.initial_result) local404(path)
+    const payload = body as { parameters?: Record<string, string | number> }
+    return runLocalLab(labId, payload.parameters ?? {}, spec.initial_result) as T
+  }
   const sceneMatch = path.match(/^\/api\/progress\/lessons\/([^/]+)\/scenes\/([^/]+)\/complete$/)
   if (sceneMatch) {
     const lessonId = decodeURIComponent(sceneMatch[1])

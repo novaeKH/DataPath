@@ -110,7 +110,7 @@ export function LabFrame({
             className="flex h-32 items-center justify-center text-sm"
             style={{ color: 'var(--dp-text-muted)' }}
           >
-            Вычисление на backend…
+            Выполняем расчёт…
           </div>
         ) : (
           renderResult(result)
