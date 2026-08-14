@@ -19,7 +19,8 @@ difficulty: core
 skill_ids:
 - data-tools.estimator-pipeline
 prerequisites:
-- lesson.sql.patterns
+- lesson.python-ds.11
+- lesson.data-analysis.03
 previous: lesson.math-ds.likelihood
 next: lesson.data-tools.preprocessing
 tags:

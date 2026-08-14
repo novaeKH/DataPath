@@ -44,6 +44,11 @@ tags:
       "title": "Цель главы"
     },
     {
+      "type": "visual_demo",
+      "component": "sql-query-order-flow",
+      "title": "Интерактивная схема темы"
+    },
+    {
       "type": "retrieval",
       "assessment_type": "self_assessment",
       "prompt": "Насколько уверенно вы можете объяснить ключевой механизм главы «Реляционная модель и основа SQL: SELECT, WHERE, ORDER BY» без подсказки?"

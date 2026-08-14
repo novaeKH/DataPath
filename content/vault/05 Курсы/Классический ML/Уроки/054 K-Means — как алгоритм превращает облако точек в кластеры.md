@@ -19,7 +19,8 @@ difficulty: core
 skill_ids:
 - ml.unsupervised.kmeans
 prerequisites:
-- lesson.classic-ml.expansion.20
+- lesson.data-analysis.02
+- lesson.classic-ml.expansion.17
 previous: lesson.classic-ml.expansion.20
 next: lesson.classic-ml.expansion.23
 tags:

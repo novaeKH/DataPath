@@ -268,6 +268,12 @@ class CourseRef(BaseModel):
     title: str
 
 
+class LessonPrerequisiteRef(BaseModel):
+    id: str
+    title: str
+    course_id: str | None = None
+
+
 class LessonDetailResponse(BaseModel):
     id: str
     title: str
@@ -277,6 +283,7 @@ class LessonDetailResponse(BaseModel):
     estimated_minutes: int | None = None
     difficulty: str | None = None
     skills: list[str] = Field(default_factory=list)
+    prerequisites: list[LessonPrerequisiteRef] = Field(default_factory=list)
     previous_lesson_id: str | None = None
     next_lesson_id: str | None = None
     scenes: list[LessonScene] = Field(default_factory=list)

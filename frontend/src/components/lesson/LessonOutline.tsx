@@ -42,12 +42,18 @@ function specialLabel(scene: LessonScene, checkpointNumber: number): string {
 
 function outlineEntries(scenes: LessonScene[]): OutlineEntry[] {
   const seenLabels = new Set<string>()
+  const hasAuthoredSections = scenes.some((scene) => Boolean(scene.source_heading))
   let checkpointNumber = 0
   const candidates = scenes.flatMap((scene, index) => {
     if (SPECIAL_TYPES.has(scene.type)) {
       if (scene.type === 'checkpoint') checkpointNumber += 1
       return [{ scene, index, label: specialLabel(scene, checkpointNumber) }]
     }
+    // В canonical-уроках source_heading соответствует настоящему H2 автора. Не добавляем
+    // в содержание подписи, сгенерированные из первого предложения соседней сцены: они
+    // выглядят как обрезанные дубли и вытесняют полезные разделы. Первый scene остаётся
+    // точкой входа («После урока вы сможете»); для старых уроков без H2 сохраняем fallback.
+    if (hasAuthoredSections && index > 0 && !scene.source_heading) return []
     const label = scene.source_heading ?? scene.display_title ?? scene.title ?? null
     if (!label || seenLabels.has(label)) return []
     seenLabels.add(label)
@@ -60,7 +66,15 @@ function outlineEntries(scenes: LessonScene[]): OutlineEntry[] {
   const slots = Math.max(2, MAX_OUTLINE_ENTRIES - special.length)
   const selected = new Map<number, OutlineEntry>()
   for (let position = 0; position < slots; position += 1) {
-    const candidate = prose[Math.round((position * (prose.length - 1)) / (slots - 1))]
+    // Сохраняем и вводную, и первый настоящий раздел. Остальные позиции равномерно
+    // распределяем до конца урока, чтобы оглавление отражало маршрут, а не случайную выборку.
+    const prosePosition =
+      position === 0
+        ? 0
+        : slots === 2
+          ? prose.length - 1
+          : Math.round(1 + ((position - 1) * (prose.length - 2)) / (slots - 2))
+    const candidate = prose[prosePosition]
     if (candidate) selected.set(candidate.index, candidate)
   }
   for (const candidate of special) selected.set(candidate.index, candidate)

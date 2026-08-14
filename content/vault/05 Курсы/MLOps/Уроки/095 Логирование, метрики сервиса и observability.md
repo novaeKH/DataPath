@@ -19,6 +19,7 @@ difficulty: core
 skill_ids:
 - mlops.monitoring
 prerequisites:
+- lesson.mlops.serving
 - lesson.mlops.docker
 previous: lesson.mlops.docker
 next: lesson.mlops.data-drift

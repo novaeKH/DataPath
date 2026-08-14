@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from app.services.lesson_content import (
     _detect_semantic_role,
+    _learning_outcome_markdown,
     _normalize_heading,
     _normalized_match,
     _word_count,
@@ -42,6 +43,46 @@ def test_word_count():
     assert _word_count("три слова здесь") == 3
     # split() collapses multiple spaces — "пробелы  вокруг" → ["пробелы", "вокруг"] = 2
     assert _word_count("  пробелы  вокруг  ") == 2
+
+
+def test_generic_canonical_objective_becomes_specific_learning_outcome():
+    source = """---
+title: Example
+---
+
+## 1. Интуиция расстояния
+
+Текст.
+
+## 2. Масштабирование признаков
+
+Текст.
+
+## 3. Выбор соседей
+
+Текст.
+
+## Типичные ошибки
+
+Текст.
+"""
+    result = _learning_outcome_markdown(
+        "Метод соседей",
+        source,
+        (
+            "Разобрать каноническую главу №43, воспроизвести её ключевой механизм "
+            "и оценить готовность объяснить тему."
+        ),
+    )
+    assert "каноническую главу" not in result
+    assert "Интуиция расстояния" in result
+    assert "Масштабирование признаков" in result
+    assert "Выбор соседей" in result
+
+
+def test_authored_learning_outcome_is_preserved():
+    authored = "После урока вы сможете проверить гипотезу на числовом примере."
+    assert _learning_outcome_markdown("Гипотезы", None, authored) == authored
 
 
 # ======================================================================

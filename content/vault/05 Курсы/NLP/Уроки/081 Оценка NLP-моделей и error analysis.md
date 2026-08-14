@@ -19,6 +19,7 @@ difficulty: core
 skill_ids:
 - datapath.v2.081
 prerequisites:
+- lesson.classic-ml.framing.metrics
 - lesson.nlp.bert-evaluation
 previous: lesson.nlp.bert-evaluation
 next: lesson.nlp.end-to-end
@@ -42,6 +43,11 @@ tags:
     {
       "type": "hook",
       "title": "Цель главы"
+    },
+    {
+      "type": "visual_demo",
+      "component": "nlp-error-analysis-flow",
+      "title": "Интерактивная схема темы"
     },
     {
       "type": "retrieval",

@@ -19,6 +19,7 @@ difficulty: core
 skill_ids:
 - nlp.rnn
 prerequisites:
+- lesson.deep-learning.07
 - lesson.nlp.subword-tokenization
 previous: lesson.nlp.subword-tokenization
 next: lesson.nlp.bert-evaluation

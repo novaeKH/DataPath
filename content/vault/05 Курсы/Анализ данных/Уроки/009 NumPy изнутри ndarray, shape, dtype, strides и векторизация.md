@@ -19,6 +19,7 @@ difficulty: core
 skill_ids:
 - data.analysis
 prerequisites:
+- lesson.python-ds.03
 - lesson.python-ds.09
 previous: lesson.python-ds.09
 next: lesson.data-analysis.02

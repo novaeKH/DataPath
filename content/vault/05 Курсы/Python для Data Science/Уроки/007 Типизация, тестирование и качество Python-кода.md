@@ -20,6 +20,7 @@ skill_ids:
 - python.11-typing-testing-i-kachestvo-koda
 - python.10-python-dlia-data-science
 prerequisites:
+- lesson.python-ds.04
 - lesson.python-ds.07
 previous: lesson.python-ds.07
 next: lesson.python-ds.09
@@ -43,6 +44,11 @@ tags:
     {
       "type": "hook",
       "title": "Цель главы"
+    },
+    {
+      "type": "visual_demo",
+      "component": "python-quality-loop-flow",
+      "title": "Интерактивная схема темы"
     },
     {
       "type": "retrieval",

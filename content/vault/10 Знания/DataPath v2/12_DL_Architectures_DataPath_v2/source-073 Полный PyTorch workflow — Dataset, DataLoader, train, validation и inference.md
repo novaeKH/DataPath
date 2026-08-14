@@ -788,7 +788,7 @@ Epoch metrics и selected best checkpoint.
 
 ---
 
-## 35. Capstone skeleton
+## 35. Мини-практика: каркас проекта
 
 Напишите structure project:
 

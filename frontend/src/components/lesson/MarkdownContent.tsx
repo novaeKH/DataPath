@@ -57,6 +57,21 @@ function FigureImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
   )
 }
 
+function MarkdownParagraph(props: React.HTMLAttributes<HTMLParagraphElement>) {
+  const { children, ...rest } = props
+  const containsFigure = React.Children.toArray(children).some(
+    (child) => React.isValidElement(child) && child.type === FigureImage,
+  )
+  // CommonMark помещает отдельное изображение в paragraph. Наш renderer превращает
+  // изображение в figure с caption, поэтому внешний <p> был бы невалидной HTML-вложенностью.
+  if (containsFigure) return <>{children}</>
+  return (
+    <p {...rest} className="my-3 leading-relaxed">
+      {children}
+    </p>
+  )
+}
+
 /** Достаёт первый текстовый фрагмент из React-детей (для callout-заголовка). */
 function firstText(node: React.ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') return String(node)
@@ -150,7 +165,7 @@ export function MarkdownContent({ markdown }: { markdown: string }) {
           h2: (props) => <h2 {...props} className="mb-2 mt-6 text-lg font-bold" />,
           h3: (props) => <h3 {...props} className="mb-2 mt-5 text-base font-semibold" />,
           h4: (props) => <h4 {...props} className="mb-2 mt-4 text-sm font-semibold" />,
-          p: (props) => <p {...props} className="my-3 leading-relaxed" />,
+          p: MarkdownParagraph,
           strong: (props) => <strong {...props} className="font-semibold" />,
           hr: (props) => <hr {...props} className="my-6" />,
           img: FigureImage,

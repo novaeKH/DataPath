@@ -19,7 +19,7 @@ difficulty: core
 skill_ids:
 - datapath.v2.021
 prerequisites:
-- lesson.sql.window-functions
+- lesson.sql.select-where
 previous: lesson.sql.window-functions
 next: lesson.sql.patterns
 tags:
@@ -42,6 +42,11 @@ tags:
     {
       "type": "hook",
       "title": "Цель главы"
+    },
+    {
+      "type": "visual_demo",
+      "component": "sql-null-logic-flow",
+      "title": "Интерактивная схема темы"
     },
     {
       "type": "retrieval",

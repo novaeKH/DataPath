@@ -19,6 +19,7 @@ difficulty: core
 skill_ids:
 - ml.classic.expansion
 prerequisites:
+- lesson.classic-ml.expansion.14
 - lesson.classic-ml.unsupervised.kmeans
 previous: lesson.classic-ml.unsupervised.kmeans
 next: lesson.classic-ml.unsupervised.pca

@@ -19,6 +19,9 @@ difficulty: core
 skill_ids:
 - datapath.v2.077
 prerequisites:
+- lesson.classic-ml.linear.logistic
+- lesson.classic-ml.expansion.15
+- lesson.classic-ml.expansion.16
 - lesson.nlp.classical
 previous: lesson.nlp.classical
 next: lesson.nlp.subword-tokenization

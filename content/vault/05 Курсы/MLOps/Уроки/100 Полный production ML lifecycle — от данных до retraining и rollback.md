@@ -19,6 +19,12 @@ difficulty: capstone
 skill_ids:
 - datapath.v2.100
 prerequisites:
+- lesson.mlops.artifacts
+- lesson.mlops.serving
+- lesson.mlops.monitoring
+- lesson.mlops.data-drift
+- lesson.mlops.concept-drift
+- lesson.mlops.reproducibility
 - lesson.mlops.retraining
 previous: lesson.mlops.retraining
 next: null
@@ -42,6 +48,11 @@ tags:
     {
       "type": "hook",
       "title": "Цель главы"
+    },
+    {
+      "type": "visual_demo",
+      "component": "ml-lifecycle-flow",
+      "title": "Интерактивная схема темы"
     },
     {
       "type": "retrieval",

@@ -19,6 +19,8 @@ difficulty: core
 skill_ids:
 - math.likelihood
 prerequisites:
+- lesson.math-ds.bayes
+- lesson.math-ds.expectation
 - lesson.math-ds.hypothesis
 previous: lesson.math-ds.hypothesis
 next: lesson.data-tools.estimator-pipeline
@@ -42,6 +44,11 @@ tags:
     {
       "type": "hook",
       "title": "Цель главы"
+    },
+    {
+      "type": "visual_demo",
+      "component": "likelihood-map-flow",
+      "title": "Интерактивная схема темы"
     },
     {
       "type": "retrieval",

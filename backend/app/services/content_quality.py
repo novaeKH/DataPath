@@ -59,6 +59,17 @@ _INCOMPLETE_PYTHON_BLOCK = re.compile(
     r"(?:^[ \t]*(?:\.\.\.|…)(?:[ \t]*#.*)?$|(?:\+=|=|return)[ \t]*(?:\.\.\.|…)(?:[ \t]*#.*)?$)",
     flags=re.MULTILINE,
 )
+_GENERIC_OBJECTIVE_IN_OUTPUT = re.compile(r"Разобрать каноническую главу №\d+")
+
+
+def _source_prose_word_count(markdown: str) -> int:
+    """Считает объясняющую прозу source, не выдавая код и формулы за урок."""
+    value = re.sub(r"\A---\n.*?\n---\n", "", markdown, flags=re.DOTALL)
+    value = re.sub(r"```.*?```", "", value, flags=re.DOTALL)
+    value = re.sub(r"\$\$.*?\$\$", "", value, flags=re.DOTALL)
+    value = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", value)
+    value = re.sub(r"(?m)^\s*\|.*$", "", value)
+    return len(re.findall(r"[A-Za-zА-Яа-яЁё0-9_+-]+", value))
 
 
 def _unpaired_contrast_sections(markdown: str) -> list[str]:
@@ -134,6 +145,12 @@ class ContentQualityAuditor:
 
             lessons = query.order_by(ContentItem.module_order, ContentItem.lesson_order).all()
 
+        canonical_numbers = {
+            lesson.id: int((lesson.frontmatter or {}).get("canonical_number"))
+            for lesson in lessons
+            if (lesson.frontmatter or {}).get("canonical_number") is not None
+        }
+
         if not lessons:
             return {
                 "lessons_checked": 0,
@@ -171,6 +188,7 @@ class ContentQualityAuditor:
             lesson_body = self.lesson_service._read_lesson_body(lesson_item)
             source_body = self.lesson_service._read_source(lesson_item.content_path) or ""
             combined_body = f"{lesson_body}\n{source_body}".lower()
+            canonical_number = canonical_numbers.get(lid)
 
             # --- Errors ---
 
@@ -292,6 +310,33 @@ class ContentQualityAuditor:
                         ),
                     }
                 )
+
+            if any(
+                _GENERIC_OBJECTIVE_IN_OUTPUT.search(str(scene.get("markdown") or ""))
+                for scene in scenes
+            ):
+                errors.append(
+                    {
+                        "lesson_id": lid,
+                        "code": "generic_learning_objective_in_output",
+                        "message": "В интерфейс попала служебная цель вместо результата урока",
+                    }
+                )
+
+            if canonical_number is not None:
+                for prerequisite_id in lesson_item.prerequisites or []:
+                    prerequisite_number = canonical_numbers.get(prerequisite_id)
+                    if prerequisite_number is not None and prerequisite_number >= canonical_number:
+                        errors.append(
+                            {
+                                "lesson_id": lid,
+                                "code": "forward_prerequisite",
+                                "message": (
+                                    f"Prerequisite №{prerequisite_number} стоит не раньше "
+                                    f"урока №{canonical_number}"
+                                ),
+                            }
+                        )
 
             invalid_python = _invalid_python_examples(source_body)
             if invalid_python:
@@ -477,6 +522,27 @@ class ContentQualityAuditor:
                             f"Учебный материал содержит около {total_words} слов; "
                             f"минимум для этого типа урока — {minimum_words}"
                         ),
+                    }
+                )
+
+            if canonical_number is not None and _source_prose_word_count(source_body) < 400:
+                warnings.append(
+                    {
+                        "lesson_id": lid,
+                        "code": "canonical_source_prose_too_short",
+                        "message": (
+                            "Source содержит меньше 400 слов объясняющей прозы без учёта "
+                            "кода и формул"
+                        ),
+                    }
+                )
+
+            if canonical_number not in {None, 1, 23, 27} and not lesson_item.prerequisites:
+                warnings.append(
+                    {
+                        "lesson_id": lid,
+                        "code": "missing_semantic_prerequisites",
+                        "message": "Для урока не указаны смысловые prerequisite-темы",
                     }
                 )
 

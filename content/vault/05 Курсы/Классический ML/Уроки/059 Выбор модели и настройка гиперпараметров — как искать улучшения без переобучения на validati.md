@@ -19,7 +19,8 @@ difficulty: core
 skill_ids:
 - ml.classic.expansion
 prerequisites:
-- lesson.classic-ml.expansion.22
+- lesson.data-tools.cv-tuning
+- lesson.classic-ml.framing.validation
 previous: lesson.classic-ml.expansion.22
 next: lesson.classic-ml.end-to-end.pipeline
 tags:

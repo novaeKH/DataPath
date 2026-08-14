@@ -20,6 +20,7 @@ skill_ids:
 - python.04-funktsii-i-oblasti-vidimosti
 - python.08-dekoratory-i-zamykaniia
 prerequisites:
+- lesson.python-ds.02
 - lesson.python-ds.03
 previous: lesson.python-ds.03
 next: lesson.python-ds.05
@@ -43,6 +44,11 @@ tags:
     {
       "type": "hook",
       "title": "Цель главы"
+    },
+    {
+      "type": "visual_demo",
+      "component": "python-call-scope-flow",
+      "title": "Интерактивная схема темы"
     },
     {
       "type": "retrieval",

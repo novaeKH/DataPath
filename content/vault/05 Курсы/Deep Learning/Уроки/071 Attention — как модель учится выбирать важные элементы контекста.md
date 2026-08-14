@@ -19,6 +19,7 @@ difficulty: core
 skill_ids:
 - datapath.v2.071
 prerequisites:
+- lesson.math-ds.gradients
 - lesson.deep-learning.07
 previous: lesson.deep-learning.07
 next: lesson.deep-learning.08

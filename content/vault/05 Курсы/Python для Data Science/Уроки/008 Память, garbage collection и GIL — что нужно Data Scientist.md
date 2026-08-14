@@ -19,7 +19,8 @@ difficulty: foundation
 skill_ids:
 - python.09-pamiat-gc-i-gil
 prerequisites:
-- lesson.python-ds.11
+- lesson.python-ds.02
+- lesson.python-ds.05
 previous: lesson.python-ds.11
 next: lesson.data-analysis.01
 tags:
@@ -42,6 +43,11 @@ tags:
     {
       "type": "hook",
       "title": "Цель главы"
+    },
+    {
+      "type": "visual_demo",
+      "component": "python-memory-gil-flow",
+      "title": "Интерактивная схема темы"
     },
     {
       "type": "retrieval",

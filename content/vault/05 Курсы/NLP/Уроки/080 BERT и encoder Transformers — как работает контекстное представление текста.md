@@ -20,7 +20,8 @@ skill_ids:
 - nlp.attention
 - nlp.bert-evaluation
 prerequisites:
-- lesson.nlp.rnn
+- lesson.deep-learning.08
+- lesson.nlp.subword-tokenization
 previous: lesson.nlp.rnn
 next: lesson.nlp.evaluation
 tags:

@@ -19,6 +19,7 @@ difficulty: core
 skill_ids:
 - datapath.v2.018
 prerequisites:
+- lesson.sql.select-where
 - lesson.sql.group-by
 previous: lesson.sql.group-by
 next: lesson.sql.cte-subqueries
