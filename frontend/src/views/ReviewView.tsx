@@ -116,25 +116,47 @@ function SummaryScreen({
   const { summary, items } = screen
   const empty = summary.active_items === 0
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-5xl">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
       >
-        <header>
-          <h1 className="dp-page-title">Повторение</h1>
-          <p className="dp-page-subtitle mt-1">
-            Интервальное повторение закрепляет материал маршрута.
-          </p>
-        </header>
+        <section className="dp-review-hero">
+          <div>
+            <p className="dp-eyebrow">Интервальное повторение</p>
+            <h1 className="sr-only">Повторение</h1>
+            <h2 className="mt-3 text-[clamp(2rem,4vw,3.2rem)] font-bold tracking-[-0.04em]">
+              Возвращайте знания
+              <br />в нужный момент
+            </h2>
+            <p
+              className="mt-4 max-w-xl text-sm leading-relaxed"
+              style={{ color: 'var(--dp-text-secondary)' }}
+            >
+              Короткие сессии смешивают концепции, формулы, ошибки в коде и мини-кейсы — так
+              материал остаётся рабочим, а не просто знакомым.
+            </p>
+          </div>
+          <div
+            className="dp-review-orbit"
+            aria-label={`${summary.due_count} повторений на сегодня`}
+          >
+            <i />
+            <i />
+            <div>
+              <strong data-value={summary.due_count} aria-hidden="true" />
+              <span>на сегодня</span>
+            </div>
+          </div>
+        </section>
 
-        <section className="mt-6 rounded-xl p-5 dp-surface">
+        <section className="mt-8 rounded-[24px] p-5 dp-surface">
           {empty ? (
             <EmptyState summary={summary} onReload={onReload} />
           ) : (
             <>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-px overflow-hidden rounded-2xl bg-[var(--dp-border-subtle)] sm:grid-cols-3">
                 <Count
                   label="На сегодня"
                   value={summary.due_count}
@@ -153,7 +175,7 @@ function SummaryScreen({
                 </p>
               ) : (
                 <>
-                  <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
+                  <p className="mt-6 text-sm" style={{ color: 'var(--dp-text-secondary)' }}>
                     {summary.recommendation} В этой сессии:{' '}
                     {formatCount(items.length, 'элемент', 'элемента', 'элементов')}.
                   </p>
@@ -215,7 +237,7 @@ function EmptyState({ summary, onReload }: { summary: ReviewSummary; onReload: (
 
 function Count({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="rounded-lg p-4 text-center dp-surface">
+    <div className="p-4 text-center" style={{ background: 'var(--dp-surface)' }}>
       <div className="text-3xl font-bold" style={{ color }}>
         {value}
       </div>

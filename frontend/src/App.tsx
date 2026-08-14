@@ -71,9 +71,9 @@ export default function App() {
     <ErrorBoundary>
       <MotionConfig reducedMotion="user">
         <AppShortcuts />
-        <div className="flex h-dvh overflow-hidden">
+        <div className="dp-app-shell flex h-dvh overflow-hidden">
           <Sidebar />
-          <main className="dp-app-main flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 md:pb-10 md:pt-9 xl:px-12">
+          <main className="dp-app-main flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 md:pb-16 md:pt-10 xl:px-14">
             <PwaStatus />
             <Routes>
               <Route path="/" element={<Navigate to="/today" replace />} />

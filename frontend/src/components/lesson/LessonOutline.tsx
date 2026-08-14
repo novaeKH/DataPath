@@ -117,21 +117,22 @@ export function LessonOutline({
             onClick={() => onSelect(index)}
             title={fullLabel}
             aria-current={active ? 'step' : undefined}
-            className={`flex min-h-11 w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition ${
-              active
-                ? 'bg-slate-200 font-semibold text-slate-900 dark:bg-slate-800 dark:text-slate-100'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200'
-            }`}
+            className={`dp-outline-link flex min-h-10 w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] transition ${active ? 'is-active font-semibold' : ''}`}
           >
             <span
               className={`h-2 w-2 shrink-0 rounded-full ${done ? 'bg-emerald-500' : meta.dot}`}
             />
             <span
-              className={`line-clamp-2 min-w-0 leading-snug ${done ? 'text-emerald-700 dark:text-emerald-300' : ''}`}
+              className="line-clamp-2 min-w-0 leading-snug"
+              style={{ color: done ? 'var(--dp-success)' : undefined }}
             >
               {label}
             </span>
-            {done && <span className="ml-auto text-[10px] text-emerald-500">✓</span>}
+            {done && (
+              <span className="ml-auto text-[10px]" style={{ color: 'var(--dp-success)' }}>
+                ✓
+              </span>
+            )}
             {scene.type === 'interactive_lab' && <span className="ml-auto text-[10px]">⚡</span>}
           </button>
         )

@@ -2,6 +2,27 @@
 
 > Обновлено 2026-08-14. Рабочая ветка `main`; release/tag не создаётся.
 
+## Learning experience redesign
+
+- Интерфейс переведён с утилитарной dashboard-композиции на спокойную образовательную систему с
+  indigo/violet accent, отдельной светлой и тёмной палитрой, мягкими пространственными фонами и
+  единой типографической иерархией.
+- Навигация сокращена до пяти постоянных разделов: Главная, Учиться, Практика, Повторение и
+  Прогресс. Focus открывается из учебного контекста, а Atlas оставлен вторичной картой знаний.
+- Today стал Learning Home: крупный resume hero, реальный прогресс трёх проходов, вертикальный план
+  дня и следующие уроки формируются из существующих Today/Roadmap данных.
+- Learn использует визуальную библиотеку карточек. Для девяти курсов создана единая система
+  переиспользуемых SVG-artworks с разными мотивами: код, функция, таблица, pipeline, дерево,
+  нейросеть, токены, retrieval и MLOps flow.
+- Страница курса показывает hero, круговой progress и модули как вертикальное путешествие; статусы
+  и текущий урок по-прежнему берутся из сохранённого progress.
+- Focus получил reading width 720 px, размер текста 17 px / line-height 1.78, крупный заголовок,
+  непрерывный prose, премиальные code/formula/demo surfaces и спокойный outline без raw skill IDs.
+- Review, Studio и Roadmap получили самостоятельные visual heroes и более ясные композиции;
+  Atlas уже использует блочную карту направлений вместо большого графа.
+- Mobile navigation соответствует desktop-информационной архитектуре. Проверены размеры 390×844,
+  safe areas, светлая и тёмная темы; интерактивный Gini threshold повторно проверен в браузере.
+
 ## Canonical curriculum v2
 
 - Production curriculum содержит ровно 100 canonical lessons с номерами 1–100: Python Core,
@@ -63,7 +84,7 @@
   Dropout, CNN, pooling, RNN, LSTM, embeddings, Attention и Transformer.
 - Assets лежат в `frontend/public/content-assets/datapath-v2/figures/`; Markdown renderer добавляет
   base-path-safe URL, lazy loading, alt и caption.
-- Service worker cache поднят до `datapath-v15-offline-visual-labs` и pre-cache-ит все 21 figure
+- Service worker cache поднят до `datapath-v16-learning-experience` и pre-cache-ит все 21 figure
   вместе с release snapshot, не затрагивая localStorage.
 
 ## Local state migration

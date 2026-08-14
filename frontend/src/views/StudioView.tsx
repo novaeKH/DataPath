@@ -92,22 +92,33 @@ function CaseList() {
 
   const { cases } = state
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-      <PageHeader
-        title="Studio"
-        subtitle="SQL, pandas, NumPy, scikit-learn, DL и mini-cases. Результаты сохраняются в учебном прогрессе."
-        actions={
-          <Link to="/atlas" className={buttonClassNames('outline', 'sm')}>
-            ← Atlas
-          </Link>
-        }
-      />
+    <motion.div
+      className="mx-auto max-w-6xl"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <section className="dp-studio-hero">
+        <PageHeader
+          eyebrow="Практика"
+          title="Studio"
+          subtitle="Безопасное место, где теория превращается в навык: запросы, код, эксперименты и небольшие рабочие кейсы."
+        />
+        <div className="dp-studio-glyph" aria-hidden="true">
+          <span>SELECT</span>
+          <span>fit(X, y)</span>
+          <span>→ result</span>
+        </div>
+      </section>
 
       <PracticeLibrary />
 
-      <h2 className="mt-10 text-lg font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
-        Mini-cases
-      </h2>
+      <div className="mt-12">
+        <p className="dp-eyebrow">Применение</p>
+        <h2 className="mt-1 text-2xl font-bold tracking-tight">Mini-cases</h2>
+        <p className="mt-2 max-w-xl text-sm" style={{ color: 'var(--dp-text-secondary)' }}>
+          Разберите реалистичную ситуацию, примите решения и получите предметную обратную связь.
+        </p>
+      </div>
 
       {cases.length === 0 ? (
         <div className="mt-6">
@@ -117,9 +128,9 @@ function CaseList() {
           />
         </div>
       ) : (
-        <div className="mt-6 flex flex-col gap-4">
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
           {cases.map((caseSpec) => (
-            <section key={caseSpec.id} className="rounded-xl p-5 dp-surface">
+            <section key={caseSpec.id} className="dp-case-card">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -145,16 +156,12 @@ function CaseList() {
                   <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                     {caseSpec.description}
                   </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {caseSpec.skill_ids.map((skill) => (
-                      <span
-                        key={skill}
-                        className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-500 dark:bg-slate-800/70 dark:text-slate-400"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
+                  {caseSpec.skill_ids.length > 0 && (
+                    <div className="mt-3 text-xs" style={{ color: 'var(--dp-text-muted)' }}>
+                      {caseSpec.skill_ids.length}{' '}
+                      {caseSpec.skill_ids.length === 1 ? 'навык' : 'навыка'} в фокусе
+                    </div>
+                  )}
                 </div>
                 <div className="flex shrink-0 flex-col gap-2">
                   <Link

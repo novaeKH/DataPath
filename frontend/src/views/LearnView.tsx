@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fetchAtlas, fetchCourses, type AtlasData, type CourseSummary } from '../lib/api'
 import { ErrorState, LoadingBlock, PageHeader } from '../components/ui/PageState'
+import { CourseArtwork } from '../components/learning/CourseArtwork'
+import { getCourseVisual } from '../components/learning/courseVisuals'
 
 type LoadState =
   | { kind: 'loading' }
@@ -60,13 +62,20 @@ function CourseLibrary({ courses, atlas }: { courses: CourseSummary[]; atlas: At
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <PageHeader
-        eyebrow="Обучение"
-        title="Выберите направление"
-        subtitle="Все курсы в одном месте. Откройте маршрут, продолжите начатую тему или посмотрите прогресс."
-      />
+      <div className="dp-library-intro">
+        <PageHeader
+          eyebrow="Библиотека знаний"
+          title="Выберите направление"
+          subtitle="Девять связанных маршрутов — от основ Python до надёжных ML-систем. Каждый курс хранит вашу позицию и прогресс."
+        />
+        <div className="dp-library-orbit" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </div>
+      </div>
 
-      <div className="mt-8 grid gap-x-10 gap-y-3 md:grid-cols-2">
+      <div className="mt-10 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {courses
           .filter((course) => RELEASE_COURSE_IDS.has(course.id))
           .sort(
@@ -74,7 +83,7 @@ function CourseLibrary({ courses, atlas }: { courses: CourseSummary[]; atlas: At
               Object.keys(SHORT_TITLE).indexOf(left.id) -
               Object.keys(SHORT_TITLE).indexOf(right.id),
           )
-          .map((course, index) => {
+          .map((course) => {
             const nodes = lessonNodes.filter((node) => node.course_id === course.id)
             const completed = nodes.filter((node) => node.status === 'strong').length
             const learning = nodes.filter((node) =>
@@ -85,65 +94,65 @@ function CourseLibrary({ courses, atlas }: { courses: CourseSummary[]; atlas: At
                   nodes.reduce((sum, node) => sum + (node.mastery_percent ?? 0), 0) / nodes.length,
                 )
               : 0
+            const visual = getCourseVisual(course.id)
             return (
               <Link
                 key={course.id}
                 to={`/focus?course=${encodeURIComponent(course.id)}`}
-                className="group border-b py-5 transition-colors"
-                style={{ borderColor: 'var(--dp-border-subtle)' }}
+                className="dp-course-card group"
+                style={
+                  {
+                    '--course-accent': visual.accent,
+                    '--course-tint': visual.tint,
+                  } as CSSProperties
+                }
               >
-                <div className="flex items-start gap-4">
-                  <span
-                    className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-mono text-xs"
-                    style={{
-                      background: 'var(--dp-surface-interactive)',
-                      color: 'var(--dp-text-muted)',
-                    }}
-                  >
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-4">
-                      <h2
-                        className="text-base font-semibold tracking-tight"
-                        style={{ color: 'var(--dp-text-primary)' }}
-                      >
+                <div className="dp-course-card-visual">
+                  <CourseArtwork courseId={course.id} compact />
+                </div>
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-lg font-bold tracking-[-0.02em]">
                         {SHORT_TITLE[course.id] ?? course.title}
                       </h2>
-                      <span
-                        className="transition-transform group-hover:translate-x-1"
-                        style={{ color: 'var(--dp-text-muted)' }}
+                      <p
+                        className="mt-1 text-sm leading-relaxed"
+                        style={{ color: 'var(--dp-text-secondary)' }}
                       >
-                        →
-                      </span>
+                        {visual.description}
+                      </p>
                     </div>
-                    <p
-                      className="mt-1 line-clamp-1 text-xs"
-                      style={{ color: 'var(--dp-text-secondary)' }}
-                    >
-                      {course.title}
-                    </p>
-                    <div
-                      className="mt-4 h-1 overflow-hidden rounded-full"
-                      style={{ background: 'var(--dp-border-subtle)' }}
-                    >
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${average}%`, background: 'var(--dp-accent)' }}
-                      />
-                    </div>
-                    <div
-                      className="mt-2 flex items-center justify-between text-[11px]"
-                      style={{ color: 'var(--dp-text-muted)' }}
-                    >
-                      <span>
-                        {course.lesson_count} уроков · {course.estimated_hours ?? '—'} ч
-                      </span>
-                      <span>
-                        {completed} освоено · {learning} в работе · {average}%
-                      </span>
-                    </div>
+                    <span className="dp-course-arrow">→</span>
                   </div>
+                  <div
+                    className="mt-5 h-1.5 overflow-hidden rounded-full"
+                    style={{ background: 'var(--dp-border-subtle)' }}
+                  >
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${average}%`, background: visual.accent }}
+                    />
+                  </div>
+                  <div
+                    className="mt-3 flex items-center justify-between text-[11px]"
+                    style={{ color: 'var(--dp-text-muted)' }}
+                  >
+                    <span>
+                      {course.lesson_count} уроков · {course.estimated_hours ?? '—'} ч
+                    </span>
+                    <span>
+                      {average > 0 ? `${average}% · ${completed} освоено` : 'Начать курс'}
+                    </span>
+                  </div>
+                  {learning > 0 && (
+                    <div
+                      className="mt-3 text-[11px] font-semibold"
+                      style={{ color: visual.accent }}
+                    >
+                      {learning} {learning === 1 ? 'тема в работе' : 'темы в работе'}
+                    </div>
+                  )}
                 </div>
               </Link>
             )

@@ -8,9 +8,10 @@ import {
   type RoadmapModule,
   type RoadmapStage,
 } from '../lib/api'
-import { ErrorState, LoadingBlock, PageHeader } from '../components/ui/PageState'
+import { ErrorState, LoadingBlock } from '../components/ui/PageState'
 import { buttonClassNames } from '../components/ui/buttonStyles'
 import { ArrowRightIcon } from '../components/ui/icons'
+import { ProgressRing } from '../components/learning/CourseArtwork'
 
 type LoadState =
   { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; data: RoadmapData }
@@ -51,20 +52,39 @@ function Roadmap({ data }: { data: RoadmapData }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <PageHeader
-        eyebrow="Мой путь"
-        title="Три прохода — от базы до рабочего проекта"
-        subtitle={`${data.completed_lessons} из ${data.total_lessons} уроков завершено. Roadmap показывает порядок; Карта знаний — связи и mastery.`}
-        actions={
-          <Link to="/atlas" className={buttonClassNames('outline', 'sm')}>
-            Карта знаний
-          </Link>
-        }
-      />
+      <section className="dp-progress-hero">
+        <div>
+          <p className="dp-eyebrow">Ваш прогресс</p>
+          <h1 className="mt-3 max-w-3xl text-[clamp(2rem,4vw,3.35rem)] font-bold leading-[1.07] tracking-[-0.04em]">
+            Три прохода — от базы до уверенного применения
+          </h1>
+          <p
+            className="mt-4 max-w-2xl text-sm leading-relaxed"
+            style={{ color: 'var(--dp-text-secondary)' }}
+          >
+            Сначала соберите карту области, затем разберите механику и закрепите знания практикой.
+            Это не гонка: маршрут всегда сохраняет текущее место.
+          </p>
+          <div className="mt-6 flex gap-3">
+            <Link to="/learn" className={buttonClassNames('primary')}>
+              Продолжить путь
+            </Link>
+            <Link to="/atlas" className={buttonClassNames('outline')}>
+              Карта знаний
+            </Link>
+          </div>
+        </div>
+        <ProgressRing
+          value={
+            data.total_lessons ? Math.round((data.completed_lessons / data.total_lessons) * 100) : 0
+          }
+          label="маршрута"
+        />
+      </section>
 
       {current && data.current_stage && (
         <section
-          className="mt-7 flex flex-wrap items-center justify-between gap-5 rounded-2xl p-5 sm:p-6"
+          className="mt-8 flex flex-wrap items-center justify-between gap-5 rounded-2xl p-5 sm:p-6"
           style={{
             background: 'var(--dp-accent-subtle)',
             border: '1px solid var(--dp-accent-border)',
@@ -89,7 +109,7 @@ function Roadmap({ data }: { data: RoadmapData }) {
         </section>
       )}
 
-      <div className="mt-8 space-y-6">
+      <div className="dp-roadmap-story mt-12 space-y-8">
         {data.stages.map((stage) => (
           <StageBlock key={stage.id} stage={stage} currentLessonId={current?.id ?? null} />
         ))}
@@ -106,7 +126,7 @@ function StageBlock({
   currentLessonId: string | null
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl dp-surface">
+    <section className={`dp-roadmap-stage ${stage.status === 'learning' ? 'is-current' : ''}`}>
       <div
         className="grid gap-4 border-b p-5 sm:grid-cols-[72px_1fr_auto] sm:items-center sm:p-6"
         style={{ borderColor: 'var(--dp-border-subtle)' }}

@@ -1,9 +1,7 @@
-import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useUiStore } from '../stores/ui'
 import {
   AtlasIcon,
-  FocusIcon,
   LearnIcon,
   MoonIcon,
   ReviewIcon,
@@ -14,21 +12,9 @@ import {
   TodayIcon,
 } from './ui/icons'
 
-const DIRECTIONS = [
-  ['Python', 'course.python-ds'],
-  ['Математика', 'course.math-ds'],
-  ['NumPy & pandas', 'course.data-analysis'],
-  ['SQL & sklearn', 'course.data-tools'],
-  ['Classic ML', 'course.classic-ml'],
-  ['Deep Learning', 'course.deep-learning'],
-  ['NLP', 'course.nlp'],
-  ['LLM / RAG', 'course.llm-rag'],
-  ['MLOps', 'course.mlops'],
-] as const
-
 function ThemeToggle() {
-  const theme = useUiStore((s) => s.theme)
-  const toggleTheme = useUiStore((s) => s.toggleTheme)
+  const theme = useUiStore((state) => state.theme)
+  const toggleTheme = useUiStore((state) => state.toggleTheme)
   const isDark = theme === 'dark'
   const label = isDark ? 'Светлая тема' : 'Тёмная тема'
   return (
@@ -36,7 +22,7 @@ function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={label}
       title={label}
-      className="flex h-9 w-9 items-center justify-center rounded-xl dp-hover-interactive"
+      className="flex h-10 w-10 items-center justify-center rounded-xl dp-hover-interactive"
       style={{ color: 'var(--dp-text-muted)' }}
     >
       {isDark ? <SunIcon /> : <MoonIcon />}
@@ -49,18 +35,28 @@ function Brand({ collapsed }: { collapsed: boolean }) {
     <NavLink
       to="/today"
       className="flex min-w-0 items-center gap-3"
-      aria-label="DataPath — Сегодня"
+      aria-label="DataPath — Главная"
     >
-      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" className="shrink-0">
-        <rect width="30" height="30" rx="9" fill="var(--dp-accent)" />
-        <path d="M8 20V10l7 5-7 5z" fill="var(--dp-surface)" />
-        <path d="M15 20V10l7 5-7 5z" fill="var(--dp-surface)" fillOpacity="0.55" />
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none" className="shrink-0">
+        <rect width="34" height="34" rx="11" fill="var(--dp-accent)" />
+        <path
+          d="M9 23c2-7 5-12 9-12 3 0 3 6 7 6"
+          stroke="white"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+        />
+        <circle cx="9" cy="23" r="2.4" fill="white" />
+        <circle cx="18" cy="11" r="2.4" fill="white" />
+        <circle cx="25" cy="17" r="2.4" fill="white" />
       </svg>
       {!collapsed && (
         <div className="min-w-0 leading-tight">
-          <div className="text-[15px] font-semibold tracking-tight">DataPath</div>
-          <div className="text-[10px]" style={{ color: 'var(--dp-text-muted)' }}>
-            локальное обучение
+          <div className="text-[16px] font-bold tracking-[-0.025em]">DataPath</div>
+          <div
+            className="mt-0.5 text-[10px] font-medium tracking-wide"
+            style={{ color: 'var(--dp-text-muted)' }}
+          >
+            путь в Data Science
           </div>
         </div>
       )}
@@ -73,111 +69,74 @@ function NavItem({
   label,
   Icon,
   collapsed,
-  end,
 }: {
   to: string
   label: string
   Icon: typeof TodayIcon
   collapsed: boolean
-  end?: boolean
 }) {
+  const accessibleLabel =
+    label === 'Учиться'
+      ? 'Учиться · Курсы'
+      : label === 'Практика'
+        ? 'Практика · Studio'
+        : label === 'Прогресс'
+          ? 'Прогресс · Мой путь'
+          : label
   return (
     <NavLink
       to={to}
-      end={end}
+      aria-label={accessibleLabel}
       title={collapsed ? label : undefined}
       className={({ isActive }) => `dp-sidebar-link ${isActive ? 'is-active' : ''}`}
     >
-      <Icon width={18} height={18} className="shrink-0" />
+      <Icon width={19} height={19} className="shrink-0" />
       {!collapsed && <span>{label}</span>}
     </NavLink>
   )
 }
 
-export function Sidebar() {
-  const collapsed = useUiStore((s) => s.sidebarCollapsed)
-  const learningOpen = useUiStore((s) => s.learningNavOpen)
-  const toggleSidebar = useUiStore((s) => s.toggleSidebar)
-  const toggleLearning = useUiStore((s) => s.toggleLearningNav)
-  const [moreOpen, setMoreOpen] = useState(false)
+const PRIMARY_NAV = [
+  ['/today', 'Главная', TodayIcon],
+  ['/learn', 'Учиться', LearnIcon],
+  ['/studio', 'Практика', StudioIcon],
+  ['/review', 'Повторение', ReviewIcon],
+  ['/roadmap', 'Прогресс', RoadmapIcon],
+] as const
 
+export function Sidebar() {
+  const collapsed = useUiStore((state) => state.sidebarCollapsed)
+  const toggleSidebar = useUiStore((state) => state.toggleSidebar)
   return (
     <>
       <aside
-        className={`hidden shrink-0 flex-col transition-[width] duration-200 md:flex ${collapsed ? 'w-[72px]' : 'w-[248px]'}`}
-        style={{
-          background: 'var(--dp-sidebar-bg)',
-          borderRight: '1px solid var(--dp-border-subtle)',
-        }}
+        className={`dp-sidebar hidden shrink-0 flex-col transition-[width] duration-200 md:flex ${collapsed ? 'w-[76px]' : 'w-[226px]'}`}
       >
         <div
-          className={`flex items-center px-5 pb-4 pt-5 ${collapsed ? 'justify-center px-0' : 'justify-between'}`}
+          className={`flex items-center px-5 pb-8 pt-6 ${collapsed ? 'justify-center px-0' : ''}`}
         >
           <Brand collapsed={collapsed} />
         </div>
-
-        <nav aria-label="Основная навигация" className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+        <nav aria-label="Основная навигация" className="flex-1 px-3">
           <div className="space-y-1">
-            <NavItem to="/today" label="Сегодня" Icon={TodayIcon} collapsed={collapsed} />
-            <NavItem to="/learn" label="Курсы" Icon={LearnIcon} collapsed={collapsed} />
-            <NavItem to="/roadmap" label="Мой путь" Icon={RoadmapIcon} collapsed={collapsed} />
-            <NavItem to="/focus" label="Focus" Icon={FocusIcon} collapsed={collapsed} />
+            {PRIMARY_NAV.map(([to, label, Icon]) => (
+              <NavItem key={to} to={to} label={label} Icon={Icon} collapsed={collapsed} />
+            ))}
           </div>
-
-          {!collapsed && (
-            <div className="mt-5">
-              <button
-                onClick={toggleLearning}
-                className="flex w-full items-center justify-between px-3 text-[10px] font-semibold uppercase tracking-[0.14em]"
-                style={{ color: 'var(--dp-text-muted)' }}
-                aria-expanded={learningOpen}
-              >
-                Обучение
-                <span className={`transition-transform ${learningOpen ? 'rotate-90' : ''}`}>›</span>
-              </button>
-              {learningOpen && (
-                <div
-                  className="mt-2 space-y-0.5 border-l pl-3"
-                  style={{ borderColor: 'var(--dp-border-subtle)' }}
-                >
-                  {DIRECTIONS.map(([label, id]) => (
-                    <NavLink
-                      key={id}
-                      to={`/focus?course=${encodeURIComponent(id)}`}
-                      className="block rounded-lg px-3 py-1.5 text-[12px] transition-colors dp-hover-interactive"
-                      style={{ color: 'var(--dp-text-secondary)' }}
-                    >
-                      {label}
-                    </NavLink>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="mt-5 space-y-1">
-            {!collapsed && <div className="dp-sidebar-group">Практика</div>}
-            <NavItem to="/studio" label="Studio" Icon={StudioIcon} collapsed={collapsed} />
-          </div>
-          <div className="mt-5 space-y-1">
-            {!collapsed && <div className="dp-sidebar-group">Повторение</div>}
-            <NavItem to="/review" label="Review" Icon={ReviewIcon} collapsed={collapsed} />
-          </div>
-          <div className="mt-5 space-y-1">
-            {!collapsed && <div className="dp-sidebar-group">Прогресс</div>}
+          <div className="mt-8 border-t pt-5" style={{ borderColor: 'var(--dp-border-subtle)' }}>
+            {!collapsed && <p className="dp-sidebar-group">Дополнительно</p>}
             <NavItem to="/atlas" label="Карта знаний" Icon={AtlasIcon} collapsed={collapsed} />
           </div>
         </nav>
-
         <div
-          className="flex items-center justify-between gap-2 border-t px-3 py-3"
+          className="flex items-center gap-1 border-t px-3 py-3"
           style={{ borderColor: 'var(--dp-border-subtle)' }}
         >
           <button
             onClick={toggleSidebar}
             aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
             title={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
-            className="flex h-9 w-9 items-center justify-center rounded-xl dp-hover-interactive"
+            className="flex h-10 w-10 items-center justify-center rounded-xl dp-hover-interactive"
             style={{ color: 'var(--dp-text-muted)' }}
           >
             {collapsed ? '›' : '‹'}
@@ -185,70 +144,27 @@ export function Sidebar() {
           {!collapsed && (
             <NavLink
               to="/system"
-              className="flex flex-1 items-center gap-2 rounded-xl px-2 py-2 text-xs dp-hover-interactive"
+              className="flex h-10 flex-1 items-center gap-2 rounded-xl px-2 text-xs dp-hover-interactive"
               style={{ color: 'var(--dp-text-muted)' }}
             >
-              <SystemIcon width={15} height={15} /> Настройки
+              <SystemIcon width={16} height={16} /> Настройки
             </NavLink>
           )}
           <ThemeToggle />
         </div>
       </aside>
-
-      <header
-        className="dp-mobile-header fixed inset-x-0 top-0 z-40 flex items-center justify-between px-4 backdrop-blur md:hidden"
-        style={{
-          background: 'color-mix(in srgb, var(--dp-app-bg) 90%, transparent)',
-          borderBottom: '1px solid var(--dp-border-subtle)',
-        }}
-      >
+      <header className="dp-mobile-header fixed inset-x-0 top-0 z-40 flex items-center justify-between px-4 backdrop-blur-xl md:hidden">
         <Brand collapsed={false} />
         <ThemeToggle />
       </header>
-
       <nav
         aria-label="Мобильная навигация"
-        className="dp-mobile-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 backdrop-blur md:hidden"
-        style={{
-          background: 'color-mix(in srgb, var(--dp-app-bg) 94%, transparent)',
-          borderTop: '1px solid var(--dp-border-subtle)',
-        }}
+        className="dp-mobile-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 backdrop-blur-xl md:hidden"
       >
-        <NavItem to="/today" label="Сегодня" Icon={TodayIcon} collapsed={false} />
-        <NavItem to="/learn" label="Курсы" Icon={LearnIcon} collapsed={false} />
-        <NavItem to="/studio" label="Studio" Icon={StudioIcon} collapsed={false} />
-        <NavItem to="/review" label="Review" Icon={ReviewIcon} collapsed={false} />
-        <button
-          type="button"
-          className="dp-sidebar-link flex-col justify-center gap-0.5 rounded-none px-1 text-[10px]"
-          aria-expanded={moreOpen}
-          aria-controls="mobile-more-menu"
-          onClick={() => setMoreOpen((open) => !open)}
-        >
-          <SystemIcon width={18} height={18} />
-          Ещё
-        </button>
+        {PRIMARY_NAV.map(([to, label, Icon]) => (
+          <NavItem key={to} to={to} label={label} Icon={Icon} collapsed={false} />
+        ))}
       </nav>
-
-      {moreOpen && (
-        <div
-          id="mobile-more-menu"
-          className="dp-mobile-more fixed inset-x-3 z-50 rounded-2xl p-2 shadow-xl md:hidden dp-surface-elevated"
-        >
-          <NavLink to="/roadmap" className="dp-sidebar-link" onClick={() => setMoreOpen(false)}>
-            <RoadmapIcon /> Мой путь
-          </NavLink>
-          <NavLink to="/focus" className="dp-sidebar-link" onClick={() => setMoreOpen(false)}>
-            <FocusIcon /> Focus
-          </NavLink>
-          <NavLink to="/atlas" className="dp-sidebar-link" onClick={() => setMoreOpen(false)}>
-            <AtlasIcon /> Карта знаний
-          </NavLink>
-          <NavLink to="/system" className="dp-sidebar-link" onClick={() => setMoreOpen(false)}>
-            <SystemIcon /> Настройки и данные
-          </NavLink>
-        </div>
-      )}
     </>
   )
 }

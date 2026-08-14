@@ -121,14 +121,15 @@ export function VisualDemoFrame({
   }, [moveSequence, playing, reduced, sequenceControl, speed])
 
   return (
-    <div className="rounded-xl p-5 dp-surface-elevated" style={{ background: 'var(--dp-surface)' }}>
+    <div className="dp-visual-demo-frame">
       {/* Goal */}
-      <p className="text-sm font-medium mb-4" style={{ color: 'var(--dp-text-primary)' }}>
+      <div className="dp-visual-demo-kicker">Интерактивная схема</div>
+      <p className="mb-5 mt-2 text-base font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
         {goal}
       </p>
 
       {/* Controls */}
-      <div className="flex flex-wrap gap-4 mb-5">
+      <div className="dp-demo-controls mb-6 flex flex-wrap gap-4">
         {controls.map((ctrl) => (
           <label
             key={ctrl.name}

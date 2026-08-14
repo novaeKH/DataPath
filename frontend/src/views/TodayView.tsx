@@ -1,25 +1,38 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { fetchToday, type TodayData } from '../lib/api'
-import { ErrorState, LoadingBlock, PageHeader } from '../components/ui/PageState'
+import {
+  fetchCourses,
+  fetchRoadmap,
+  fetchToday,
+  type CourseSummary,
+  type RoadmapData,
+  type TodayData,
+} from '../lib/api'
+import { ErrorState, LoadingBlock } from '../components/ui/PageState'
 import { buttonClassNames } from '../components/ui/buttonStyles'
 import { ArrowRightIcon } from '../components/ui/icons'
-import { formatCount } from '../lib/format'
+import { CourseArtwork } from '../components/learning/CourseArtwork'
+import { courseIdFromLessonId, getCourseVisual } from '../components/learning/courseVisuals'
 
 type LoadState =
-  { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; data: TodayData }
+  | { kind: 'loading' }
+  | { kind: 'error'; message: string }
+  | { kind: 'ready'; data: TodayData; roadmap: RoadmapData | null; courses: CourseSummary[] }
 
 export function TodayView() {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
-
   const load = useCallback(async (signal?: AbortSignal) => {
     setState({ kind: 'loading' })
     try {
       const data = await fetchToday(signal)
-      setState({ kind: 'ready', data })
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
+      const [roadmap, courses] = await Promise.all([
+        fetchRoadmap(signal).catch(() => null),
+        fetchCourses(signal).catch(() => []),
+      ])
+      setState({ kind: 'ready', data, roadmap, courses })
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
       setState({
         kind: 'error',
         message:
@@ -34,122 +47,315 @@ export function TodayView() {
     return () => controller.abort()
   }, [load])
 
-  if (state.kind === 'loading') {
-    return <LoadingBlock label="Загрузка «Сегодня»…" rows={4} />
-  }
-  if (state.kind === 'error') {
+  if (state.kind === 'loading') return <LoadingBlock label="Загрузка «Сегодня»…" rows={4} />
+  if (state.kind === 'error')
     return <ErrorState message={state.message} onRetry={() => void load()} />
-  }
 
-  const { data } = state
-  const summary = data.progress_summary
-  const hasProgress = summary.lessons_completed > 0 || summary.lessons_started > 0
+  return <LearningHome data={state.data} roadmap={state.roadmap} courses={state.courses} />
+}
+
+function LearningHome({
+  data,
+  roadmap,
+  courses,
+}: {
+  data: TodayData
+  roadmap: RoadmapData | null
+  courses: CourseSummary[]
+}) {
+  const lessonId = data.continue_lesson?.lesson_id ?? data.next_lesson?.id ?? null
+  const courseId = data.continue_lesson
+    ? courseIdFromLessonId(data.continue_lesson.lesson_id)
+    : (data.next_lesson?.course_id ?? courseIdFromLessonId(lessonId))
+  const course = courses.find((item) => item.id === courseId)
+  const visual = getCourseVisual(courseId)
+  const lesson = data.continue_lesson ?? data.next_lesson
+  const context = data.roadmap_context
+  const total = roadmap?.total_lessons ?? context?.total_lessons ?? 0
+  const completed =
+    roadmap?.completed_lessons ??
+    context?.completed_lessons ??
+    data.progress_summary.lessons_completed
+  const overallPercent = total > 0 ? Math.round((completed / total) * 100) : 0
+  const stage = roadmap?.current_stage ?? context?.current_stage ?? null
+  const currentModule = useMemo(() => {
+    if (!roadmap || !lessonId) return null
+    return (
+      roadmap.stages
+        .flatMap((item) => item.modules)
+        .find((module) => module.lessons.some((item) => item.id === lessonId)) ?? null
+    )
+  }, [lessonId, roadmap])
+  const nextLessons = useMemo(() => {
+    if (!roadmap) return []
+    const all = roadmap.stages.flatMap((item) =>
+      item.modules.flatMap((module) =>
+        module.lessons.map((nextLesson) => ({
+          ...nextLesson,
+          module: module.title,
+          courseId: module.course_id,
+        })),
+      ),
+    )
+    const currentIndex = all.findIndex((item) => item.id === lessonId)
+    const start = currentIndex >= 0 ? currentIndex + 1 : 0
+    return all.slice(start, start + 4)
+  }, [lessonId, roadmap])
+
   const lessonMinutes =
     data.continue_lesson?.estimated_minutes ?? data.next_lesson?.estimated_minutes ?? 20
-  const reviewMinutes = Math.min(data.due_reviews * 3, 18)
-  const practiceMinutes = data.suggested_practice?.estimated_minutes ?? 0
-  const planMinutes = lessonMinutes + reviewMinutes + practiceMinutes
+  const practiceMinutes = data.suggested_practice?.estimated_minutes ?? 10
+  const reviewMinutes = data.due_reviews ? Math.min(data.due_reviews * 3, 18) : 5
+  const reviewTitle =
+    data.due_reviews > 0
+      ? `${data.due_reviews} повторений на сегодня`
+      : data.review_summary.active_items > 0
+        ? 'На сегодня всё'
+        : 'Закрепить изученное'
+  const reviewMeta =
+    data.overdue_reviews > 0
+      ? `${data.overdue_reviews} просрочено · ${reviewMinutes} мин`
+      : `Повторение · ${reviewMinutes} мин`
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25 }}
-      >
-        <PageHeader
-          eyebrow={dayGreeting()}
-          title="Сегодня"
-          subtitle={
-            hasProgress
-              ? `${formatCount(summary.lessons_completed, 'урок завершён', 'урока завершено', 'уроков завершено')} · ${formatCount(summary.lessons_started, 'урок в работе', 'урока в работе', 'уроков в работе')}`
-              : `План на сегодня — около ${planMinutes} минут.`
-          }
-        />
+    <motion.div
+      className="mx-auto max-w-[1180px]"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28 }}
+    >
+      <header className="mb-7 flex items-end justify-between gap-5">
+        <div>
+          <p className="dp-eyebrow">{dayGreeting()}</p>
+          <h1 className="dp-page-title mt-2">Сегодня</h1>
+          <p className="dp-page-subtitle mt-1">
+            Продолжите свой путь с того места, где остановились.
+          </p>
+        </div>
+        <div className="hidden text-right sm:block">
+          <strong className="block text-lg">{overallPercent}%</strong>
+          <span className="text-xs" style={{ color: 'var(--dp-text-muted)' }}>
+            общий прогресс
+          </span>
+        </div>
+      </header>
 
-        {data.roadmap_context?.current_stage && (
+      <section
+        className="dp-learning-hero"
+        style={{ '--course-accent': visual.accent, '--course-tint': visual.tint } as CSSProperties}
+      >
+        <div className="relative z-10 max-w-[650px]">
+          <p className="dp-eyebrow">
+            {data.continue_lesson ? 'Продолжить обучение' : 'Следующий урок'}
+          </p>
+          <div
+            className="mt-4 flex flex-wrap items-center gap-2 text-xs font-medium"
+            style={{ color: 'var(--dp-text-secondary)' }}
+          >
+            <span>{course ? getCourseVisual(course.id).shortTitle : visual.shortTitle}</span>
+            <span>·</span>
+            <span>{currentModule?.title ?? stage?.title ?? 'Учебный маршрут'}</span>
+          </div>
+          <h2 className="mt-3 text-[clamp(1.75rem,3.4vw,2.7rem)] font-bold leading-[1.08] tracking-[-0.035em]">
+            {lesson?.title ?? 'Начните свой учебный путь'}
+          </h2>
+          <p
+            className="mt-4 max-w-[560px] text-[15px] leading-relaxed"
+            style={{ color: 'var(--dp-text-secondary)' }}
+          >
+            {data.continue_lesson
+              ? 'Вернитесь к материалу без повторного поиска: позиция, ответы и прогресс уже сохранены.'
+              : 'Один содержательный шаг сегодня — и большая карта знаний станет немного понятнее.'}
+          </p>
+          <div className="mt-6 flex flex-wrap items-center gap-4">
+            <Link
+              to={lessonId ? `/focus/${encodeURIComponent(lessonId)}` : '/learn'}
+              className={buttonClassNames('primary', 'lg')}
+            >
+              {data.continue_lesson
+                ? 'Продолжить урок'
+                : lessonId
+                  ? 'Начать урок'
+                  : 'Выбрать направление'}{' '}
+              <ArrowRightIcon width={18} height={18} />
+            </Link>
+            <span className="text-xs" style={{ color: 'var(--dp-text-muted)' }}>
+              ≈ {lessonMinutes} минут
+            </span>
+          </div>
+        </div>
+        <CourseArtwork courseId={courseId} className="dp-learning-hero-art" />
+      </section>
+
+      <section className="mt-10">
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <p className="dp-eyebrow">Ваш путь</p>
+            <h2 className="mt-1 text-xl font-bold tracking-tight">Три уровня понимания</h2>
+          </div>
           <Link
             to="/roadmap"
-            className="mt-4 flex min-h-11 items-center justify-between gap-4 rounded-xl px-4 py-2 text-sm dp-surface dp-hover-interactive"
+            className="text-sm font-semibold"
+            style={{ color: 'var(--dp-accent)' }}
           >
-            <span>
-              <strong>Проход {data.roadmap_context.current_stage.number}</strong>
-              <span className="ml-2" style={{ color: 'var(--dp-text-secondary)' }}>
-                {data.roadmap_context.current_stage.title}
-              </span>
-            </span>
-            <span style={{ color: 'var(--dp-accent)' }}>
-              {data.roadmap_context.current_stage.progress_percent}% →
-            </span>
+            Весь маршрут →
           </Link>
-        )}
-
-        <div className="mt-6 flex flex-col gap-5">
-          {/* Primary recommendation — visually dominant */}
-          <MainAction data={data} />
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            {data.suggested_practice ? (
-              <PracticeCard practice={data.suggested_practice} />
-            ) : (
-              <Link to="/studio" className="rounded-xl p-5 dp-surface dp-hover-interactive">
-                <div className="dp-section-title">Практика</div>
-                <p className="mt-1 text-sm" style={{ color: 'var(--dp-text-secondary)' }}>
-                  Выбрать упражнение в Studio →
-                </p>
-              </Link>
-            )}
-            <ReviewCard data={data} />
-          </div>
-
-          {(data.suggested_case || data.weak_skills.length > 0) && (
-            <details className="rounded-xl dp-surface">
-              <summary
-                className="cursor-pointer px-5 py-4 text-sm font-medium"
-                style={{ color: 'var(--dp-text-secondary)' }}
-              >
-                Ещё на сегодня
-              </summary>
-              <div
-                className="grid gap-4 border-t p-5 sm:grid-cols-2"
-                style={{ borderColor: 'var(--dp-border-subtle)' }}
-              >
-                {data.suggested_case && (
-                  <div>
-                    <div className="dp-section-title">Mini-case</div>
-                    <p className="mt-1 text-sm font-medium">{data.suggested_case.title}</p>
-                    <Link
-                      to={`/studio?case=${encodeURIComponent(data.suggested_case.case_id)}`}
-                      className="mt-2 inline-block text-xs font-medium"
-                      style={{ color: 'var(--dp-accent)' }}
-                    >
-                      Открыть в Studio →
-                    </Link>
+        </div>
+        <div className="dp-path-preview">
+          {(roadmap?.stages.length ? roadmap.stages : fallbackStages(stage?.number ?? 1)).map(
+            (item, index) => {
+              const percent = 'progress_percent' in item ? item.progress_percent : item.percent
+              const isCurrent = item.number === stage?.number || (!stage && index === 0)
+              return (
+                <div key={item.number} className={`dp-path-stage ${isCurrent ? 'is-current' : ''}`}>
+                  <div className="dp-path-node">{percent >= 100 ? '✓' : item.number}</div>
+                  <div className="min-w-0">
+                    <strong>{'short_title' in item ? item.short_title : item.title}</strong>
+                    <span>{percent}% завершено</span>
                   </div>
-                )}
-                {data.weak_skills.length > 0 && (
-                  <div>
-                    <div className="dp-section-title">Нужно усилить</div>
-                    <div className="mt-2 space-y-1">
-                      {data.weak_skills.slice(0, 3).map((skill) => (
-                        <p
-                          key={skill.skill_id}
-                          className="font-mono text-xs"
-                          style={{ color: 'var(--dp-text-secondary)' }}
-                        >
-                          {skill.skill_id}
-                        </p>
-                      ))}
-                    </div>
+                  <div className="dp-path-progress">
+                    <i style={{ width: `${percent}%` }} />
                   </div>
-                )}
-              </div>
-            </details>
+                </div>
+              )
+            },
           )}
         </div>
-      </motion.div>
+      </section>
+
+      <section className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div>
+          <p className="dp-eyebrow">План дня</p>
+          <h2 className="mt-1 text-xl font-bold tracking-tight">
+            Около {lessonMinutes + practiceMinutes + reviewMinutes} минут
+          </h2>
+          <div className="dp-daily-timeline mt-6">
+            <PlanItem
+              index="01"
+              title={lesson?.title ?? 'Выбрать урок'}
+              meta={`Урок · ${lessonMinutes} мин`}
+              to={lessonId ? `/focus/${encodeURIComponent(lessonId)}` : '/learn'}
+              action={data.continue_lesson ? 'Продолжить' : 'Начать'}
+            />
+            <PlanItem
+              index="02"
+              title={data.suggested_practice?.title ?? 'Небольшая практика по теме'}
+              meta={`Практика · ${practiceMinutes} мин`}
+              to={
+                data.suggested_practice
+                  ? `/studio?practice=${encodeURIComponent(data.suggested_practice.exercise_id)}`
+                  : '/studio'
+              }
+              action="В Studio"
+            />
+            <PlanItem
+              index="03"
+              title={reviewTitle}
+              meta={reviewMeta}
+              to="/review"
+              action={
+                data.review_action === 'review_session' ? 'Начать повторение' : 'К повторениям'
+              }
+              heading
+            />
+          </div>
+        </div>
+        <aside className="dp-today-note">
+          <span aria-hidden="true">✦</span>
+          <p className="dp-eyebrow">Ритм важнее спринта</p>
+          <h2>Один завершённый урок лучше пяти открытых.</h2>
+          <p>
+            DataPath сохранит место, а Review вернёт тему тогда, когда её полезнее всего повторить.
+          </p>
+        </aside>
+      </section>
+
+      {(nextLessons.length > 0 || data.suggested_case || data.weak_skills.length > 0) && (
+        <section className="mt-14 border-t pt-9" style={{ borderColor: 'var(--dp-border-subtle)' }}>
+          <div className="mb-5 flex items-end justify-between">
+            <div>
+              <p className="dp-eyebrow">Дальше</p>
+              <h2 className="mt-1 text-xl font-bold tracking-tight">Следующие шаги</h2>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {nextLessons.map((item, index) => (
+              <Link
+                key={item.id}
+                to={`/focus/${encodeURIComponent(item.id)}`}
+                className="dp-next-lesson"
+              >
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <strong>{item.title}</strong>
+                <small>{item.module}</small>
+              </Link>
+            ))}
+            {data.suggested_case && (
+              <Link
+                to={`/studio?case=${encodeURIComponent(data.suggested_case.case_id)}`}
+                className="dp-next-lesson"
+              >
+                <span>
+                  CASE<span className="sr-only">Mini-case</span>
+                </span>
+                <strong>{data.suggested_case.title}</strong>
+                <small>Открыть в Studio</small>
+              </Link>
+            )}
+          </div>
+          {data.weak_skills.length > 0 && (
+            <div
+              className="mt-6 flex flex-wrap items-center gap-2 text-xs"
+              style={{ color: 'var(--dp-text-muted)' }}
+            >
+              <strong style={{ color: 'var(--dp-text-secondary)' }}>Нужно усилить:</strong>
+              {data.weak_skills.slice(0, 3).map((skill) => (
+                <span key={skill.skill_id} className="dp-soft-chip">
+                  <span className="sr-only">{skill.skill_id}</span>
+                  {humanizeSkill(skill.skill_id)}
+                </span>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+    </motion.div>
+  )
+}
+
+function PlanItem({
+  index,
+  title,
+  meta,
+  to,
+  action,
+  heading = false,
+}: {
+  index: string
+  title: string
+  meta: string
+  to: string
+  action: string
+  heading?: boolean
+}) {
+  return (
+    <div className="dp-plan-item">
+      <div className="dp-plan-index">{index}</div>
+      <div className="min-w-0 flex-1">
+        {heading ? <h3>{title}</h3> : <strong>{title}</strong>}
+        <span>{meta}</span>
+      </div>
+      <Link to={to}>{action} →</Link>
     </div>
   )
+}
+
+function fallbackStages(current: number) {
+  return [
+    { number: 1, title: 'Ориентация', percent: current > 1 ? 100 : 20 },
+    { number: 2, title: 'Понимание', percent: current > 2 ? 100 : current === 2 ? 20 : 0 },
+    { number: 3, title: 'Применение', percent: current === 3 ? 20 : 0 },
+  ]
 }
 
 function dayGreeting() {
@@ -159,199 +365,7 @@ function dayGreeting() {
   return 'Добрый вечер'
 }
 
-function MainAction({ data }: { data: TodayData }) {
-  if (data.continue_lesson) {
-    const lesson = data.continue_lesson
-    return (
-      <section
-        className="rounded-xl p-6"
-        style={{
-          background: 'var(--dp-accent-subtle)',
-          border: '1px solid var(--dp-accent-border)',
-        }}
-      >
-        <div
-          className="text-xs font-bold uppercase tracking-wide"
-          style={{ color: 'var(--dp-accent)' }}
-        >
-          Продолжить
-        </div>
-        <h2 className="mt-2 text-xl font-bold" style={{ color: 'var(--dp-text-primary)' }}>
-          {lesson.title}
-        </h2>
-        <p
-          className="mt-1.5 max-w-xl text-sm leading-relaxed"
-          style={{ color: 'var(--dp-text-secondary)' }}
-        >
-          Вы остановились на разделе {lesson.current_scene_id?.match(/\d+/)?.[0] ?? '1'}.
-          Продолжите, чтобы закрепить материал.
-        </p>
-        <Link
-          to={`/focus/${encodeURIComponent(lesson.lesson_id)}`}
-          className={`${buttonClassNames('primary', 'lg')} mt-4 inline-block`}
-        >
-          Продолжить урок <ArrowRightIcon width={18} height={18} />
-        </Link>
-      </section>
-    )
-  }
-
-  if (data.next_lesson) {
-    return (
-      <section
-        className="rounded-xl p-6"
-        style={{
-          background: 'var(--dp-accent-subtle)',
-          border: '1px solid var(--dp-accent-border)',
-        }}
-      >
-        <div
-          className="text-xs font-bold uppercase tracking-wide"
-          style={{ color: 'var(--dp-accent)' }}
-        >
-          Следующий урок
-        </div>
-        <h2 className="mt-2 text-xl font-bold" style={{ color: 'var(--dp-text-primary)' }}>
-          {data.next_lesson.title}
-        </h2>
-        {data.next_lesson.skills.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {data.next_lesson.skills.map((skill) => (
-              <span
-                key={skill}
-                className="rounded px-1.5 py-0.5 font-mono text-[10px]"
-                style={{
-                  background: 'var(--dp-surface)',
-                  color: 'var(--dp-text-muted)',
-                }}
-              >
-                {skill}
-              </span>
-            ))}
-          </div>
-        )}
-        <Link
-          to={`/focus/${encodeURIComponent(data.next_lesson.id)}`}
-          className={`${buttonClassNames('primary', 'lg')} mt-4 inline-block`}
-        >
-          Начать урок <ArrowRightIcon width={18} height={18} />
-        </Link>
-      </section>
-    )
-  }
-
-  return (
-    <section
-      className="rounded-xl p-6"
-      style={{
-        background: 'var(--dp-accent-subtle)',
-        border: '1px solid var(--dp-accent-border)',
-      }}
-    >
-      <div
-        className="text-xs font-bold uppercase tracking-wide"
-        style={{ color: 'var(--dp-accent)' }}
-      >
-        Добро пожаловать
-      </div>
-      <h2 className="mt-2 text-xl font-bold" style={{ color: 'var(--dp-text-primary)' }}>
-        Начните с первого урока
-      </h2>
-      <p
-        className="mt-1.5 max-w-xl text-sm leading-relaxed"
-        style={{ color: 'var(--dp-text-secondary)' }}
-      >
-        Курс «Классический ML» ведёт от постановки задачи до ансамблей. Откройте Focus и выберите
-        первый урок.
-      </p>
-      <Link to="/focus" className={`${buttonClassNames('primary', 'lg')} mt-4 inline-block`}>
-        К урокам <ArrowRightIcon width={18} height={18} />
-      </Link>
-    </section>
-  )
-}
-
-function ReviewCard({ data }: { data: TodayData }) {
-  const summary = data.review_summary
-  if (data.review_action === 'review_session') {
-    return (
-      <section
-        className="flex flex-wrap items-center justify-between gap-4 rounded-xl p-5"
-        style={{
-          background: 'var(--dp-surface)',
-          border: '1px solid var(--dp-border-subtle)',
-        }}
-      >
-        <div className="min-w-0">
-          <div className="dp-section-title">Повторение</div>
-          <h2 className="mt-1 text-lg font-bold" style={{ color: 'var(--dp-text-primary)' }}>
-            {formatCount(
-              summary.due_count,
-              'повторение на сегодня',
-              'повторения на сегодня',
-              'повторений на сегодня',
-            )}
-          </h2>
-          <p className="mt-0.5 text-sm" style={{ color: 'var(--dp-text-secondary)' }}>
-            {summary.overdue_count > 0
-              ? `${formatCount(summary.overdue_count, 'просрочено', 'просрочено', 'просрочено')} · короткая сессия вернёт материал.`
-              : 'Короткая сессия закрепит материал в памяти.'}
-          </p>
-        </div>
-        <Link to="/review" className={buttonClassNames('primary')}>
-          Начать повторение <ArrowRightIcon width={16} height={16} />
-        </Link>
-      </section>
-    )
-  }
-  if (summary.active_items > 0) {
-    return (
-      <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl p-5 dp-surface">
-        <div className="min-w-0">
-          <div className="dp-section-title">Повторение</div>
-          <p className="mt-1 text-sm" style={{ color: 'var(--dp-text-secondary)' }}>
-            На сегодня всё
-            {summary.next_due_at ? ` · следующее — ${formatShortDate(summary.next_due_at)}` : ''}.
-          </p>
-        </div>
-        <Link to="/review" className={buttonClassNames('outline', 'sm')}>
-          К повторениям
-        </Link>
-      </section>
-    )
-  }
-  return (
-    <section className="rounded-xl p-5 dp-surface">
-      <div className="dp-section-title">Повторение</div>
-      <p className="mt-1 text-sm" style={{ color: 'var(--dp-text-muted)' }}>
-        Пройдите урок — материал появится в расписании повторений.
-      </p>
-    </section>
-  )
-}
-
-function PracticeCard({ practice }: { practice: NonNullable<TodayData['suggested_practice']> }) {
-  return (
-    <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl p-5 dp-surface">
-      <div className="min-w-0">
-        <div className="dp-section-title">Практика · {practice.track}</div>
-        <h2 className="mt-1 text-base font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
-          {practice.title}
-        </h2>
-        <p className="mt-0.5 text-xs" style={{ color: 'var(--dp-text-muted)' }}>
-          ~{practice.estimated_minutes} минут · результат сохранится в progress
-        </p>
-      </div>
-      <Link
-        to={`/studio?practice=${encodeURIComponent(practice.exercise_id)}`}
-        className={buttonClassNames('outline', 'sm')}
-      >
-        Решить в Studio <ArrowRightIcon width={15} height={15} />
-      </Link>
-    </section>
-  )
-}
-
-function formatShortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
+function humanizeSkill(skillId: string) {
+  const last = skillId.split('.').pop() ?? skillId
+  return last.replaceAll('_', ' ').replace(/^./, (letter) => letter.toLocaleUpperCase('ru-RU'))
 }

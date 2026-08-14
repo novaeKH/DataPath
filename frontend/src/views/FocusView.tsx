@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -21,6 +21,8 @@ import { EmptyState, ErrorState, LoadingBlock } from '../components/ui/PageState
 import { Button } from '../components/ui/Button'
 import { buttonClassNames } from '../components/ui/buttonStyles'
 import { formatCount } from '../lib/format'
+import { CourseArtwork, ProgressRing } from '../components/learning/CourseArtwork'
+import { getCourseVisual } from '../components/learning/courseVisuals'
 
 const DEFAULT_COURSE_ID = 'course.classic-ml'
 
@@ -120,63 +122,91 @@ function CoursePicker({
   const completedCount = allLessons.filter((l) => progress[l.id]?.completed).length
   const currentLessonId = allLessons.find((l) => progress[l.id]?.current)?.id ?? null
 
+  const visual = getCourseVisual(course.id)
+  const coursePercent = allLessons.length
+    ? Math.round((completedCount / allLessons.length) * 100)
+    : 0
+
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-5xl">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
       >
-        {/* Course header */}
-        <header className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Link
-              to="/learn"
-              className="text-sm hover:underline"
+        <Link
+          to="/learn"
+          className="mb-4 inline-flex text-sm font-medium"
+          style={{ color: 'var(--dp-text-muted)' }}
+        >
+          ← Все направления
+        </Link>
+        <header
+          className="dp-course-hero"
+          style={
+            { '--course-accent': visual.accent, '--course-tint': visual.tint } as CSSProperties
+          }
+        >
+          <div className="relative z-10 max-w-xl">
+            <p className="dp-eyebrow">Учебный маршрут</p>
+            <h1 className="mt-3 text-[clamp(2rem,4vw,3.35rem)] font-bold leading-[1.04] tracking-[-0.04em]">
+              {course.title}
+            </h1>
+            <p
+              className="mt-3 max-w-lg text-[15px] leading-relaxed"
+              style={{ color: 'var(--dp-text-secondary)' }}
+            >
+              {visual.description}
+            </p>
+            <div
+              className="mt-6 flex flex-wrap items-center gap-3 text-xs"
               style={{ color: 'var(--dp-text-muted)' }}
             >
-              ← Все курсы
-            </Link>
-            <span className="text-sm" style={{ color: 'var(--dp-text-muted)' }}>
-              ·
-            </span>
-            <span
-              className="text-xs font-semibold uppercase tracking-wider rounded-full px-2.5 py-0.5"
-              style={{
-                background: 'var(--dp-accent-subtle)',
-                color: 'var(--dp-accent)',
-              }}
+              <span>{formatCount(allLessons.length, 'урок', 'урока', 'уроков')}</span>
+              <span>·</span>
+              <span>{course.estimated_hours ?? '—'} часов</span>
+              <span>·</span>
+              <span>{course.modules.length} модулей</span>
+            </div>
+            <button
+              onClick={() => onNavigate(`/focus/${currentLessonId ?? course.first_lesson_id}`)}
+              className={`${buttonClassNames('primary', 'lg')} mt-6`}
             >
-              {course.difficulty ?? 'Средняя'}
-            </span>
+              {currentLessonId
+                ? 'Продолжить обучение'
+                : completedCount
+                  ? 'Вернуться к курсу'
+                  : 'Начать курс'}{' '}
+              →
+            </button>
           </div>
-          <h1 className="dp-page-title">{course.title}</h1>
-          <p className="dp-page-subtitle mt-2">
-            {formatCount(allLessons.length, 'урок', 'урока', 'уроков')} ·{' '}
-            {course.estimated_hours ?? '—'} часов · {completedCount} завершено
-          </p>
-          <Link
-            to="/learn"
-            className="mt-5 inline-flex text-xs font-medium hover:underline"
-            style={{ color: 'var(--dp-accent)' }}
-          >
-            Сменить направление →
-          </Link>
+          <div className="dp-course-hero-progress">
+            <CourseArtwork courseId={course.id} />
+            <ProgressRing value={coursePercent} label="курса" />
+          </div>
         </header>
+
+        <div className="mb-7 mt-10 flex items-end justify-between gap-4">
+          <div>
+            <p className="dp-eyebrow">Путь курса</p>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight">От основ к применению</h2>
+          </div>
+          <span className="text-xs" style={{ color: 'var(--dp-text-muted)' }}>
+            {completedCount} из {allLessons.length} завершено
+          </span>
+        </div>
 
         {/* Learning route */}
         <div className="relative">
           {/* Vertical route line */}
-          <div
-            className="absolute left-[23px] top-3 bottom-3 w-px"
-            style={{ background: 'var(--dp-border-subtle)' }}
-          />
+          <div className="dp-journey-line" />
 
           <div className="flex flex-col gap-6">
-            {course.modules.map((module) => (
+            {course.modules.map((module, index) => (
               <ModuleSection
                 key={module.id}
                 module={module}
+                moduleIndex={index}
                 progress={progress}
                 currentLessonId={currentLessonId}
                 onNavigate={onNavigate}
@@ -217,11 +247,13 @@ function CoursePicker({
 
 function ModuleSection({
   module,
+  moduleIndex,
   progress,
   currentLessonId,
   onNavigate,
 }: {
   module: CourseDetail['modules'][number]
+  moduleIndex: number
   progress: LessonProgressMap
   currentLessonId: string | null
   onNavigate: (path: string) => void
@@ -233,12 +265,17 @@ function ModuleSection({
 
   return (
     <section
-      className="rounded-2xl p-4 sm:p-5"
-      style={{ background: 'var(--dp-surface)', border: '1px solid var(--dp-border-subtle)' }}
+      className={`dp-journey-module ${moduleActive ? 'is-active' : ''} ${moduleCompleted ? 'is-complete' : ''}`}
     >
+      <div className="dp-module-marker">
+        {moduleCompleted ? '✓' : String(moduleIndex + 1).padStart(2, '0')}
+      </div>
       {/* Module header */}
-      <div className="mb-3 flex items-center gap-3 pl-12">
-        <h3 className="text-sm font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
+      <div className="mb-3 flex items-center gap-3">
+        <h3
+          className="text-lg font-bold tracking-tight"
+          style={{ color: 'var(--dp-text-primary)' }}
+        >
           {module.title}
         </h3>
         {moduleCompleted && (
@@ -275,7 +312,7 @@ function ModuleSection({
             <button
               key={lesson.id}
               onClick={() => onNavigate(`/focus/${lesson.id}`)}
-              className="group relative flex items-start gap-3 pl-12 pr-3 py-2.5 rounded-lg text-left transition-colors duration-150 w-full"
+              className="dp-journey-lesson group relative flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors duration-150"
               style={{
                 background: isCurrent
                   ? 'var(--dp-accent-subtle)'
@@ -294,9 +331,9 @@ function ModuleSection({
                 }
               }}
             >
-              {/* Progress marker on route line */}
+              {/* Progress marker */}
               <div
-                className="absolute left-[17px] top-[14px] z-10 flex h-[13px] w-[13px] shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-150"
+                className="mt-1 flex h-[13px] w-[13px] shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-150"
                 style={{
                   background: isCompleted
                     ? 'var(--dp-success)'
@@ -665,7 +702,7 @@ function ExistingLessonView({
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-[1120px]">
       <motion.div
         key={lesson.id}
         initial={{ opacity: 0, y: 8 }}
@@ -673,7 +710,7 @@ function ExistingLessonView({
         transition={{ duration: 0.2 }}
       >
         {/* Lesson header — separated: breadcrumbs, title, purpose, metadata */}
-        <header>
+        <header className="dp-lesson-header mx-auto max-w-[920px]">
           <div
             className="flex flex-wrap items-center gap-2 text-xs"
             style={{ color: 'var(--dp-text-muted)' }}
@@ -696,7 +733,9 @@ function ExistingLessonView({
             )}
           </div>
 
-          <h1 className="dp-page-title mt-1.5">{lesson.title}</h1>
+          <h1 className="mt-4 max-w-[820px] text-[clamp(2.1rem,4.5vw,3.25rem)] font-bold leading-[1.08] tracking-[-0.04em]">
+            {lesson.title}
+          </h1>
 
           <div className="mt-2 flex flex-wrap items-center gap-2.5">
             {lesson.estimated_minutes != null && (
@@ -721,19 +760,15 @@ function ExistingLessonView({
                 {lesson.difficulty}
               </span>
             )}
-            {/* Skills moved to quiet metadata row */}
-            {lesson.skills.length > 0 && (
-              <span className="text-[11px]" style={{ color: 'var(--dp-text-muted)' }}>
-                {lesson.skills.slice(0, 3).join(' · ')}
-                {lesson.skills.length > 3 ? ' …' : ''}
-              </span>
-            )}
+            <span className="text-xs" style={{ color: 'var(--dp-text-muted)' }}>
+              {lesson.module?.title ?? lesson.course?.title}
+            </span>
           </div>
         </header>
 
         {(lesson.prerequisites?.length ?? 0) > 0 && (
           <aside
-            className="mt-6 rounded-xl border px-4 py-3"
+            className="mx-auto mt-7 max-w-[920px] rounded-2xl border px-5 py-4"
             style={{
               borderColor: 'var(--dp-border-subtle)',
               background: 'var(--dp-surface-subtle)',
@@ -766,7 +801,7 @@ function ExistingLessonView({
         )}
 
         <div
-          className="mt-6 flex items-center gap-3 text-xs"
+          className="mx-auto mt-7 flex max-w-[920px] items-center gap-3 text-xs"
           style={{ color: 'var(--dp-text-muted)' }}
         >
           <span>
@@ -796,7 +831,7 @@ function ExistingLessonView({
             В уроке пока нет сцен.
           </div>
         ) : (
-          <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-start">
+          <div className="mt-9 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,720px)_230px] lg:justify-center lg:items-start">
             <details className="rounded-xl lg:hidden dp-surface">
               <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 py-3">
                 <span className="dp-section-title">Содержание урока</span>
@@ -814,7 +849,7 @@ function ExistingLessonView({
               </div>
             </details>
             {/* Main reading area */}
-            <div className="min-w-0 flex-1 dp-reading">
+            <div className="min-w-0 dp-reading">
               <article aria-label="Материал урока" className="dp-lesson-document">
                 {scenes.map((scene, index) => {
                   const proseLike = [
@@ -858,7 +893,7 @@ function ExistingLessonView({
               <LessonNotes lessonId={lesson.id} />
 
               {/* Navigation */}
-              <div className="mt-8 flex items-center justify-between gap-3">
+              <div className="dp-lesson-nav mt-10 flex items-center justify-between gap-3">
                 <button
                   onClick={handlePrev}
                   disabled={sceneIndex === 0}
@@ -890,11 +925,12 @@ function ExistingLessonView({
               </div>
 
               {completedFlash && (
-                <div
-                  className="mt-4 rounded-lg px-3 py-2 text-center text-xs font-medium"
-                  style={{ background: 'var(--dp-success-subtle)', color: 'var(--dp-success)' }}
-                >
-                  ✓ Урок завершён — навыки обновлены, материал добавлен в расписание повторений.
+                <div className="dp-lesson-complete mt-6">
+                  <span aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Урок завершён</strong>
+                    <p>Навыки обновлены, материал добавлен в расписание повторений.</p>
+                  </div>
                 </div>
               )}
 
@@ -932,14 +968,8 @@ function ExistingLessonView({
             </div>
 
             {/* Outline rail — a quiet right-hand TOC */}
-            <aside className="hidden lg:order-last lg:sticky lg:top-6 lg:block lg:w-72 lg:shrink-0">
-              <div
-                className="rounded-xl p-4"
-                style={{
-                  background: 'var(--dp-surface)',
-                  border: '1px solid var(--dp-border-subtle)',
-                }}
-              >
+            <aside className="hidden lg:sticky lg:top-6 lg:block lg:w-[230px]">
+              <div className="dp-outline-rail py-3 pl-5">
                 <div className="mb-3 flex items-center justify-between">
                   <span className="dp-section-title">Содержание</span>
                   {progress && (
