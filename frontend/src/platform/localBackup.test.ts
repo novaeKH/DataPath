@@ -55,6 +55,25 @@ const snapshot = {
       estimated_minutes: 20,
       skills: ['python.basics'],
     },
+    '/api/labs/decision-tree-split-lab': {
+      id: 'decision-tree-split-lab',
+      title: 'Разбиение Decision Tree',
+      description: 'Backend считает impurity и information gain.',
+      lesson_ids: ['lesson.test'],
+      parameters: [],
+      defaults: { feature: 'x1', threshold: 0, criterion: 'gini' },
+      initial_result: {
+        dataset: {
+          points: [
+            { x1: -1, x2: 0, y: 0 },
+            { x1: 1, x2: 0, y: 1 },
+          ],
+          classes: [0, 1],
+          x_range: [-2, 2],
+          y_range: [-1, 1],
+        },
+      },
+    },
   },
   practice_runtime: {},
   case_runtime: {},
@@ -121,6 +140,24 @@ describe('local backup safety', () => {
       id: 'lesson.test',
       skills: ['python.basics'],
       estimated_minutes: 20,
+    })
+  })
+
+  it('runs an interactive Gini lab through the offline PWA contract', async () => {
+    const spec = await localRead<{ description: string }>('/api/labs/decision-tree-split-lab')
+    expect(spec.description).toContain('Локальный движок PWA')
+
+    const result = await localPost<{
+      runtime: string
+      gain: number
+      split: { left_count: number; right_count: number }
+    }>('/api/labs/decision-tree-split-lab/run', {
+      parameters: { feature: 'x1', threshold: 0, criterion: 'gini' },
+    })
+    expect(result).toMatchObject({
+      runtime: 'local',
+      gain: 0.5,
+      split: { left_count: 1, right_count: 1 },
     })
   })
 })

@@ -18,6 +18,7 @@ type OverfitResult = {
   boundary: { x: number[]; y: number[]; preds: number[] }
   depth_curve: { depths: number[]; train: number[]; val: number[] }
   interpretation: { label: 'underfit' | 'good' | 'overfit'; text: string }
+  runtime?: 'local'
 }
 
 const INTERPRETATION_STYLE: Record<string, string> = {
@@ -77,8 +78,8 @@ export function TreeOverfittingLab({ result }: { result: LabRunResult }) {
       </div>
 
       <div className="text-xs text-slate-500">
-        Датасет: {data.dataset.train_size} train / {data.dataset.val_size} validation · расчёт на
-        backend ({data.metrics.time_ms} мс)
+        Датасет: {data.dataset.train_size} train / {data.dataset.val_size} validation · расчёт{' '}
+        {data.runtime === 'local' ? 'локально в PWA' : 'на backend'} ({data.metrics.time_ms} мс)
       </div>
     </div>
   )
