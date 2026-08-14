@@ -44,6 +44,11 @@ tags:
       "title": "Цель главы"
     },
     {
+      "type": "visual_demo",
+      "component": "python-object-reference-flow",
+      "title": "Интерактивная схема темы"
+    },
+    {
       "type": "retrieval",
       "assessment_type": "self_assessment",
       "prompt": "Насколько уверенно вы можете объяснить ключевой механизм главы «Как Python хранит данные: объекты, переменные, ссылки и изменяемость» без подсказки?"

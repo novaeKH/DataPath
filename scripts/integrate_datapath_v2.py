@@ -289,10 +289,18 @@ MODULES = [
 
 
 DEMO_BY_NUMBER = {
+    1: "python-object-reference-flow", 2: "python-collections-choice-flow",
+    3: "python-call-scope-flow", 4: "python-iterator-pipeline-flow", 5: "python-object-model-flow",
+    6: "python-resource-safety-flow", 7: "python-quality-loop-flow", 8: "python-memory-gil-flow",
     9: "numpy-array-lab", 10: "numpy-broadcasting-lab", 11: "dataframe-selection-lab",
     12: "data-cleaning-lab", 13: "groupby-merge-lab", 14: "time-window-lab",
-    15: "eda-workflow-board", 18: "sql-join-grain-lab", 23: "tensor-shape-tracer",
+    15: "eda-workflow-board", 16: "sql-query-order-flow", 17: "sql-aggregation-grain-flow",
+    18: "sql-join-grain-lab", 19: "sql-cte-pipeline-flow", 20: "sql-window-frame-flow",
+    21: "sql-null-logic-flow", 22: "sql-analysis-pattern-flow", 23: "tensor-shape-tracer",
+    24: "linear-transformation-flow",
     25: "pca-projection-lab", 26: "gradient-descent-landscape", 27: "naive-bayes-evidence-lab",
+    28: "distribution-choice-flow", 29: "expectation-variance-flow", 30: "sampling-clt-flow",
+    31: "confidence-interval-flow", 32: "hypothesis-testing-flow", 33: "likelihood-map-flow",
     34: "pipeline-builder-lab", 35: "preprocessing-pipeline-builder", 36: "hyperparameter-search-landscape",
     37: "problem-framing-canvas", 38: "validation-split-lab", 39: "metrics-threshold-lab",
     40: "linear-fit-residual-lab", 41: "regularization-path-lab", 42: "logistic-boundary-threshold-lab",
@@ -306,9 +314,15 @@ DEMO_BY_NUMBER = {
     64: "optimizer-landscape-lab", 65: "dl-debugging-decision-tree", 66: "cnn-kernel-feature-map-lab",
     67: "pooling-window-lab", 68: "rnn-state-gates-lab", 69: "rnn-state-gates-lab",
     71: "attention-matrix-lab", 72: "transformer-block-lab", 73: "training-loop-timeline",
-    74: "fine-tuning-parameter-budget", 76: "tfidf-weight-lab", 79: "rnn-state-gates-lab",
-    80: "transformer-block-lab", 85: "transformer-block-lab", 87: "retrieval-ranking-lab",
-    89: "rag-pipeline-evaluation-lab", 95: "monitoring-drift-quality-lab", 98: "experiment-reproducibility-lab",
+    74: "fine-tuning-parameter-budget", 75: "nlp-preprocessing-flow", 76: "tfidf-weight-lab",
+    78: "subword-tokenization-flow", 79: "rnn-state-gates-lab", 80: "transformer-block-lab",
+    81: "nlp-error-analysis-flow", 82: "nlp-workflow-flow", 83: "autoregressive-generation-flow",
+    84: "decoding-strategy-flow", 85: "transformer-block-lab", 86: "semantic-search-flow",
+    87: "retrieval-ranking-lab", 88: "reranking-flow", 89: "rag-pipeline-evaluation-lab",
+    90: "rag-evaluation-flow", 91: "agent-tool-loop-flow", 92: "model-artifact-flow",
+    93: "inference-service-flow", 94: "docker-layer-flow", 95: "monitoring-drift-quality-lab",
+    96: "data-drift-diagnosis-flow", 97: "concept-drift-diagnosis-flow",
+    98: "experiment-reproducibility-lab", 99: "retraining-release-flow", 100: "ml-lifecycle-flow",
 }
 
 
@@ -389,14 +403,34 @@ def previous_in_course(number: int) -> int | None:
 
 
 def prerequisites_for(number: int) -> list[str]:
-    previous = previous_in_course(number)
-    if previous is not None:
-        return [CANONICAL_IDS[previous]]
-    cross_course = {
-        9: [8], 16: [11], 34: [15], 37: [36], 61: [26, 40],
-        75: [70], 83: [72, 78], 92: [60, 73],
+    """Смысловые зависимости, а не просто предыдущая глава в каталоге."""
+    prerequisites: dict[int, list[int]] = {
+        1: [], 2: [1], 3: [1, 2], 4: [3], 5: [3], 6: [5], 7: [3, 6], 8: [1, 4],
+        9: [2, 8], 10: [9], 11: [2, 9], 12: [11], 13: [11, 12], 14: [11, 13],
+        15: [12, 13, 14],
+        16: [11], 17: [16], 18: [16, 17], 19: [17, 18], 20: [17, 19], 21: [16],
+        22: [18, 19, 20, 21],
+        23: [], 24: [23], 25: [24], 26: [23], 27: [], 28: [27], 29: [28], 30: [29],
+        31: [30], 32: [31], 33: [27, 29, 32],
+        34: [7, 11], 35: [34], 36: [35],
+        37: [36], 38: [37], 39: [38], 40: [23, 26, 39], 41: [40],
+        42: [27, 33, 39, 41], 43: [10, 35, 37], 44: [27, 28, 37],
+        45: [26, 35, 41, 42], 46: [37], 47: [46], 48: [46], 49: [48],
+        50: [35, 37], 51: [50], 52: [39, 50], 53: [39, 42], 54: [10, 50],
+        55: [43, 54], 56: [25, 29, 50], 57: [43, 46, 50], 58: [39, 42, 46],
+        59: [36, 38], 60: [37, 38, 39, 50, 59],
+        61: [26, 40], 62: [61], 63: [26, 62], 64: [63], 65: [64],
+        66: [61, 62], 67: [66], 68: [61, 62], 69: [68], 70: [61, 62],
+        71: [26, 70], 72: [65, 71], 73: [64, 65], 74: [65, 73],
+        75: [7, 11], 76: [75], 77: [42, 44, 45, 76], 78: [75],
+        79: [70, 78], 80: [72, 78], 81: [39, 80], 82: [77, 80, 81],
+        83: [72, 78], 84: [83], 85: [83, 84], 86: [70, 78], 87: [86],
+        88: [87], 89: [85, 88], 90: [89], 91: [85, 90],
+        92: [60, 73], 93: [92], 94: [93], 95: [93, 94], 96: [95],
+        97: [39, 96], 98: [92, 95], 99: [97, 98],
+        100: [92, 93, 95, 96, 97, 98, 99],
     }
-    return [CANONICAL_IDS[n] for n in cross_course.get(number, [])]
+    return [CANONICAL_IDS[n] for n in prerequisites[number]]
 
 
 def insert_figure(body: str, number: int) -> str:
@@ -703,7 +737,8 @@ tags:
         ]
         lesson_body = (
             f"# {title}\n\n## Результат урока\n\n"
-            f"Разобрать каноническую главу №{number}, воспроизвести её ключевой механизм и оценить готовность объяснить тему.\n\n"
+            f"После урока вы сможете объяснить тему «{title}» своими словами, "
+            "разобрать ключевой механизм на примере и применить его в мини-практике.\n\n"
             "## Сценарий урока\n\n```datapath\n"
             + json.dumps({"schema_version": 2, "layout": "focus", "scenes": scenario}, ensure_ascii=False, indent=2)
             + "\n```\n"

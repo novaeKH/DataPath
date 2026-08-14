@@ -19,7 +19,7 @@ difficulty: foundation
 skill_ids:
 - python.06-oop-i-magicheskie-metody
 prerequisites:
-- lesson.python-ds.05
+- lesson.python-ds.04
 previous: lesson.python-ds.05
 next: lesson.python-ds.07
 tags:
@@ -42,6 +42,11 @@ tags:
     {
       "type": "hook",
       "title": "Цель главы"
+    },
+    {
+      "type": "visual_demo",
+      "component": "python-object-model-flow",
+      "title": "Интерактивная схема темы"
     },
     {
       "type": "retrieval",

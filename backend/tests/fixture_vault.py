@@ -134,6 +134,7 @@ def make_vault(root: Path) -> Path:
             "module_order": 1,
             "lesson_order": 2,
             "content_path": "10 Знания/ML/Concept B.md",
+            "prerequisites": ["lesson.classic-ml.one.one"],
         },
         (
             "# Урок 2\n\n"

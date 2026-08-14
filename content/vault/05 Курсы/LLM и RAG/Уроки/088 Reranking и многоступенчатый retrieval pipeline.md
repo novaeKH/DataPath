@@ -44,6 +44,11 @@ tags:
       "title": "Цель главы"
     },
     {
+      "type": "visual_demo",
+      "component": "reranking-flow",
+      "title": "Интерактивная схема темы"
+    },
+    {
       "type": "retrieval",
       "assessment_type": "self_assessment",
       "prompt": "Насколько уверенно вы можете объяснить ключевой механизм главы «Reranking и многоступенчатый retrieval pipeline» без подсказки?"

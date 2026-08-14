@@ -23,6 +23,10 @@ skill_ids:
 - ml.metrics_threshold
 - ml.error_analysis
 prerequisites:
+- lesson.classic-ml.framing.problem
+- lesson.classic-ml.framing.validation
+- lesson.classic-ml.framing.metrics
+- lesson.classic-ml.expansion.17
 - lesson.classic-ml.expansion.21
 previous: lesson.classic-ml.expansion.21
 next: lesson.deep-learning.01

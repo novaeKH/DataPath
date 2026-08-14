@@ -19,7 +19,8 @@ difficulty: core
 skill_ids:
 - dl.foundations
 prerequisites:
-- lesson.deep-learning.lstm-gru
+- lesson.deep-learning.01
+- lesson.deep-learning.02
 previous: lesson.deep-learning.lstm-gru
 next: lesson.deep-learning.attention
 tags:

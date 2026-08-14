@@ -78,33 +78,45 @@ SCENE_TYPES = (
 # из lesson manifest обязан быть перечислен здесь и иметь renderer на frontend.
 VISUAL_DEMO_IDS = {
     "activation-loss-explorer",
+    "agent-tool-loop-flow",
     "anomaly-methods-lab",
     "attention-matrix-lab",
+    "autoregressive-generation-flow",
     "backprop-computation-graph",
     "boosting-residuals-lab",
     "bootstrap-forest-lab",
     "calibration-reliability-lab",
     "categorical-encoding-lab",
     "cnn-kernel-feature-map-lab",
+    "concept-drift-diagnosis-flow",
+    "confidence-interval-flow",
     "data-cleaning-lab",
+    "data-drift-diagnosis-flow",
     "dataframe-selection-lab",
     "decision-tree-split-lab",
     "density-hierarchy-clustering-lab",
+    "decoding-strategy-flow",
+    "distribution-choice-flow",
     "dl-debugging-decision-tree",
     "eda-to-pipeline-builder",
     "eda-workflow-board",
     "experiment-reproducibility-lab",
+    "expectation-variance-flow",
     "fine-tuning-parameter-budget",
     "gradient-descent-landscape",
     "groupby-merge-lab",
     "hyperparameter-search-landscape",
     "imbalance-threshold-lab",
     "interpretation-methods-lab",
+    "inference-service-flow",
     "kmeans-canvas",
     "knn-neighbourhood-lab",
     "linear-fit-residual-lab",
+    "linear-transformation-flow",
+    "likelihood-map-flow",
     "logistic-boundary-threshold-lab",
     "metrics-threshold-lab",
+    "ml-lifecycle-flow",
     "missing-outlier-lab",
     "monitoring-drift-quality-lab",
     "mlp-neuron-lab",
@@ -112,6 +124,9 @@ VISUAL_DEMO_IDS = {
     "neuron-computation-lab",
     "numpy-array-lab",
     "numpy-broadcasting-lab",
+    "nlp-error-analysis-flow",
+    "nlp-preprocessing-flow",
+    "nlp-workflow-flow",
     "optimizer-landscape-lab",
     "pca-projection-lab",
     "pipeline-builder-lab",
@@ -119,15 +134,38 @@ VISUAL_DEMO_IDS = {
     "pooling-window-lab",
     "preprocessing-pipeline-builder",
     "problem-framing-canvas",
+    "python-call-scope-flow",
+    "python-collections-choice-flow",
+    "python-iterator-pipeline-flow",
+    "python-memory-gil-flow",
+    "python-object-model-flow",
+    "python-object-reference-flow",
+    "python-quality-loop-flow",
+    "python-resource-safety-flow",
     "regularization-path-lab",
     "retrieval-ranking-lab",
     "rag-pipeline-evaluation-lab",
+    "rag-evaluation-flow",
+    "reranking-flow",
+    "retraining-release-flow",
     "relationship-plot-lab",
+    "sampling-clt-flow",
+    "semantic-search-flow",
+    "sql-aggregation-grain-flow",
+    "sql-analysis-pattern-flow",
+    "sql-cte-pipeline-flow",
+    "sql-null-logic-flow",
+    "sql-query-order-flow",
+    "sql-window-frame-flow",
+    "subword-tokenization-flow",
     "rnn-state-gates-lab",
     "seaborn-plot-selector",
     "svm-margin-kernel-lab",
     "sql-join-grain-lab",
     "tensor-shape-tracer",
+    "docker-layer-flow",
+    "hypothesis-testing-flow",
+    "model-artifact-flow",
     "threshold-cost-explorer",
     "tfidf-weight-lab",
     "time-window-lab",
@@ -241,6 +279,63 @@ def _extract_learning_objectives(body: str) -> str | None:
         return None
     value = match.group(1).strip()
     return value or None
+
+
+_GENERIC_CANONICAL_OBJECTIVE = re.compile(
+    r"^Разобрать каноническую главу №\d+, воспроизвести её ключевой механизм "
+    r"и оценить готовность объяснить тему\.?$"
+)
+
+
+def _learning_outcome_markdown(title: str, source_md: str | None, configured: str) -> str:
+    """Возвращает полезный ученику результат вместо служебной цели миграции.
+
+    Первые смысловые H2 source-урока дают конкретные опорные понятия. Формулировка
+    остаётся устойчивой при пересборке manifests и не выдумывает новое содержание.
+    """
+    if configured and not _GENERIC_CANONICAL_OBJECTIVE.fullmatch(configured.strip()):
+        return configured
+
+    headings: list[str] = []
+    if source_md:
+        for raw in re.findall(r"(?m)^##\s+(.+?)\s*$", _strip_frontmatter(source_md)):
+            normalized = re.sub(r"^\d+\.\s*", "", raw).strip()
+            if _is_meta_section_title(normalized):
+                continue
+            if any(
+                marker in normalized.casefold()
+                for marker in (
+                    "типичные ошибки",
+                    "проверка понимания",
+                    "мини-практика",
+                    "что нужно унести",
+                    "куда дальше",
+                    "итог",
+                    "для собеседования",
+                )
+            ):
+                continue
+            if normalized not in headings:
+                headings.append(normalized)
+            if len(headings) == 3:
+                break
+
+    if len(headings) >= 2:
+        first, second = headings[:2]
+        third = headings[2] if len(headings) > 2 else "практический пример"
+        return (
+            "После урока вы сможете:\n\n"
+            f"- объяснить тему «{title}» через идеи «{first}» и «{second}»;\n"
+            f"- разобрать «{third}» на примере, в формулах или коде;\n"
+            "- распознать типичные ошибки и самостоятельно выполнить мини-практику."
+        )
+
+    return (
+        "После урока вы сможете:\n\n"
+        f"- объяснить основную идею темы «{title}» своими словами;\n"
+        "- воспроизвести ключевой механизм на примере;\n"
+        "- проверить понимание и применить материал на практике."
+    )
 
 
 def _extract_checkpoints(body: str) -> list[str]:
@@ -1287,6 +1382,22 @@ class LessonContentService:
             previous_lesson_id, next_lesson_id = self._prev_next(ordered, lesson_id)
 
             materials = self._build_materials(db, item, source_md)
+            prerequisite_lessons = []
+            for prerequisite_id in item.prerequisites or []:
+                prerequisite = db.get(ContentItem, prerequisite_id)
+                if (
+                    prerequisite is None
+                    or prerequisite.type != "lesson"
+                    or not prerequisite.publish
+                ):
+                    continue
+                prerequisite_lessons.append(
+                    {
+                        "id": prerequisite.id,
+                        "title": prerequisite.title,
+                        "course_id": prerequisite.course_id,
+                    }
+                )
 
             return {
                 "id": item.id,
@@ -1301,6 +1412,7 @@ class LessonContentService:
                 "estimated_minutes": item.estimated_minutes,
                 "difficulty": item.difficulty,
                 "skills": item.skill_ids or [],
+                "prerequisites": prerequisite_lessons,
                 "previous_lesson_id": previous_lesson_id,
                 "next_lesson_id": next_lesson_id,
                 "scenes": scenes,
@@ -1328,7 +1440,11 @@ class LessonContentService:
         scenario = [
             scene for scene in (datapath or {}).get("scenes", []) if isinstance(scene, dict)
         ]
-        hook_markdown = _extract_summary_callout(body) or _extract_learning_objectives(body) or ""
+        configured_hook = _extract_summary_callout(body) or _extract_learning_objectives(body) or ""
+        hook_is_generated = not configured_hook or bool(
+            _GENERIC_CANONICAL_OBJECTIVE.fullmatch(configured_hook.strip())
+        )
+        hook_markdown = _learning_outcome_markdown(item.title, source_md, configured_hook)
         source_scenes = build_source_scenes(source_md, source_content_id) if source_md else []
 
         if source_md and datapath:
@@ -1348,7 +1464,11 @@ class LessonContentService:
                     if hook_markdown:
                         scenes.append(
                             _markdown_scene(
-                                str(manifest_scene.get("title") or "Результат урока"),
+                                (
+                                    "После урока вы сможете"
+                                    if hook_is_generated
+                                    else str(manifest_scene.get("title") or "Результат урока")
+                                ),
                                 hook_markdown,
                             )
                         )

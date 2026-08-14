@@ -37,6 +37,7 @@ import {
   TransformerDemo,
 } from './PriorityDemos'
 import { APPLIED_DEMOS } from './AppliedDemos'
+import { CONCEPT_FLOW_DEMOS } from './ConceptFlowDemos'
 import { SYSTEM_DEMOS } from './SystemDemos'
 
 /* ===============================================================
@@ -754,6 +755,7 @@ const DEMO_REGISTRY: Record<string, React.ComponentType> = {
 
 Object.assign(DEMO_REGISTRY, APPLIED_DEMOS)
 Object.assign(DEMO_REGISTRY, SYSTEM_DEMOS)
+Object.assign(DEMO_REGISTRY, CONCEPT_FLOW_DEMOS)
 
 function getVisualDemo(id: string): React.ComponentType | null {
   return DEMO_REGISTRY[id] ?? null

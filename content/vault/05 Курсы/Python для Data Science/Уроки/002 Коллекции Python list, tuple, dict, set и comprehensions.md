@@ -44,6 +44,11 @@ tags:
       "title": "Цель главы"
     },
     {
+      "type": "visual_demo",
+      "component": "python-collections-choice-flow",
+      "title": "Интерактивная схема темы"
+    },
+    {
       "type": "retrieval",
       "assessment_type": "self_assessment",
       "prompt": "Насколько уверенно вы можете объяснить ключевой механизм главы «Коллекции Python: list, tuple, dict, set и comprehensions» без подсказки?"

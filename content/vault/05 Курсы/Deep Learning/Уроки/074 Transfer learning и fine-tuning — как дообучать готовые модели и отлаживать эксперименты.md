@@ -19,6 +19,7 @@ difficulty: capstone
 skill_ids:
 - dl.foundations
 prerequisites:
+- lesson.deep-learning.regularization
 - lesson.deep-learning.09
 previous: lesson.deep-learning.09
 next: lesson.nlp.preprocessing

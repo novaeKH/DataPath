@@ -137,6 +137,18 @@ def test_scene_normalization(make_client, sync_service: ContentSyncService) -> N
     }
 
 
+def test_lesson_exposes_prerequisite_titles(make_client, sync_service: ContentSyncService) -> None:
+    sync_service.sync()
+    data = make_client().get(f"/api/content/lessons/{LESSON_TWO}").json()
+    assert data["prerequisites"] == [
+        {
+            "id": LESSON_ONE,
+            "title": "Урок 1",
+            "course_id": "course.classic-ml",
+        }
+    ]
+
+
 def test_scene_content_blocks(make_client, sync_service: ContentSyncService) -> None:
     sync_service.sync()
     data = make_client().get(f"/api/content/lessons/{LESSON_ONE}").json()

@@ -19,7 +19,7 @@ difficulty: core
 skill_ids:
 - datapath.v2.078
 prerequisites:
-- lesson.nlp.classical-models
+- lesson.nlp.preprocessing
 previous: lesson.nlp.classical-models
 next: lesson.nlp.rnn
 tags:
@@ -42,6 +42,11 @@ tags:
     {
       "type": "hook",
       "title": "Цель главы"
+    },
+    {
+      "type": "visual_demo",
+      "component": "subword-tokenization-flow",
+      "title": "Интерактивная схема темы"
     },
     {
       "type": "retrieval",

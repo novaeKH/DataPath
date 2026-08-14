@@ -19,6 +19,7 @@ difficulty: core
 skill_ids:
 - datapath.v2.020
 prerequisites:
+- lesson.sql.group-by
 - lesson.sql.cte-subqueries
 previous: lesson.sql.cte-subqueries
 next: lesson.sql.null-case-dates
@@ -42,6 +43,11 @@ tags:
     {
       "type": "hook",
       "title": "Цель главы"
+    },
+    {
+      "type": "visual_demo",
+      "component": "sql-window-frame-flow",
+      "title": "Интерактивная схема темы"
     },
     {
       "type": "retrieval",

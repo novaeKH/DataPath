@@ -1,6 +1,6 @@
 # DataPath — текущее состояние
 
-> Обновлено 2026-08-13. Рабочая ветка `agent/lesson-reading-quality`; release/tag не создаётся.
+> Обновлено 2026-08-14. Рабочая ветка `main`; release/tag не создаётся.
 
 ## Canonical curriculum v2
 
@@ -17,6 +17,19 @@
 
 ## Lesson experience
 
+- Все 100 canonical lessons повторно проверены как единый учебный маршрут. Уроки 1–36, которые
+  были заметно короче остального корпуса, дополнены связными разобранными примерами без удаления
+  исходного материала. Минимальный объём объясняющего prose в основном корпусе теперь превышает
+  400 слов без учёта code/formula/frontmatter.
+- Формальная цепочка «предыдущий номер» заменена semantic prerequisites: каждый урок опирается
+  только на реально нужные понятия. Cross-domain переходы (Math → ML → DL → NLP → RAG → MLOps)
+  проверены отдельно; зависимостей на текущий или будущий урок нет.
+- В Focus перед новым материалом показывается компактный блок «Перед началом» со ссылками на
+  prerequisite-уроки. Поэтому ученик может закрыть пробел до чтения, а не обнаружить его внутри
+  формулы или практики.
+- Одинаковая служебная цель из migration manifests больше не попадает в интерфейс. Для каждого
+  урока renderer формирует конкретный результат обучения из его смысловых разделов, а вручную
+  написанные learning objectives сохраняет без изменений.
 - Focus показывает prose-like scenes (Markdown, formula, code, table, inline figure) единым
   непрерывным документом. Checkpoint, self-assessment, interactive lab и visual demo остаются
   отдельными учебными surfaces.
@@ -36,7 +49,10 @@
   mobile details используют одинаковую навигацию.
 - Resume position, scene progress, lesson completion, notes, previous/next lesson и Review scheduling
   сохранены. Canonical chapters заканчиваются неоцениваемой трёхуровневой self-assessment.
-- 57 существующих interactive visual demos и 3 backend ML labs сохранены.
+- 57 существующих interactive visual demos и 3 backend ML labs сохранены. Дополнительно 38
+  уроков получили topic-specific step-by-step visual flows с ручным переходом, autoplay, pause и
+  reset. Теперь 98 из 100 lessons имеют interactive visual demo; оставшиеся 2 используют
+  встроенные teaching figures, поэтому визуальное объяснение есть у всех 100 уроков.
 
 ## Figures and offline update
 
@@ -45,7 +61,7 @@
   Dropout, CNN, pooling, RNN, LSTM, embeddings, Attention и Transformer.
 - Assets лежат в `frontend/public/content-assets/datapath-v2/figures/`; Markdown renderer добавляет
   base-path-safe URL, lazy loading, alt и caption.
-- Service worker cache поднят до `datapath-v13-teaching-examples` и pre-cache-ит все 21 figure вместе с
+- Service worker cache поднят до `datapath-v14-complete-lesson-visuals` и pre-cache-ит все 21 figure вместе с
   release snapshot, не затрагивая localStorage.
 
 ## Local state migration
@@ -60,12 +76,12 @@
 ## Current verification
 
 - Corpus input audit: 100 lessons, 1–100 без gaps/duplicates, 15 README исключены, code fences
-  сбалансированы.
+  сбалансированы. Отдельно проверяются source prose, semantic prerequisites и отсутствие
+  служебной generic objective в готовом уроке.
 - Content sync: 531 scanned, 0 errors, 0 warnings после slug separation source/manifest.
 - Content validator: 0 errors, 0 warnings.
-- Content quality: 100 lessons, 0 errors, 0 warnings; остаются 38 advisory suggestions по
-  дополнительным визуализациям во вспомогательных темах.
-- Полный backend suite проходит: 227 tests. Полный frontend suite проходит: 120 tests.
+- Content quality: 100 lessons, 0 errors, 0 warnings, 0 suggestions.
+- Полный backend suite проходит: 230 tests. Полный frontend suite проходит: 123 tests.
 - Ruff, ESLint, TypeScript, Prettier, обычный production build и build с
   `VITE_BASE_PATH=/DataPath/` проходят.
 
@@ -75,5 +91,7 @@
 - macOS bundle unsigned/not notarized; это не относится к content v2 migration.
 - Локальный `/Applications/DataPath.app` обновлён той же unsigned-сборкой 1.0.0; после обновления
   запущенное приложение нужно закрыть и открыть снова.
-- Focus bundle остаётся крупнейшим lazy chunk (~471 kB / ~140 kB gzip).
+- Focus bundle остаётся крупнейшим lazy chunk (~475 kB / ~141 kB gzip).
+- В старших NLP/LLM/MLOps главах сохранены общепринятые англоязычные термины и названия API;
+  они вводятся в контексте, но отдельная полная русификация терминологии не выполнялась.
 - Release snapshot собран и проверен локально; внешний deployment status фиксируется в GitHub.

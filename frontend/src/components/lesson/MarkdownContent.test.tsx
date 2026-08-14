@@ -315,6 +315,22 @@ describe('LessonOutline — display_title (Фаза 6A)', () => {
     expect(screen.queryByRole('button', { name: 'Gini' })).toBeNull()
   })
 
+  it('does not turn an unheaded prose fragment into a section label', () => {
+    const scenes = [
+      scene({ id: 'scene-01', type: 'markdown', title: 'После урока вы сможете' }),
+      scene({
+        id: 'scene-02',
+        type: 'markdown',
+        display_title: 'как будто x — коробка, в которой лежит число 10…',
+      }),
+      scene({ id: 'scene-03', type: 'code', source_heading: '1. Имя и объект' }),
+    ]
+    render(<LessonOutline scenes={scenes} currentIndex={0} onSelect={onSelect} />)
+    expect(screen.getByRole('button', { name: 'После урока вы сможете' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '1. Имя и объект' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /как будто x/ })).toBeNull()
+  })
+
   it('compacts an overflowing outline label but keeps the full title', () => {
     const full =
       '10. Почему calibrator нельзя обучать на тех же predictions, где base model уже обучалась'
@@ -332,6 +348,13 @@ describe('LessonOutline — display_title (Фаза 6A)', () => {
 })
 
 describe('MarkdownContent — security boundary (Фаза 6A)', () => {
+  it('renders a teaching figure outside paragraph markup', () => {
+    const { container } = render(<MarkdownContent markdown={'![График](plot.png "Подпись")'} />)
+    expect(container.querySelector('figure.dp-teaching-figure')).not.toBeNull()
+    expect(container.querySelector('p figure')).toBeNull()
+    expect(container.querySelector('figcaption')).toHaveTextContent('Подпись')
+  })
+
   it('does not execute raw HTML', () => {
     const { container } = render(
       <MarkdownContent markdown={'<div data-testid="raw">raw html</div>'} />,

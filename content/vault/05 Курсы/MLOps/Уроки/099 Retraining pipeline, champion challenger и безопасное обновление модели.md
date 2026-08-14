@@ -19,6 +19,7 @@ difficulty: core
 skill_ids:
 - datapath.v2.099
 prerequisites:
+- lesson.mlops.concept-drift
 - lesson.mlops.reproducibility
 previous: lesson.mlops.reproducibility
 next: lesson.mlops.lifecycle
@@ -42,6 +43,11 @@ tags:
     {
       "type": "hook",
       "title": "Цель главы"
+    },
+    {
+      "type": "visual_demo",
+      "component": "retraining-release-flow",
+      "title": "Интерактивная схема темы"
     },
     {
       "type": "retrieval",

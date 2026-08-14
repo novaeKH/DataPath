@@ -58,14 +58,14 @@ problem
 
 ---
 
-# Фаза 1. Business problem
+# Фаза 1. Бизнес-задача
 
-## 1. Prediction contract before training
+## 1. Контракт прогноза до обучения
 
-Example:
-> On first day of month predict probability active client will churn in next 30 days.
+Пример:
+> В первый день месяца оценить вероятность того, что активный клиент уйдёт в следующие 30 дней.
 
-Define:
+Нужно зафиксировать:
 ```text
 entity
 prediction moment
@@ -76,32 +76,32 @@ metric
 latency mode
 ```
 
-This contract later determines serving and monitoring.
+Этот контракт позже определит устройство serving и monitoring.
 
 ---
 
-## 2. Online vs batch
+## 2. Online или batch
 
-If marketing runs once/day:
+Если маркетинговая кампания запускается раз в день, то:
 ```text
 batch predictions
 ```
-may be simpler than HTTP API.
+может оказаться проще HTTP API.
 
-If checkout needs risk score in 30 ms:
+Если checkout должен получить risk score за 30 мс, нужен:
 ```text
 online service
 ```
 
-MLOps architecture follows product need, not fashion.
+MLOps-архитектура следует потребности продукта, а не моде.
 
 ---
 
-# Фаза 2. Data and validation
+# Фаза 2. Данные и валидация
 
-## 3. Source lineage
+## 3. Происхождение данных
 
-Record:
+Зафиксируйте:
 ```text
 data sources
 cutoff
@@ -109,39 +109,39 @@ schema
 query/version
 ```
 
-Build point-in-time correct features.
+Стройте признаки, корректные на момент прогноза.
 
-No production infrastructure rescues leakage.
+Никакая production-инфраструктура не исправит leakage.
 
 ---
 
-## 4. Split
+## 4. Разбиение данных
 
-Choose:
+Выберите подходящую схему:
 - random;
 - group;
 - time;
 - group-time.
 
-Final test untouched.
+Финальный test остаётся нетронутым.
 
-This same temporal/entity logic must later be used in monitoring cohorts.
+Та же логика времени и сущностей должна затем использоваться при формировании monitoring-когорт.
 
 ---
 
-# Фаза 3. Experiment
+# Фаза 3. Эксперимент
 
-## 5. Baseline
+## 5. Базовый уровень
 
-Build:
+Постройте:
 ```text
 simple business rule
 simple ML baseline
 ```
 
-Then stronger model.
+Только после этого переходите к более сильной модели.
 
-Track experiments:
+Для каждого эксперимента сохраняйте:
 ```text
 run_id
 code
@@ -152,9 +152,9 @@ metrics
 
 ---
 
-## 6. Model selection
+## 6. Выбор модели
 
-Compare:
+Сравнивайте:
 ```text
 quality
 stability
@@ -164,15 +164,15 @@ size
 interpretability
 ```
 
-Not only leaderboard maximum.
+Максимума одной leaderboard-метрики недостаточно.
 
 ---
 
 # Фаза 4. Artifact
 
-## 7. Freeze winning pipeline
+## 7. Зафиксировать выбранный pipeline
 
-Store:
+Сохраните вместе:
 ```text
 preprocessing
 model
@@ -183,19 +183,19 @@ dependencies
 validation report
 ```
 
-Assign immutable version.
+Назначьте неизменяемую версию.
 
 ---
 
-## 8. Golden examples
+## 8. Эталонные примеры
 
-Create known requests:
+Подготовьте заранее проверенные запросы:
 ```text
 A → expected probability ~0.21
 B → ~0.88
 ```
 
-They become contract regression tests across serving/container changes.
+Они станут контрактными regression-тестами при изменениях serving или контейнера.
 
 ---
 
@@ -203,7 +203,7 @@ They become contract regression tests across serving/container changes.
 
 ## 9. FastAPI
 
-Endpoints:
+Эндпоинты:
 ```text
 POST /predict
 POST /predict-batch
@@ -212,33 +212,33 @@ GET /ready
 GET /model-info
 ```
 
-Pydantic validates input/output.
+Pydantic валидирует вход и выход.
 
-Model loads once at startup.
+Модель загружается один раз при запуске приложения.
 
 ---
 
-## 10. Error policy
+## 10. Политика ошибок
 
-Invalid request:
+Некорректный запрос:
 ```text
 4xx
 ```
 
-Internal failure:
+Внутренняя ошибка:
 ```text
 5xx
 ```
 
-Never silently return default prediction after exception.
+Нельзя молча возвращать прогноз по умолчанию после исключения.
 
 ---
 
-# Фаза 6. Container
+# Фаза 6. Контейнер
 
 ## 11. Docker
 
-Build image containing:
+Соберите image, содержащий:
 ```text
 application code
 dependencies
@@ -246,9 +246,9 @@ optionally model artifact
 startup command
 ```
 
-Run golden integration request in container.
+Запустите внутри контейнера эталонный интеграционный запрос.
 
-Record:
+Зафиксируйте:
 ```text
 image tag
 image digest
@@ -259,9 +259,9 @@ model version
 
 # Фаза 7. Deployment
 
-## 12. First production release
+## 12. Первый production-релиз
 
-Before traffic:
+До подключения трафика проверьте:
 ```text
 readiness
 artifact checksum
@@ -269,17 +269,17 @@ schema
 smoke test
 ```
 
-Then start controlled traffic.
+Затем начинайте подавать трафик контролируемо.
 
-For first simple project, one stable instance may be enough.
+Для первого простого проекта может быть достаточно одного стабильного instance.
 
-No Kubernetes needed to understand lifecycle.
+Чтобы понять lifecycle, Kubernetes не нужен.
 
 ---
 
-# Фаза 8. Service observability
+# Фаза 8. Наблюдаемость сервиса
 
-## 13. Monitor immediately
+## 13. Что наблюдать сразу
 
 ```text
 request rate
@@ -290,13 +290,13 @@ in-flight
 model version
 ```
 
-Structured logs with request IDs.
+Используйте структурированные логи с request ID.
 
 ---
 
-## 14. Prediction behavior
+## 14. Поведение прогнозов
 
-Without labels:
+Пока меток нет, отслеживайте:
 ```text
 score distribution
 class distribution
@@ -304,17 +304,17 @@ unknown category rate
 fallback rate
 ```
 
-This detects strange behavior quickly.
+Так необычное поведение можно заметить быстро.
 
 ---
 
-# Фаза 9. Data monitoring
+# Фаза 9. Мониторинг данных
 
-## 15. Reference window
+## 15. Референсное окно
 
-Save reference statistics from appropriate training/stable production data.
+Сохраните референсные статистики по подходящим train-данным или стабильному production-периоду.
 
-Compare current:
+Сравнивайте с текущими:
 ```text
 missing
 quantiles
@@ -322,38 +322,38 @@ category frequencies
 drift
 ```
 
-Use both rules and statistics.
+Используйте и бизнес-правила, и статистические методы.
 
 ---
 
-## 16. Don't overreact
+## 16. Не реагировать автоматически
 
 Data drift:
 ```text
 alert
 ```
-means:
+означает:
 ```text
 investigate
 ```
 
-not:
+а не:
 ```text
 retrain automatically now
 ```
 
-Check:
+Сначала проверьте:
 - upstream bug;
 - seasonality;
 - segment change.
 
 ---
 
-# Фаза 10. Delayed labels
+# Фаза 10. Отложенные метки
 
-## 17. Prediction ledger
+## 17. Журнал прогнозов
 
-Store:
+Сохраняйте:
 ```text
 prediction_id
 time
@@ -363,30 +363,30 @@ decision
 model_version
 ```
 
-Later join true labels.
+Позже присоединяйте фактические метки.
 
-Respect privacy/data retention.
+Учитывайте требования к приватности и срокам хранения данных.
 
 ---
 
-## 18. Cohort maturity
+## 18. Созревание когорты
 
-For 30-day target:
+Для target с горизонтом 30 дней:
 ```text
 do not evaluate yesterday's predictions
 ```
 
-Only mature cohorts.
+Оценивайте только созревшие когорты.
 
-Plot metric by prediction date.
+Стройте метрику по дате прогноза.
 
 ---
 
-# Фаза 11. Quality monitoring
+# Фаза 11. Мониторинг качества
 
-## 19. Track same metrics as validation
+## 19. Те же метрики, что и на validation
 
-Example:
+Например:
 ```text
 AP
 recall at required precision
@@ -394,15 +394,15 @@ calibration
 business cost
 ```
 
-Also segments.
+Проверяйте их и по важным сегментам.
 
-If offline metric and production metric definitions differ, comparisons meaningless.
+Если offline- и production-метрики определены по-разному, их сравнение бессмысленно.
 
 ---
 
-## 20. Diagnose degradation
+## 20. Диагностика деградации
 
-If AP dropped:
+Если AP упала, последовательно спросите:
 1. labels correct?
 2. data pipeline?
 3. model version?
@@ -412,32 +412,32 @@ If AP dropped:
 7. calibration?
 8. threshold?
 
-Do not jump straight to algorithm change.
+Не переходите сразу к замене алгоритма.
 
 ---
 
-# Фаза 12. Retraining trigger
+# Фаза 12. Условие retraining
 
-## 21. Conditions
+## 21. Условия
 
-Possible:
+Например:
 ```text
 mature AP below 0.50 for 2 cohorts
 AND
 >= 20k new labeled examples
 ```
 
-or scheduled monthly review.
+или запланированный ежемесячный review.
 
-Trigger should be explicit and measurable.
+Trigger должен быть явным и измеримым.
 
 ---
 
-# Фаза 13. Retraining run
+# Фаза 13. Запуск retraining
 
-## 22. Rebuild from versioned inputs
+## 22. Пересборка из версионированных входов
 
-Training job receives:
+Training job получает:
 ```text
 data cutoff
 feature version
@@ -445,9 +445,9 @@ code commit
 config
 ```
 
-Logs run.
+Запуск записывается в experiment tracking.
 
-Outputs:
+Результаты запуска:
 ```text
 candidate artifact
 evaluation report
@@ -458,16 +458,16 @@ validation predictions
 
 # Фаза 14. Champion/challenger
 
-## 23. Same benchmark
+## 23. Одинаковый benchmark
 
-Evaluate:
+Оцените:
 ```text
 champion
 challenger
 ```
-on same current holdout.
+на одном и том же актуальном holdout.
 
-Compare:
+Сравните:
 ```text
 quality
 segments
@@ -478,9 +478,9 @@ model size
 
 ---
 
-## 24. Candidate gate
+## 24. Проверки кандидата
 
-Example:
+Пример условий:
 ```text
 AP >= champion + .01
 p95 <= 50ms
@@ -488,18 +488,18 @@ no critical segment worse > .02
 artifact/container tests pass
 ```
 
-If fail:
+Если хотя бы одно условие не выполнено:
 ```text
 reject
 ```
 
-No deployment just because retraining completed.
+Завершившийся retraining сам по себе не является причиной для deployment.
 
 ---
 
 # Фаза 15. Registry
 
-## 25. Register exact artifact
+## 25. Зарегистрировать точный artifact
 
 ```text
 churn_prediction
@@ -508,21 +508,21 @@ source_run=...
 validation_status=passed
 ```
 
-Set candidate/challenger alias/tag as workflow requires.
+Назначьте alias или tag кандидата в соответствии с workflow.
 
-Lineage preserved.
+Происхождение версии должно сохраняться.
 
 ---
 
 # Фаза 16. Shadow / canary
 
-## 26. Shadow first
+## 26. Сначала shadow
 
-Champion continues decisions.
+Champion продолжает принимать реальные решения.
 
-Challenger gets same live inputs, output logged.
+Challenger получает те же live-входы, но его ответы только записываются.
 
-Check:
+Проверьте:
 ```text
 latency
 errors
@@ -532,33 +532,33 @@ score distribution
 
 ---
 
-## 27. Canary if appropriate
+## 27. Canary, если он уместен
 
-Small traffic:
+Начните с небольшой доли трафика:
 ```text
 5%
 ```
 
-Monitor guardrails.
+Наблюдайте guardrail-метрики.
 
-Increase:
+Увеличивайте долю:
 ```text
 5 → 20 → 50 → 100
 ```
 
-only if stable.
+только если система стабильна.
 
-For high-stakes tasks, approval process may be stricter.
+Для задач с высокой ценой ошибки процесс согласования должен быть строже.
 
 ---
 
-# Фаза 17. Promotion
+# Фаза 17. Продвижение версии
 
-## 28. Champion changes
+## 28. Смена champion
 
-Current alias/deployment pointer moves to challenger only after gates.
+Текущий alias или deployment pointer переключается на challenger только после всех проверок.
 
-Record deployment event:
+Запишите событие deployment:
 ```text
 time
 app version
@@ -566,49 +566,49 @@ model version
 config/threshold
 ```
 
-Monitoring dashboard gets marker.
+Добавьте отметку о релизе на monitoring dashboard.
 
 ---
 
 # Фаза 18. Rollback
 
-## 29. Something goes wrong
+## 29. Если что-то пошло не так
 
-At 20% canary:
+Например, на 20% canary-трафика:
 ```text
 p95 40→400ms
 ```
 
-Immediate:
+Немедленное действие:
 ```text
 route back old champion
 ```
 
-Then debug challenger offline.
+После отката исследуйте challenger offline.
 
-Rollback is a designed feature, not emergency improvisation.
+Rollback — заранее спроектированная возможность, а не аварийная импровизация.
 
 ---
 
-# Фаза 19. Post-deploy quality
+# Фаза 19. Качество после deployment
 
-## 30. Labels arrive later
+## 30. Метки приходят позже
 
-Now compare champion-era/challenger-era cohorts carefully.
+После созревания меток аккуратно сравните когорты периодов champion и challenger.
 
-If new model:
+Если новая модель:
 - service healthy;
 - but mature quality bad,
 
-rollback/revise according to risk.
+выполните rollback или пересмотрите модель в соответствии с риском.
 
 ---
 
-# Фаза 20. Documentation
+# Фаза 20. Документация
 
-## 31. Minimal release record
+## 31. Минимальная запись о релизе
 
-For each production model:
+Для каждой production-модели сохраните:
 ```text
 purpose
 owner
@@ -623,13 +623,13 @@ deploy time
 rollback version
 ```
 
-This can be one Markdown/registry record in small team.
+В небольшой команде это может быть одна Markdown-запись или карточка в registry.
 
 ---
 
-# Full project structure
+# Структура полного проекта
 
-## 32. Example repository
+## 32. Пример репозитория
 
 ```text
 project/
@@ -654,15 +654,15 @@ project/
 └── README.md
 ```
 
-No need 40 microservices to demonstrate mature ML engineering.
+Чтобы показать зрелый ML engineering, не нужны 40 микросервисов.
 
 ---
 
-# What to test
+# Что тестировать
 
-## 33. Unit tests
+## 33. Unit-тесты
 
-Examples:
+Примеры:
 ```text
 feature calculation
 schema validators
@@ -671,7 +671,7 @@ threshold logic
 
 ---
 
-## 34. Integration tests
+## 34. Интеграционные тесты
 
 ```text
 load real artifact
@@ -681,22 +681,22 @@ load real artifact
 
 ---
 
-## 35. Golden regression tests
+## 35. Эталонные regression-тесты
 
-Known sample produces expected score within tolerance.
+Для известного примера модель должна вернуть ожидаемую оценку в заданном допуске.
 
 ---
 
-## 36. Data tests
+## 36. Тесты данных
 
-Training:
+При обучении:
 ```text
 schema
 target
 time windows
 ```
 
-Production:
+В production:
 ```text
 required fields
 ranges
@@ -705,7 +705,7 @@ missing spikes
 
 ---
 
-## 37. Performance test
+## 37. Тест производительности
 
 ```text
 p95 latency
@@ -713,61 +713,61 @@ throughput
 memory
 ```
 
-for candidate.
+для модели-кандидата.
 
 ---
 
-# Interview-level system design
+# System design для собеседования
 
-## 38. Strong answer
+## 38. Сильный ответ
 
-Question:
-> How would you deploy and monitor your model?
+Вопрос:
+> Как вы развернёте модель и будете наблюдать за ней?
 
-Strong compact answer:
+Короткий сильный ответ:
 
-> I would save preprocessing and estimator as one versioned artifact with input/output schema and threshold. Serve it through FastAPI with Pydantic validation, health/readiness and structured logs, package the runtime in Docker and expose service latency/error metrics. I would monitor input missingness/distributions and prediction scores immediately, then join delayed ground truth to predictions and track the same quality/calibration metrics used offline. Each training run is tied to code/data/config in experiment tracking, selected artifacts go to a model registry. A new challenger must beat the champion on the same holdout and pass latency/schema/segment checks, then goes through shadow or canary rollout with rollback available.
+> Я сохраню preprocessing и estimator как единый версионированный artifact со схемами входа и выхода и выбранным threshold. Опубликую его через FastAPI с Pydantic-валидацией, health/readiness-проверками и структурированными логами, упакую runtime в Docker и выведу метрики задержки и ошибок сервиса. Сразу начну наблюдать пропуски, распределения входов и прогнозов, а после созревания меток соединю ground truth с журналом прогнозов и буду считать те же метрики качества и калибровки, что offline. Каждый запуск обучения свяжу с code/data/config в experiment tracking, а выбранные artifacts помещу в model registry. Новый challenger должен победить champion на одном holdout, пройти проверки latency, schema и сегментов, а затем пройти shadow- или canary-релиз с возможностью rollback.
 
-This demonstrates end-to-end understanding without buzzword soup.
+Такой ответ показывает понимание всей системы, а не перечисление buzzwords.
 
 ---
 
-# What not to add yet
+# Что пока не добавлять
 
 ## 39. Kubernetes
 
-Useful at larger orchestration scale, but not needed to learn core ML lifecycle.
+Полезен при большом масштабе orchestration, но не нужен для понимания базового ML lifecycle.
 
 ## 40. Kafka
 
-Useful for event streaming when requirements demand it.
+Полезна для event streaming, когда этого требуют ограничения задачи.
 
-Not every prediction service needs message broker.
+Message broker нужен не каждому prediction service.
 
 ## 41. Feature Store
 
-Useful when many models share online/offline features.
+Полезен, когда много моделей совместно используют online- и offline-признаки.
 
-For one project:
+Для одного проекта:
 ```text
 well-tested feature code + Pipeline
 ```
-may be enough.
+может быть достаточно.
 
 ## 42. Airflow
 
-Useful for scheduled DAG orchestration.
+Полезен для запуска DAG по расписанию.
 
-A simple cron/script can teach first retraining workflow.
+Первый retraining workflow можно понять на простом cron или script.
 
-Principle:
-> add infrastructure when a concrete constraint requires it.
+Принцип:
+> добавляйте инфраструктуру, когда этого требует конкретное ограничение.
 
 ---
 
-# Failure scenarios capstone
+# Итоговые сценарии отказов
 
-## 43. Scenario A — API works, model bad
+## 43. Сценарий A — API работает, модель плохая
 
 ```text
 200 rate 100%
@@ -775,11 +775,11 @@ p95 20ms
 AP 0.55→0.31
 ```
 
-Investigate data/labels/concept/model, not FastAPI.
+Исследуйте данные, метки, concept drift и модель, а не FastAPI.
 
 ---
 
-## 44. Scenario B — drift but quality stable
+## 44. Сценарий B — drift есть, качество стабильно
 
 ```text
 income PSI high
@@ -787,64 +787,64 @@ AP stable
 business metric stable
 ```
 
-Investigate/monitor, no automatic retrain.
+Исследуйте и наблюдайте; автоматический retraining не нужен.
 
 ---
 
-## 45. Scenario C — challenger better but slow
+## 45. Сценарий C — challenger лучше, но медленнее
 
 ```text
 AP +0.04
 p95 3× SLA
 ```
 
-Reject/optimize.
+Отклоните или оптимизируйте кандидата.
 
 ---
 
-## 46. Scenario D — new model returns many class C
+## 46. Сценарий D — новая модель слишком часто возвращает класс C
 
-Immediately after deployment:
+Сразу после deployment:
 ```text
 class C 10%→80%
 ```
 
-Check:
+Проверьте:
 - model/config;
 - preprocessing;
 - threshold;
 - schema;
 - real traffic change.
 
-Rollback if operationally unsafe.
+Выполните rollback, если ситуация операционно небезопасна.
 
 ---
 
-## 47. Scenario E — retraining job target rate 0
+## 47. Сценарий E — после retraining доля target равна нулю
 
-Stop pipeline.
+Остановите pipeline.
 
-Check label extraction.
+Проверьте извлечение меток.
 
-Never promote.
-
----
-
-## 48. Scenario F — unknown category spikes
-
-Service didn't crash because OHE ignores unknown.
-
-But model information degraded.
-
-Investigate upstream/new category and retrain only after understanding.
+Не продвигайте такую модель.
 
 ---
 
-# Интерактивная визуализация DataPath
+## 48. Сценарий F — резко выросла доля неизвестных категорий
 
-## 49. Lifecycle simulator
+Сервис не упал, потому что OHE игнорирует неизвестные категории.
 
-Full map:
+Но доступная модели информация ухудшилась.
+
+Исследуйте upstream-изменение или новую категорию и запускайте retraining только после объяснения причины.
+
+---
+
+## 49. Интерактивная визуализация DataPath
+
+### Симулятор жизненного цикла
+
+Полная карта системы:
 
 ```text
 DATA
@@ -864,35 +864,35 @@ LABELS
 RETRAIN
 ```
 
-Learner receives incidents and must decide where to act.
+Ученик получает описание инцидента и должен определить, на каком слое искать причину.
 
-### Incident cards
-- missing feature;
-- high latency;
-- data drift;
-- concept drift;
-- failed challenger;
-- model artifact mismatch.
+### Карточки инцидентов
+- отсутствует обязательный признак;
+- выросла задержка ответа;
+- изменилось распределение входных данных;
+- изменилась связь признаков с целевой переменной;
+- новая модель не прошла проверку;
+- версия model artifact не совпадает с контрактом сервиса.
 
-Wrong action shows consequence.
+После неверного действия показывается его последствие.
 
-Example:
+Пример:
 ```text
-Data pipeline bug
-→ learner chooses retrain
-→ new model trains on corrupted data
-→ quality drops further
+Ошибка в data pipeline
+→ ученик выбирает переобучение
+→ новая модель обучается на повреждённых данных
+→ качество падает ещё сильнее
 ```
 
-This should be the final systems-thinking exercise.
+Это итоговое упражнение на системное мышление: наблюдаемый симптом ещё не определяет правильное действие.
 
 ---
 
-# Capstone project
+## 50. Практика: сквозной проект
 
-## 50. Assignment
+### Задание
 
-Take a trained tabular model and build:
+Возьмите обученную табличную модель и соберите вокруг неё минимальный воспроизводимый цикл:
 
 ```text
 1. sklearn Pipeline artifact
@@ -912,105 +912,100 @@ Take a trained tabular model and build:
 15. rollback procedure
 ```
 
-No Kubernetes required.
+Kubernetes для этой задачи не нужен.
 
-This is enough for a serious junior DS/ML Engineer portfolio project.
+Такого объёма достаточно для серьёзного портфолио-проекта начинающего Data Scientist или ML Engineer: в нём видны не только обучение, но и контракт, наблюдаемость и безопасное обновление.
 
 ---
 
-# Final mental model
+## 51. Итоговая модель системы
 
-A production ML system has five layers:
+У production ML-системы есть пять взаимосвязанных слоёв.
 
-## Data
-Are inputs and labels correct/current?
+### Данные
+Корректны и актуальны ли входы и метки?
 
-## Model
-Does predictor generalize and remain calibrated/useful?
+### Модель
+Обобщает ли предиктор на новые данные и остаются ли его оценки полезными и, где требуется, откалиброванными?
 
-## Software
-Can artifact load and serve reliably?
+### Программная часть
+Можно ли надёжно загрузить artifact и получить прогноз через сервис?
 
-## Observability
-Can we detect and explain incidents?
+### Наблюдаемость
+Можем ли мы заметить инцидент и объяснить, где он возник?
 
-## Lifecycle
-Can we reproduce, compare, update and rollback safely?
+### Жизненный цикл
+Можем ли мы воспроизвести результат, сравнить версии, безопасно обновиться и откатиться?
 
-If one layer missing, "production ML" is incomplete.
+Если один слой отсутствует, production ML-система остаётся неполной.
 
 ---
 
 ## Типичные ошибки
 
 **«MLOps = Docker».**\
-Docker is only runtime packaging.
+Docker решает только задачу упаковки среды выполнения.
 
 **«Monitoring = CPU/RAM».**\
-Need data/model/business quality too.
+Нужно также наблюдать данные, прогнозы, качество модели и бизнес-результат.
 
 **«Drift = retrain».**\
-No.
+Нет: сначала нужно проверить источник изменения и доступные метки.
 
 **«Registry automatically makes system production-ready».**\
-No.
+Нет: registry хранит версии и lineage, но не заменяет проверки, сервис и мониторинг.
 
 **«Best model should always become champion».**\
-Only after full constraints.
+Только после прохождения всех ограничений по качеству и инженерной надёжности.
 
 **«Need Kubernetes to call project MLOps».**\
-No.
+Нет: зрелость определяется управляемым жизненным циклом, а не количеством инфраструктуры.
 
 **«Automation removes need for ML methodology».**\
-No; it automates good or bad process equally.
+Нет: автоматизация одинаково быстро повторяет и хороший, и ошибочный процесс.
 
 ---
 
 ## Проверка понимания
 
-1. What components make artifact?
-2. Why health/readiness?
-3. Service metric vs model metric?
-4. Data vs concept drift?
-5. Why label maturity?
-6. What experiment tracking gives?
-7. Registry role?
-8. Champion/challenger comparison?
-9. Shadow vs canary?
-10. Why rollback?
-11. When retrain?
-12. Why not infrastructure for its own sake?
+1. Из каких частей состоит model artifact?
+2. Чем readiness-проверка отличается от простой проверки, что процесс запущен?
+3. Чем метрика сервиса отличается от метрики модели?
+4. В чём разница между data drift и concept drift?
+5. Почему качество нельзя честно оценивать до созревания меток?
+6. Что даёт experiment tracking, чего не даёт имя файла модели?
+7. Какова роль model registry?
+8. Как сравниваются champion и challenger?
+9. Чем shadow-запуск отличается от canary?
+10. Какие условия делают быстрый rollback возможным?
+11. Когда drift действительно должен привести к retraining?
+12. Почему инфраструктура без измеримой задачи не улучшает ML-систему?
 
 ---
 
 ## Что нужно унести из всего блока
 
-1. Training is only the beginning of model lifecycle.
-2. Artifact includes preprocessing/schema/threshold/metadata.
-3. FastAPI exposes a typed inference contract.
-4. Docker makes runtime reproducible.
-5. Logs/metrics show service behavior.
-6. Data drift and prediction drift are early warning signals.
-7. True model quality needs labels and mature cohorts.
-8. Concept drift can happen without visible X drift.
-9. Experiment tracking gives run provenance.
-10. Model registry manages selected release versions and lineage.
-11. Challenger must pass quality and engineering gates.
-12. Shadow/canary reduce rollout risk.
-13. Rollback requires immutable previous releases.
-14. Retraining is a controlled decision, not automatic reaction.
-15. MLOps at DS/ML Engineer level is a disciplined lifecycle, not a pile of infrastructure.
+1. Обучение — только начало жизненного цикла модели.
+2. Artifact включает preprocessing, схему, threshold и metadata.
+3. FastAPI задаёт типизированный контракт инференса.
+4. Docker делает среду выполнения воспроизводимой.
+5. Логи и метрики показывают поведение сервиса.
+6. Data drift и prediction drift служат ранними сигналами, а не готовым диагнозом.
+7. Для честной оценки качества нужны метки и созревшие когорты.
+8. Concept drift возможен без заметного изменения распределения `X`.
+9. Experiment tracking связывает результат с конфигурацией запуска.
+10. Model registry управляет выбранными версиями релиза и их происхождением.
+11. Challenger обязан пройти проверки качества и инженерные ограничения.
+12. Shadow и canary уменьшают риск обновления.
+13. Для rollback нужны неизменяемые предыдущие релизы.
+14. Retraining — контролируемое решение, а не автоматическая реакция.
+15. MLOps на уровне Data Scientist или ML Engineer — дисциплинированный жизненный цикл, а не набор инфраструктурных инструментов.
 
 ## Куда дальше
 
 Урок №100 завершает основную каноническую линию DataPath v2.
 
-Следующий этап уже не добавление новой темы, а интеграция корпуса в приложение:
-- сопоставить новые крупные уроки старым маленьким сценам;
-- сохранить стабильную архитектуру DataPath 1.0;
-- обновлять lessons по curriculum blocks;
-- провести один content-validator и representative Focus smoke-test на блок;
-- не переделывать Atlas/Review/schema без необходимости.
+Дальше полезнее не добавлять ещё один инструмент, а пройти сквозной проект из этого урока: связать artifact, API, monitoring, delayed labels, challenger и rollback в одну проверяемую систему.
 
 ## Источники
 - FastAPI official documentation.

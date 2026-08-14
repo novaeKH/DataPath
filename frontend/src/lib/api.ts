@@ -402,6 +402,7 @@ export interface LessonDetail {
   estimated_minutes: number | null
   difficulty: string | null
   skills: string[]
+  prerequisites?: { id: string; title: string; course_id: string | null }[]
   previous_lesson_id: string | null
   next_lesson_id: string | null
   scenes: LessonScene[]

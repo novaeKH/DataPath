@@ -19,6 +19,8 @@ difficulty: capstone
 skill_ids:
 - datapath.v2.082
 prerequisites:
+- lesson.nlp.classical-models
+- lesson.nlp.bert-evaluation
 - lesson.nlp.evaluation
 previous: lesson.nlp.evaluation
 next: lesson.llm-rag.autoregressive
@@ -42,6 +44,11 @@ tags:
     {
       "type": "hook",
       "title": "Цель главы"
+    },
+    {
+      "type": "visual_demo",
+      "component": "nlp-workflow-flow",
+      "title": "Интерактивная схема темы"
     },
     {
       "type": "retrieval",

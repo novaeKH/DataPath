@@ -19,6 +19,9 @@ difficulty: core
 skill_ids:
 - data-tools.sql-analytics
 prerequisites:
+- lesson.sql.joins
+- lesson.sql.cte-subqueries
+- lesson.sql.window-functions
 - lesson.sql.null-case-dates
 previous: lesson.sql.null-case-dates
 next: lesson.math-ds.linear-algebra
@@ -42,6 +45,11 @@ tags:
     {
       "type": "hook",
       "title": "Цель главы"
+    },
+    {
+      "type": "visual_demo",
+      "component": "sql-analysis-pattern-flow",
+      "title": "Интерактивная схема темы"
     },
     {
       "type": "retrieval",

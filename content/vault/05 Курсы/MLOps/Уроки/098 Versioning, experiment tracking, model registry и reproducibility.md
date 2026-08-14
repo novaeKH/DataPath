@@ -19,7 +19,8 @@ difficulty: core
 skill_ids:
 - mlops.reproducibility
 prerequisites:
-- lesson.mlops.concept-drift
+- lesson.mlops.artifacts
+- lesson.mlops.monitoring
 previous: lesson.mlops.concept-drift
 next: lesson.mlops.retraining
 tags:

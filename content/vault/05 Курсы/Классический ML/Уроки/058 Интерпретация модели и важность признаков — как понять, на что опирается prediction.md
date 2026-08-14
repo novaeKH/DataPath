@@ -19,7 +19,9 @@ difficulty: core
 skill_ids:
 - ml.classic.expansion
 prerequisites:
-- lesson.classic-ml.expansion.24
+- lesson.classic-ml.framing.metrics
+- lesson.classic-ml.linear.logistic
+- lesson.classic-ml.trees.tree
 previous: lesson.classic-ml.expansion.24
 next: lesson.classic-ml.expansion.21
 tags:

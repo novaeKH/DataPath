@@ -19,6 +19,7 @@ difficulty: advanced-core
 skill_ids:
 - dl.foundations
 prerequisites:
+- lesson.deep-learning.regularization
 - lesson.deep-learning.attention
 previous: lesson.deep-learning.attention
 next: lesson.deep-learning.09

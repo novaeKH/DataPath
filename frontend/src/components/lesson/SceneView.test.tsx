@@ -55,4 +55,22 @@ describe('SceneView visual demos', () => {
     })
     expect(screen.getByText('0.750')).toBeInTheDocument()
   })
+
+  it('renders a lesson-specific concept flow and advances between stages', async () => {
+    render(
+      <SceneView
+        scene={{
+          id: 'scene-concept-flow',
+          type: 'visual_demo',
+          title: 'Интерактивная схема темы',
+          demo_id: 'python-object-reference-flow',
+        }}
+      />,
+    )
+
+    expect(await screen.findByText(/Python создаёт объект/)).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('slider', { name: /Шаг/ }), { target: { value: '3' } })
+    expect(screen.getByText(/Изменение объекта видно/)).toBeInTheDocument()
+    expect(screen.getByText('Шаг 4: Мутация')).toBeInTheDocument()
+  })
 })

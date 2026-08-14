@@ -19,6 +19,7 @@ difficulty: advanced-core
 skill_ids:
 - llm-rag.rag
 prerequisites:
+- lesson.llm-rag.inference
 - lesson.llm-rag.reranking
 previous: lesson.llm-rag.reranking
 next: lesson.llm-rag.evaluation

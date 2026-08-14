@@ -731,6 +731,40 @@ function ExistingLessonView({
           </div>
         </header>
 
+        {(lesson.prerequisites?.length ?? 0) > 0 && (
+          <aside
+            className="mt-6 rounded-xl border px-4 py-3"
+            style={{
+              borderColor: 'var(--dp-border-subtle)',
+              background: 'var(--dp-surface-subtle)',
+            }}
+            aria-label="Необходимые знания"
+          >
+            <p className="text-xs font-semibold" style={{ color: 'var(--dp-text-primary)' }}>
+              Перед началом
+            </p>
+            <p className="mt-1 text-xs leading-5" style={{ color: 'var(--dp-text-muted)' }}>
+              Этот урок опирается на материал ниже. Если термины незнакомы, сначала быстро повторите
+              его — так в объяснении не останется скрытого шага.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(lesson.prerequisites ?? []).map((prerequisite) => (
+                <Link
+                  key={prerequisite.id}
+                  to={`/focus/${encodeURIComponent(prerequisite.id)}`}
+                  className="rounded-lg px-2.5 py-1 text-xs font-medium dp-hover-interactive"
+                  style={{
+                    color: 'var(--dp-accent)',
+                    background: 'var(--dp-accent-subtle)',
+                  }}
+                >
+                  {prerequisite.title}
+                </Link>
+              ))}
+            </div>
+          </aside>
+        )}
+
         <div
           className="mt-6 flex items-center gap-3 text-xs"
           style={{ color: 'var(--dp-text-muted)' }}

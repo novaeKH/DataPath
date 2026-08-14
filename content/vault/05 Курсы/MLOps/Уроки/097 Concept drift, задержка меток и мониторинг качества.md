@@ -19,6 +19,7 @@ difficulty: core
 skill_ids:
 - datapath.v2.097
 prerequisites:
+- lesson.classic-ml.framing.metrics
 - lesson.mlops.data-drift
 previous: lesson.mlops.data-drift
 next: lesson.mlops.reproducibility
@@ -42,6 +43,11 @@ tags:
     {
       "type": "hook",
       "title": "Цель главы"
+    },
+    {
+      "type": "visual_demo",
+      "component": "concept-drift-diagnosis-flow",
+      "title": "Интерактивная схема темы"
     },
     {
       "type": "retrieval",
