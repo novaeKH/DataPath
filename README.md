@@ -8,12 +8,12 @@ DataPath — локальная учебная платформа по Data Scie
 
 ## Что внутри
 
-- 86 уроков в основном маршруте: Python, NumPy/pandas, Math/Statistics, SQL/scikit-learn,
-  Classic ML, Deep Learning, NLP, LLM/RAG и MLOps. В каноническом vault хранится 103 урока.
+- 100 уроков в основном маршруте: Python, NumPy/pandas, Math/Statistics, SQL/scikit-learn,
+  Classic ML, Deep Learning, NLP, LLM/RAG и MLOps.
 - 57 зарегистрированных интерактивных visual demos — от broadcasting, regression и boosting до
   backpropagation, attention, RAG retrieval и model monitoring — плюс три ML-лаборатории.
-- Studio с 15 упражнениями и 9 mini-cases. Шесть SQL-задач выполняются настоящим SQLite WASM
-  прямо в приложении.
+- Практика состоит из двух полноценных тренажёров: SQL Praktikum (76 задач на Olist в SQLite
+  WASM) и AlgoPath (71 Python-задача с public/hidden tests в локальном Pyodide worker).
 - Today формирует короткую ежедневную сессию из урока, практики и Review.
 - Focus сохраняет раздел, заметки, проверки понимания и прогресс.
 - Review использует интервалы повторения и factual, conceptual, code/error и case форматы.
@@ -49,7 +49,8 @@ make build-web
 ```
 
 Production bundle появляется в `frontend/dist`. После первой успешной загрузки PWA сохраняет
-application shell, весь release snapshot и SQLite WASM для работы без сети.
+application shell, весь release snapshot, SQLite/Pyodide runtimes и учебную базу практикума для
+работы без сети. Крупные runtime assets кэшируются независимо и не могут сорвать установку shell.
 
 GitHub Actions публикует production PWA в GitHub Pages из `main`. Hash routing и base-aware assets
 позволяют открывать все экраны под repository subpath без отдельного backend.
@@ -96,6 +97,7 @@ make ios-open
 
 ```bash
 make sync-content
+make sync-practice-projects  # только при обновлении соседних source-проектов
 make dev
 ```
 
@@ -141,5 +143,5 @@ DataPath не содержит регистрации, аналитики, ре�
 продуктов и сторонние assets не передаются автоматически под MIT; подробности — в
 [уведомлении о контенте](CONTENT_NOTICE.md).
 
-Algorithms не входит в scope версии 1.0.0: задачи остаются во внешнем AlgoPath; в DataPath
-сохранена только будущая adapter boundary.
+Задачи Algorithms публикуются через встроенный read-only snapshot; canonical source остаётся во
+внешнем AlgoPath.

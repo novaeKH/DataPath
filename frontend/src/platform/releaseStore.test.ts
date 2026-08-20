@@ -20,6 +20,24 @@ describe('release storage migrations', () => {
     expect(migrated.notes).toEqual({})
     expect(migrated.mastery).toEqual({})
     expect(migrated.assessment_attempts).toEqual({})
+    expect(migrated.project_practice).toEqual({ sql: {}, algorithms: {} })
+  })
+
+  it('сохраняет прогресс интегрированных тренажёров в общей backup-схеме', () => {
+    const state = emptyLocalState()
+    state.project_practice.sql.start_01 = {
+      status: 'solved',
+      attempts: 2,
+      draft: 'SELECT * FROM orders LIMIT 10',
+      help_level: 0,
+      solution_revealed: false,
+      last_outcome: 'passed',
+      updated_at: '2026-08-20T12:00:00Z',
+    }
+    expect(migrateLocalState(state).project_practice.sql.start_01).toMatchObject({
+      status: 'solved',
+      attempts: 2,
+    })
   })
 
   it('не открывает state из будущей версии', () => {

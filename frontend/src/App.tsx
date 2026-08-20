@@ -31,6 +31,14 @@ const ReviewView = lazy(() =>
 const StudioView = lazy(() =>
   import('./views/StudioView').then((module) => ({ default: module.StudioView })),
 )
+const SqlPracticeView = lazy(() =>
+  import('./views/SqlPracticeView').then((module) => ({ default: module.SqlPracticeView })),
+)
+const AlgorithmPracticeView = lazy(() =>
+  import('./views/AlgorithmPracticeView').then((module) => ({
+    default: module.AlgorithmPracticeView,
+  })),
+)
 const SystemStatusView = lazy(() =>
   import('./views/SystemStatusView').then((module) => ({ default: module.SystemStatusView })),
 )
@@ -44,6 +52,26 @@ const ROUTES = [
   { path: '/focus/:lessonId', element: <FocusView />, label: 'Загрузка урока…' },
   { path: '/review', element: <ReviewView />, label: 'Загрузка повторений…' },
   { path: '/studio', element: <StudioView />, label: 'Загрузка Studio…' },
+  {
+    path: '/studio/sql',
+    element: <SqlPracticeView />,
+    label: 'Загрузка SQL Praktikum…',
+  },
+  {
+    path: '/studio/sql/:taskId',
+    element: <SqlPracticeView />,
+    label: 'Загрузка SQL-задачи…',
+  },
+  {
+    path: '/studio/algorithms',
+    element: <AlgorithmPracticeView />,
+    label: 'Загрузка AlgoPath…',
+  },
+  {
+    path: '/studio/algorithms/:problemSlug',
+    element: <AlgorithmPracticeView />,
+    label: 'Загрузка Python-задачи…',
+  },
   { path: '/system', element: <SystemStatusView />, label: 'Загрузка статуса…' },
 ]
 

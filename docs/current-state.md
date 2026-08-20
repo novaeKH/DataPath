@@ -2,22 +2,37 @@
 
 > Обновлено 2026-08-20. Рабочая ветка `main`; release/tag не создаётся.
 
+## Integrated Practice
+
+- Раздел «Практика» полностью заменён двумя самостоятельными рабочими пространствами: SQL
+  Praktikum и AlgoPath. Старые DataPath exercises/mini-cases больше не показываются в Practice,
+  Today или Focus; исторические записи остаются в local state для безопасной миграции.
+- SQL Praktikum содержит 76 исходных задач в 9 разделах. Запросы выполняются в Web Worker через
+  SQLite WASM на компактной согласованной копии Olist (~27 MB); доступны схема, многоуровневая
+  помощь, проверка полного результата, эталон и сохранение черновика/прогресса.
+- AlgoPath содержит 71 исходную Python-задачу в 14 темах. Код исполняется локально в отдельном
+  Pyodide Worker с public/hidden tests, адаптерами ListNode/TreeNode/GraphNode/class/in-place,
+  таймаутом, диагностикой и восстановлением worker после остановки.
+- Оба source-проекта остаются read-only. Версионируемые PWA assets собираются детерминированным
+  `scripts/integrate_practice_projects.py`; ручной target — `make sync-practice-projects`.
+- Progress schema v4 хранит статусы, попытки, черновики, использование подсказок, открытие решения
+  и последний результат отдельно для SQL и Algorithms. Данные переживают refresh и offline запуск.
+- Service worker `datapath-v20-integrated-practice-assets` кэширует каталоги и runner вместе с
+  shell, а крупные SQLite/Pyodide assets — отказоустойчиво и независимо от установки PWA.
+
 ## Эталонный маршрут Linear Regression
 
 - Маршрут собран в существующем content pipeline без изменения stable IDs:
   `случайные величины и нормальное распределение → ожидание/дисперсия → MLE/MAP/МНК →
-  линейная регрессия → практика → кейс спроса на велосипеды`.
+линейная регрессия → практика → кейс спроса на велосипеды`.
 - Урок Linear Regression перестроен от задачи и числового сравнения прямых к MSE, обучению
   `LinearRegression`, проверочной выборке, метрикам и анализу остатков. Матричная форма, проекция,
   MLE, Gauss–Markov и градиентный спуск сохранены как углубление, а не как входной барьер.
 - Математические уроки 028, 029 и 033 теперь последовательно объясняют нормальный шум,
   математическое ожидание, дисперсию, правдоподобие и переход
   `Gaussian noise → MLE → least squares → MSE`. MLE и теорема Гаусса — Маркова разделены.
-- В Studio добавлен case `case.ml.bike-demand-regression` на UCI Bike Sharing: 12 этапов от
-  постановки задачи и аудита до временного разбиения, базовой модели, Pipeline, метрик и анализа
-  ошибок. Эталонные проблемы данных открываются только после отправки решения.
-- Практика дополнена заданиями на `fit`/`predict`, RMSE и отладку неправильной оценки на
-  обучающей выборке; Review получил числовой, концептуальный и debugging-вопросы.
+- Прежний case `case.ml.bike-demand-regression` и короткие встроенные упражнения выведены из
+  пользовательского Practice; Review сохранил числовой, концептуальный и debugging-вопросы.
 - Интерактивная прямая показывает остатки, MAE/MSE, оптимальную МНК-прямую и влияние выброса.
   Добавлена лаборатория нормального шума с управляемыми остатком и стандартным отклонением.
 - Существующие related/prerequisite edges формируют 14 связей Linear Regression в Atlas. Старые
@@ -41,7 +56,7 @@
   и текущий урок по-прежнему берутся из сохранённого progress.
 - Focus получил reading width 720 px, размер текста 17 px / line-height 1.78, крупный заголовок,
   непрерывный prose, премиальные code/formula/demo surfaces и спокойный outline без raw skill IDs.
-- Review, Studio и Roadmap получили самостоятельные visual heroes и более ясные композиции;
+- Review, Practice и Roadmap получили самостоятельные visual heroes и более ясные композиции;
   Atlas уже использует блочную карту направлений вместо большого графа.
 - Mobile navigation соответствует desktop-информационной архитектуре. Проверены размеры 390×844,
   safe areas, светлая и тёмная темы; интерактивный Gini threshold повторно проверен в браузере.
@@ -52,7 +67,7 @@
   NumPy/pandas/EDA, SQL, Math/Statistics, scikit-learn, Classic ML, Deep Learning, NLP, LLM/RAG и
   MLOps/ML Engineering.
 - Маршрут собран в 9 courses и 32 крупных тематических modules. Algorithms остаётся отдельным
-  AlgoPath и исключён из каталога, Today, Roadmap, Review и Atlas.
+  AlgoPath-тренажёром и не маскируется под уроки каталога, Today, Roadmap, Review или Atlas.
 - Полные canonical Markdown chapters находятся в `content/vault/10 Знания/DataPath v2/`;
   production lesson manifests — в существующем `content/vault/05 Курсы/`.
 - Legacy course/module/lesson manifests архивированы в parser-excluded
@@ -103,19 +118,19 @@
 ### Focus section progress — Definition of Done
 
 - [x] Все реально просмотренные главы становятся изученными; короткие сцены не теряются при
-  обычной прокрутке, PageDown и быстром непрерывном скролле.
+      обычной прокрутке, PageDown и быстром непрерывном скролле.
 - [x] Активная глава и сохранённые посещения — разные состояния: уход с главы не снимает зелёный
-  статус, а checkpoint без ответа не считается выполненным.
+      статус, а checkpoint без ответа не считается выполненным.
 - [x] Переход по оглавлению сохраняет исходную и целевую главы, но не помечает автоматически все
-  промежуточные разделы.
+      промежуточные разделы.
 - [x] Последняя доступная для чтения сцена засчитывается у конца документа даже тогда, когда её
-  невозможно выровнять по центру viewport.
+      невозможно выровнять по центру viewport.
 - [x] Посещения записываются последовательной очередью и объединяются монотонно: запоздавший
-  ответ API не может удалить более новый progress.
+      ответ API не может удалить более новый progress.
 - [x] Состояние восстанавливается после refresh/повторного открытия, а процент и счётчик содержания
-  используют один и тот же набор сохранённых scene IDs.
+      используют один и тот же набор сохранённых scene IDs.
 - [x] Достижение последней главы само по себе не завершает урок: итоговый completion остаётся
-  отдельным явным действием.
+      отдельным явным действием.
 
 ## Figures and offline update
 
@@ -124,12 +139,13 @@
   Dropout, CNN, pooling, RNN, LSTM, embeddings, Attention и Transformer.
 - Assets лежат в `frontend/public/content-assets/datapath-v2/figures/`; Markdown renderer добавляет
   base-path-safe URL, lazy loading, alt и caption.
-- Service worker cache поднят до `datapath-v18-focus-section-progress` и pre-cache-ит все 21 figure
-  вместе с release snapshot, не затрагивая localStorage.
+- Service worker pre-cache-ит все 21 figure вместе с release snapshot, не затрагивая localStorage;
+  текущая версия cache также поддерживает offline assets интегрированной практики.
 
 ## Local state migration
 
-- Local store schema v3 принимает backup/state schema v1 и v2.
+- Local store schema v4 принимает предыдущие backup/state schema и добавляет независимый progress
+  двух интегрированных тренажёров.
 - Stable semantic lesson IDs сохранены; изменённые IDs переписываются явной таблицей.
 - Для объединённых chapters completion переносится только при завершении всех сильных
   predecessors. Иначе сохраняются familiarity evidence/notes, но новый chapter остаётся начатым.
@@ -144,17 +160,20 @@
 - Content sync: 532 scanned, 0 errors, 0 warnings после slug separation source/manifest.
 - Content validator: 0 errors, 0 warnings.
 - Content quality: 100 lessons, 0 errors, 0 warnings, 0 suggestions.
-- Полный backend suite проходит: 230 tests. Полный frontend suite проходит: 139 tests, включая
+- Полный backend suite проходит: 230 tests. Полный frontend suite проходит: 138 tests, включая
   offline regression для Gini/Entropy, максимальные параметры ensemble-лаборатории и Focus
   progress при медленной/быстрой прокрутке, TOC jump, конце документа и повторном открытии.
 - Ruff, ESLint, TypeScript, Prettier, обычный production build и build с
   `VITE_BASE_PATH=/DataPath/` проходят.
+- Все 76 reference SQL-запросов выполняются на встроенной Olist DB; все 71 canonical AlgoPath
+  solutions проходят полный набор public/hidden tests тем же Python runner.
 - Release snapshot содержит новый кейс, Math-визуализацию и 14 Atlas-связей Linear Regression;
   локальная production-сборка и offline endpoints прошли HTTP smoke-test.
 
 ## Нерешённые ограничения
 
-- Non-SQL practice по-прежнему проверяет структуру, но не исполняет arbitrary Python.
+- Первый запуск AlgoPath загружает локальный Pyodide runtime и поэтому заметно тяжелее следующих;
+  SQLite dataset практикума добавляет около 27 MB к offline assets.
 - macOS bundle unsigned/not notarized; это не относится к content v2 migration.
 - Локальный `/Applications/DataPath.app` обновлён той же unsigned-сборкой 1.0.0; после обновления
   запущенное приложение нужно закрыть и открыть снова.

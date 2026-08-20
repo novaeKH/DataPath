@@ -2,6 +2,11 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { viteStaticCopy } from 'vite-plugin-static-copy'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const PYODIDE_DIR = dirname(fileURLToPath(import.meta.resolve('pyodide')))
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -13,6 +18,19 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      viteStaticCopy({
+        targets: [
+          'pyodide.mjs',
+          'pyodide.asm.mjs',
+          'pyodide.asm.wasm',
+          'python_stdlib.zip',
+          'pyodide-lock.json',
+        ].map((file) => ({
+          src: join(PYODIDE_DIR, file).replaceAll('\\', '/'),
+          dest: 'assets/pyodide',
+          rename: { stripBase: true },
+        })),
+      }),
       {
         name: 'datapath-offline-asset-manifest',
         generateBundle(_options, bundle) {
@@ -28,6 +46,7 @@ export default defineConfig(({ mode }) => {
         },
       },
     ],
+    optimizeDeps: { exclude: ['pyodide'] },
     server: {
       port: 5173,
       proxy: {

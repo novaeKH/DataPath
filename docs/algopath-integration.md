@@ -1,49 +1,36 @@
 # Интеграция AlgoPath
 
-DataPath не должен копировать банк алгоритмических задач. Интеграция строится через модульный
-контракт, чтобы AlgoPath мог оставаться отдельным источником контента и прогресса.
+AlgoPath подключён к DataPath как отдельный практический runtime, а не как набор Markdown-уроков.
+Canonical YAML и Python runner остаются в соседнем source-проекте; DataPath хранит только
+нормализованный, проверяемый snapshot для web/PWA release.
 
-## Граница домена
+## Реализованный контракт
 
-`LearningModuleProvider` предоставляет унифицированные элементы маршрута и ссылки на практику.
-Текущий `ContentLearningModuleProvider` читает опубликованные курсы из SQLite. Будущий
-`AlgoPathLearningModuleProvider` адаптирует существующие AlgoPath topics/tasks к тому же контракту.
+- `scripts/integrate_practice_projects.py` читает 71 YAML problem и исходный runner без изменения
+  source-проекта.
+- `frontend/public/practice-data/algopath.json` содержит стабильные slugs, темы, условия,
+  starter/canonical code, public/hidden tests и runner config.
+- `algoWorker.ts` поднимает self-hosted Pyodide; `algoRunner.ts` управляет worker, таймаутом и
+  повторным созданием после зависшего решения.
+- Исходный AlgoPath runner поддерживает function/class mode, in-place задачи и структуры
+  ListNode, TreeNode и GraphNode. В браузер не передаётся backend API и пользовательский код не
+  выполняется в main UI thread.
+- Local store сохраняет черновик, статус, число попыток, подсказки, раскрытие решения и последний
+  verdict по stable problem slug.
 
-Минимальная сущность модуля:
+## Пользовательский маршрут
 
-```text
-id, title, course_id, stage, depth, order,
-lessons[{id, title, estimated_minutes, status}],
-practice_refs[], source_provider
+`Практика → AlgoPath → тема/поиск → задача → публичные тесты → все тесты → следующая задача`.
+
+Каталог адаптивный: desktop использует боковой список, mobile — компактный selector. Решение и
+объяснение скрыты до явного действия пользователя. Hidden tests показывают verdict и номер, но не
+раскрывают входные данные.
+
+## Обновление snapshot
+
+```bash
+make sync-practice-projects
 ```
 
-Собственные сущности AlgoPath остаются отдельными:
-
-```text
-AlgorithmTopic
-AlgorithmProblem
-AlgorithmAttempt
-AlgorithmPatternMastery
-```
-
-Они не маскируются под markdown-урок. Adapter публикует только совместимое представление для
-Roadmap/Today/Atlas и переводит результат задачи в стандартный learning evidence.
-
-## Что переиспользуется без изменений
-
-- Roadmap получает модули через registry, а не напрямую из конкретного каталога.
-- Today выбирает следующий `LearningItem` из Roadmap.
-- Review получает review candidates из provider adapter.
-- Atlas получает block/group descriptors и prerequisite edges.
-- Focus открывает lesson или внешний practice target по typed link.
-
-## Порядок подключения
-
-1. Найти canonical repository/data layer AlgoPath и зафиксировать стабильные topic/problem IDs.
-2. Реализовать read-only adapter и сопоставление patterns с DataPath skills.
-3. Импортировать исторический progress идемпотентно.
-4. Подключить запуск задач через typed practice link.
-5. Только после сверки данных убрать временный встроенный Algorithms-контент.
-
-До появления canonical AlgoPath текущий курс Algorithms остаётся рабочим fallback, но registry и
-API не требуют копировать ещё один набор задач.
+Команда нужна только при изменении соседнего AlgoPath. CI и обычная PWA-сборка используют уже
+зафиксированный snapshot и поэтому не зависят от наличия source-проекта рядом.
