@@ -1,6 +1,6 @@
 # DataPath 1.0.0 — development, validation and native release commands.
 
-.PHONY: dev dev-backend dev-frontend migrate sync-content validate-content release-snapshot test lint build build-web build-macos ios-sync ios-open check prod
+.PHONY: dev dev-backend dev-frontend migrate sync-content sync-practice-projects validate-content release-snapshot test lint build build-web build-macos ios-sync ios-open check prod
 
 BACKEND = cd backend && PYTHONPATH=
 FRONTEND = cd frontend
@@ -24,6 +24,10 @@ migrate:
 ## Синхронизация content/vault → SQLite каталог
 sync-content: migrate
 	$(BACKEND) uv run python -m app.cli.content sync
+
+## Обновить встроенные каталоги SQL Praktikum и AlgoPath из соседних source-проектов.
+sync-practice-projects:
+	$(BACKEND) uv run python ../scripts/integrate_practice_projects.py
 
 ## Валидация vault (без изменения БД)
 validate-content:

@@ -1,4 +1,5 @@
 dist/
 ios/
 public/data/release-snapshot.json
+public/practice-data/*.json
 public/vendor/

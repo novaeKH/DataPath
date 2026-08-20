@@ -221,32 +221,6 @@ function CoursePicker({
             ))}
           </div>
         </div>
-
-        {/* Cases section */}
-        {course.cases.length > 0 && (
-          <div className="mt-8 pt-6" style={{ borderTop: '1px solid var(--dp-border-subtle)' }}>
-            <h2 className="dp-section-title mb-3">Кейсы курса</h2>
-            <div className="flex flex-wrap gap-2">
-              {course.cases.map((caseItem) => (
-                <Link
-                  key={caseItem.id}
-                  to={`/studio?case=${encodeURIComponent(caseItem.id)}`}
-                  className="rounded-lg px-3 py-2 text-sm font-medium transition-colors dp-hover-interactive"
-                  style={{
-                    background: 'var(--dp-surface-interactive)',
-                    color: 'var(--dp-text-secondary)',
-                    border: '1px solid var(--dp-border-subtle)',
-                  }}
-                >
-                  {caseItem.title} · {caseItem.practice_kind} →
-                </Link>
-              ))}
-            </div>
-            <p className="mt-2 text-xs" style={{ color: 'var(--dp-text-muted)' }}>
-              Кейсы проходятся в Studio: ответы и разбор считает backend без AI.
-            </p>
-          </div>
-        )}
       </motion.div>
     </div>
   )

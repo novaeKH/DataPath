@@ -214,17 +214,20 @@ describe('TodayView with activity', () => {
     expect(screen.getByText(/Нужно усилить/)).toBeInTheDocument()
   })
 
-  it('suggested case is available in the compact secondary section', async () => {
+  it('does not expose removed legacy cases', async () => {
     renderToday()
-    expect(await screen.findByText(/Mini-case/)).toBeInTheDocument()
+    expect(await screen.findByText(/SQL Praktikum или AlgoPath/)).toBeInTheDocument()
+    expect(screen.queryByText(/Mini-case/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Недавняя активность/)).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Открыть в Studio/ })).toBeInTheDocument()
   })
 
   it('keeps the daily route focused on lesson, practice and review', async () => {
     renderToday()
     expect(await screen.findByRole('link', { name: /Продолжить урок/ })).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /Studio/ }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('link', { name: /Выбрать тренажёр/ })).toHaveAttribute(
+      'href',
+      '/studio',
+    )
     expect(screen.getByRole('link', { name: /К повторениям/ })).toBeInTheDocument()
   })
 

@@ -1,4 +1,4 @@
-export const LOCAL_STATE_SCHEMA_VERSION = 3
+export const LOCAL_STATE_SCHEMA_VERSION = 4
 const STORAGE_KEY = 'datapath.local-state'
 
 /** Legacy IDs changed by the canonical 100-lesson DataPath v2 corpus. */
@@ -49,6 +49,16 @@ export interface LocalLessonProgress {
   updated_at: string
 }
 
+export interface LocalPracticeTaskProgress {
+  status: 'started' | 'solved'
+  attempts: number
+  draft: string
+  help_level: number
+  solution_revealed: boolean
+  last_outcome: 'passed' | 'failed' | null
+  updated_at: string
+}
+
 export interface LocalReleaseState {
   schema_version: number
   initialized_from_snapshot: boolean
@@ -58,6 +68,10 @@ export interface LocalReleaseState {
   completed_practice: string[]
   practice_history: Record<string, unknown>[]
   case_attempts: Record<string, unknown[]>
+  project_practice: {
+    sql: Record<string, LocalPracticeTaskProgress>
+    algorithms: Record<string, LocalPracticeTaskProgress>
+  }
   review_items: Record<string, Record<string, unknown>>
   review_history: Record<string, unknown>[]
   notes: Record<string, string>
@@ -76,6 +90,7 @@ export function emptyLocalState(): LocalReleaseState {
     completed_practice: [],
     practice_history: [],
     case_attempts: {},
+    project_practice: { sql: {}, algorithms: {} },
     review_items: {},
     review_history: [],
     notes: {},
@@ -109,6 +124,17 @@ export function migrateLocalState(value: unknown): LocalReleaseState {
     practice_history: Array.isArray(source.practice_history) ? source.practice_history : [],
     case_attempts:
       source.case_attempts && typeof source.case_attempts === 'object' ? source.case_attempts : {},
+    project_practice: {
+      sql:
+        source.project_practice?.sql && typeof source.project_practice.sql === 'object'
+          ? source.project_practice.sql
+          : {},
+      algorithms:
+        source.project_practice?.algorithms &&
+        typeof source.project_practice.algorithms === 'object'
+          ? source.project_practice.algorithms
+          : {},
+    },
     review_items:
       source.review_items && typeof source.review_items === 'object' ? source.review_items : {},
     review_history: Array.isArray(source.review_history) ? source.review_history : [],

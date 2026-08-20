@@ -149,6 +149,35 @@ function mockFetch() {
     if (url.includes('/api/cases')) {
       return Promise.resolve(new Response(JSON.stringify({ cases: [] }), { status: 200 }))
     }
+    if (url.includes('/practice-data/sql-praktikum.json')) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            format: 'datapath-sql-praktikum',
+            version: '3.1',
+            source: 'SQL Praktikum',
+            dataset: { name: 'Olist', variant: 'sample', database: 'olist.sqlite', size_bytes: 10 },
+            sections: [],
+            schema: {},
+            tasks: [{ id: 'start_01', title: 'Первый запрос' }],
+          }),
+          { status: 200 },
+        ),
+      )
+    }
+    if (url.includes('/practice-data/algopath.json')) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            format: 'datapath-algopath',
+            version: '1.0',
+            source: 'AlgoPath',
+            problems: [{ slug: 'two-sum', title: 'Two Sum' }],
+          }),
+          { status: 200 },
+        ),
+      )
+    }
     if (url.includes('/api/progress/lessons')) {
       return Promise.resolve(new Response('{}', { status: 404 }))
     }
@@ -210,7 +239,7 @@ describe('App routing', () => {
 
   it('renders Studio at /studio', async () => {
     renderAt('/studio')
-    expect(await screen.findByRole('heading', { name: /Studio/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Два тренажёра/i })).toBeInTheDocument()
   })
 
   it('renders system status at /system', async () => {

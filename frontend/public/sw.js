@@ -1,4 +1,4 @@
-const VERSION = 'datapath-v18-focus-section-progress'
+const VERSION = 'datapath-v20-integrated-practice-assets'
 const SHELL_CACHE = `${VERSION}-shell`
 const STATIC_CACHE = `${VERSION}-static`
 const DATA_CACHE = `${VERSION}-data`
@@ -35,7 +35,19 @@ const SHELL = [
   scoped('datapath-icon.svg'),
   scoped('data/release-snapshot.json'),
   scoped('vendor/sql-wasm.wasm'),
+  scoped('practice-data/manifest.json'),
+  scoped('practice-data/sql-praktikum.json'),
+  scoped('practice-data/algopath.json'),
+  scoped('practice-data/algopath-runner.py'),
   ...CONTENT_FIGURES,
+]
+const PRACTICE_RUNTIME = [
+  scoped('practice-data/olist-practice.sqlite'),
+  scoped('assets/pyodide/pyodide.mjs'),
+  scoped('assets/pyodide/pyodide.asm.mjs'),
+  scoped('assets/pyodide/pyodide.asm.wasm'),
+  scoped('assets/pyodide/python_stdlib.zip'),
+  scoped('assets/pyodide/pyodide-lock.json'),
 ]
 
 self.addEventListener('install', (event) => {
@@ -55,6 +67,9 @@ self.addEventListener('install', (event) => {
       await Promise.all(
         [...new Set([...assets, ...releaseAssets])].map((asset) => cache.add(asset)),
       )
+      // Large practice runtimes are made offline when storage allows it, but a
+      // constrained mobile device must still be able to install the app shell.
+      await Promise.allSettled(PRACTICE_RUNTIME.map((asset) => cache.add(asset)))
       await self.skipWaiting()
     }),
   )
@@ -133,9 +148,11 @@ self.addEventListener('fetch', (event) => {
   }
   if (
     url.pathname === scoped('data/release-snapshot.json') ||
-    url.pathname === scoped('vendor/sql-wasm.wasm')
+    url.pathname === scoped('vendor/sql-wasm.wasm') ||
+    url.pathname.startsWith(scoped('practice-data/')) ||
+    url.pathname.startsWith(scoped('assets/pyodide/'))
   ) {
-    event.respondWith(caches.match(request).then((cached) => cached || fetch(request)))
+    event.respondWith(caches.match(request).then((cached) => cached || cacheFirst(request)))
     return
   }
   if (['style', 'script', 'font', 'image'].includes(request.destination)) {

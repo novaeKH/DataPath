@@ -239,14 +239,10 @@ function LearningHome({
             />
             <PlanItem
               index="02"
-              title={data.suggested_practice?.title ?? 'Небольшая практика по теме'}
+              title="SQL Praktikum или AlgoPath"
               meta={`Практика · ${practiceMinutes} мин`}
-              to={
-                data.suggested_practice
-                  ? `/studio?practice=${encodeURIComponent(data.suggested_practice.exercise_id)}`
-                  : '/studio'
-              }
-              action="В Studio"
+              to="/studio"
+              action="Выбрать тренажёр"
             />
             <PlanItem
               index="03"
@@ -270,7 +266,7 @@ function LearningHome({
         </aside>
       </section>
 
-      {(nextLessons.length > 0 || data.suggested_case || data.weak_skills.length > 0) && (
+      {(nextLessons.length > 0 || data.weak_skills.length > 0) && (
         <section className="mt-14 border-t pt-9" style={{ borderColor: 'var(--dp-border-subtle)' }}>
           <div className="mb-5 flex items-end justify-between">
             <div>
@@ -290,18 +286,6 @@ function LearningHome({
                 <small>{item.module}</small>
               </Link>
             ))}
-            {data.suggested_case && (
-              <Link
-                to={`/studio?case=${encodeURIComponent(data.suggested_case.case_id)}`}
-                className="dp-next-lesson"
-              >
-                <span>
-                  CASE<span className="sr-only">Mini-case</span>
-                </span>
-                <strong>{data.suggested_case.title}</strong>
-                <small>Открыть в Studio</small>
-              </Link>
-            )}
           </div>
           {data.weak_skills.length > 0 && (
             <div
