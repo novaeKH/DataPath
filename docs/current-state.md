@@ -124,7 +124,7 @@
 - Corpus input audit: 100 lessons, 1–100 без gaps/duplicates, 15 README исключены, code fences
   сбалансированы. Отдельно проверяются source prose, semantic prerequisites и отсутствие
   служебной generic objective в готовом уроке.
-- Content sync: 531 scanned, 0 errors, 0 warnings после slug separation source/manifest.
+- Content sync: 532 scanned, 0 errors, 0 warnings после slug separation source/manifest.
 - Content validator: 0 errors, 0 warnings.
 - Content quality: 100 lessons, 0 errors, 0 warnings, 0 suggestions.
 - Полный backend suite проходит: 230 tests. Полный frontend suite проходит: 129 tests, включая
