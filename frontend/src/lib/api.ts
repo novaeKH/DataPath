@@ -684,6 +684,7 @@ export interface CaseSubmitResult {
   error_codes: string[]
   summary: string
   conclusion: string
+  expected_problems?: string[]
   attempt_id: number
   evidence: {
     skill_id: string

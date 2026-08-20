@@ -15,6 +15,78 @@ from __future__ import annotations
 
 from app.services.reviews.registry import ReviewTemplate, ReviewTemplateRegistry
 
+# --- Linear Regression vertical track ---
+
+_LR_MSE_NUMERIC = ReviewTemplate(
+    id="rev.lr.mse-numeric",
+    title="MSE вручную",
+    prompt=(
+        "Истинные значения [3, 5, 8], прогнозы [2, 5, 10]. "
+        "Чему равна MSE? Ответ округлите до двух знаков."
+    ),
+    question_type="numeric",
+    answer_spec={"correct": 1.67, "tolerance": 0.02},
+    explanation=("Остатки равны [1, 0, -2], квадраты — [1, 0, 4]. MSE = (1 + 0 + 4) / 3 ≈ 1.67."),
+    primary_skill="ml.linear_logistic_models",
+    source_content_id="concept.datapath-v2.040",
+    source_lesson_id="lesson.classic-ml.linear.regression",
+    source_type="lesson",
+    source_id="lesson.classic-ml.linear.regression",
+    difficulty="easy",
+    numeric_tolerance=0.02,
+)
+
+_LR_SQUARED_ERROR = ReviewTemplate(
+    id="rev.lr.why-squared-error",
+    title="Почему квадрат ошибки",
+    prompt="Какое объяснение квадрата ошибки в MSE неверно?",
+    question_type="error_diagnosis",
+    options=[
+        "Ошибки разных знаков не уничтожают друг друга",
+        "Крупные промахи получают усиленный штраф",
+        "Функция гладкая и удобна для оптимизации",
+        "Квадрат гарантирует причинную интерпретацию коэффициентов",
+    ],
+    answer_spec={"correct": 3},
+    explanation=(
+        "Квадрат полезен для знака, усиленного штрафа и гладкой оптимизации; "
+        "при нормальном шуме он также возникает из MLE. Причинность из этого не следует."
+    ),
+    primary_skill="ml.linear_logistic_models",
+    source_content_id="concept.datapath-v2.040",
+    source_lesson_id="lesson.classic-ml.linear.regression",
+    source_type="lesson",
+    source_id="lesson.classic-ml.linear.regression",
+    difficulty="standard",
+)
+
+_LR_EVALUATION_BUG = ReviewTemplate(
+    id="rev.lr.train-evaluation-bug",
+    title="Нечестная оценка регрессии",
+    prompt=(
+        "Модель обучили model.fit(X, y), затем посчитали MSE для model.predict(X). "
+        "Что нужно исправить первым?"
+    ),
+    question_type="single_choice",
+    options=[
+        "Отделить тестовые данные до fit и оценивать на них",
+        "Увеличить коэффициенты вручную",
+        "Заменить predict на predict_proba",
+        "Удалить все строки с большими остатками",
+    ],
+    answer_spec={"correct": 0},
+    explanation=(
+        "Оценка на тех же строках измеряет подгонку под обучающие данные, а не перенос на новые. "
+        "Сначала выбирают честную схему разбиения, затем выполняют fit только на train."
+    ),
+    primary_skill="ml.validation_split",
+    source_content_id="concept.datapath-v2.040",
+    source_lesson_id="lesson.classic-ml.linear.regression",
+    source_type="lesson",
+    source_id="lesson.classic-ml.linear.regression",
+    difficulty="standard",
+)
+
 # --- Decision Tree ---
 
 _DT_SPLIT = ReviewTemplate(
@@ -437,9 +509,12 @@ _CMP_ROC_DIFF = ReviewTemplate(
 
 
 def get_default_registry() -> ReviewTemplateRegistry:
-    """Registry по умолчанию: 15 шаблонов MVP-маршрута."""
+    """Registry по умолчанию: Linear Regression + tree/ensemble маршрут."""
     return ReviewTemplateRegistry(
         [
+            _LR_MSE_NUMERIC,
+            _LR_SQUARED_ERROR,
+            _LR_EVALUATION_BUG,
             _DT_SPLIT,
             _DT_OVERFIT,
             _BV_TRADEOFF,

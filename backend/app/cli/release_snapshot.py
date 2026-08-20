@@ -108,6 +108,7 @@ def build_snapshot() -> dict:
                 "skill_ids": case.skill_ids,
                 "practice_kind": case.practice_kind,
                 "conclusion": case.conclusion,
+                "expected_problems": case.expected_problems,
                 "questions": [
                     {
                         "id": question.id,

@@ -26,6 +26,7 @@ interface LocalCaseRuntime {
   skill_ids: string[]
   practice_kind: string
   conclusion: string
+  expected_problems: string[]
   questions: {
     id: string
     type: string
@@ -568,6 +569,7 @@ function evaluateCase(
         ? `Кейс выполнен: ${Math.round(total * 100)}%.`
         : `Результат ${Math.round(total * 100)}%. Разберите объяснения и повторите попытку.`,
     conclusion: runtime.conclusion,
+    expected_problems: runtime.expected_problems,
   }
 }
 

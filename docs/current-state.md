@@ -1,6 +1,29 @@
 # DataPath — текущее состояние
 
-> Обновлено 2026-08-14. Рабочая ветка `main`; release/tag не создаётся.
+> Обновлено 2026-08-20. Рабочая ветка `main`; release/tag не создаётся.
+
+## Эталонный маршрут Linear Regression
+
+- Маршрут собран в существующем content pipeline без изменения stable IDs:
+  `случайные величины и нормальное распределение → ожидание/дисперсия → MLE/MAP/МНК →
+  линейная регрессия → практика → кейс спроса на велосипеды`.
+- Урок Linear Regression перестроен от задачи и числового сравнения прямых к MSE, обучению
+  `LinearRegression`, проверочной выборке, метрикам и анализу остатков. Матричная форма, проекция,
+  MLE, Gauss–Markov и градиентный спуск сохранены как углубление, а не как входной барьер.
+- Математические уроки 028, 029 и 033 теперь последовательно объясняют нормальный шум,
+  математическое ожидание, дисперсию, правдоподобие и переход
+  `Gaussian noise → MLE → least squares → MSE`. MLE и теорема Гаусса — Маркова разделены.
+- В Studio добавлен case `case.ml.bike-demand-regression` на UCI Bike Sharing: 12 этапов от
+  постановки задачи и аудита до временного разбиения, базовой модели, Pipeline, метрик и анализа
+  ошибок. Эталонные проблемы данных открываются только после отправки решения.
+- Практика дополнена заданиями на `fit`/`predict`, RMSE и отладку неправильной оценки на
+  обучающей выборке; Review получил числовой, концептуальный и debugging-вопросы.
+- Интерактивная прямая показывает остатки, MAE/MSE, оптимальную МНК-прямую и влияние выброса.
+  Добавлена лаборатория нормального шума с управляемыми остатком и стандартным отклонением.
+- Существующие related/prerequisite edges формируют 14 связей Linear Regression в Atlas. Старые
+  progress, Today, Focus, Review и маршруты не мигрировались и не сбрасывались.
+- Практический стандарт для следующих вертикальных маршрутов закреплён в
+  `docs/content-style-guide.md`.
 
 ## Learning experience redesign
 
@@ -84,7 +107,7 @@
   Dropout, CNN, pooling, RNN, LSTM, embeddings, Attention и Transformer.
 - Assets лежат в `frontend/public/content-assets/datapath-v2/figures/`; Markdown renderer добавляет
   base-path-safe URL, lazy loading, alt и caption.
-- Service worker cache поднят до `datapath-v16-learning-experience` и pre-cache-ит все 21 figure
+- Service worker cache поднят до `datapath-v17-linear-regression-track` и pre-cache-ит все 21 figure
   вместе с release snapshot, не затрагивая localStorage.
 
 ## Local state migration
@@ -104,10 +127,12 @@
 - Content sync: 531 scanned, 0 errors, 0 warnings после slug separation source/manifest.
 - Content validator: 0 errors, 0 warnings.
 - Content quality: 100 lessons, 0 errors, 0 warnings, 0 suggestions.
-- Полный backend suite проходит: 230 tests. Полный frontend suite проходит: 127 tests, включая
+- Полный backend suite проходит: 230 tests. Полный frontend suite проходит: 129 tests, включая
   offline regression для Gini/Entropy и максимальные параметры ensemble-лаборатории.
 - Ruff, ESLint, TypeScript, Prettier, обычный production build и build с
   `VITE_BASE_PATH=/DataPath/` проходят.
+- Release snapshot содержит новый кейс, Math-визуализацию и 14 Atlas-связей Linear Regression;
+  локальная production-сборка и offline endpoints прошли HTTP smoke-test.
 
 ## Нерешённые ограничения
 

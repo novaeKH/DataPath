@@ -692,6 +692,27 @@ function ResultCard({ result, spec }: { result: CaseSubmitResult; spec: CaseSpec
           {result.conclusion || spec.conclusion}
         </div>
       )}
+
+      {(result.expected_problems?.length ?? 0) > 0 && (
+        <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50/70 px-4 py-3 dark:border-indigo-900/60 dark:bg-indigo-950/20">
+          <h3 className="text-sm font-semibold text-indigo-950 dark:text-indigo-100">
+            Эталонный аудит данных
+          </h3>
+          <p className="mt-1 text-xs leading-relaxed text-indigo-800 dark:text-indigo-200">
+            Сравните этот список со своими заметками. Он появляется только после попытки.
+          </p>
+          <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-slate-700 dark:text-slate-200">
+            {result.expected_problems?.map((problem) => (
+              <li key={problem} className="flex gap-2">
+                <span aria-hidden="true" className="text-indigo-500">
+                  ✓
+                </span>
+                <span>{problem}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   )
 }

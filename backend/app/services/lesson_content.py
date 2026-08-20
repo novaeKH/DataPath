@@ -104,6 +104,7 @@ VISUAL_DEMO_IDS = {
     "expectation-variance-flow",
     "fine-tuning-parameter-budget",
     "gradient-descent-landscape",
+    "gaussian-noise-lab",
     "groupby-merge-lab",
     "hyperparameter-search-landscape",
     "imbalance-threshold-lab",

@@ -49,13 +49,29 @@ const POINTS = [
 export function LinearFitDemo() {
   return (
     <VisualDemoFrame
-      goal="Подберите slope и intercept. Следите не только за линией, но и за residuals и MSE."
+      goal="Подберите наклон и свободный член. Сравните свою линию с минимумом OLS и проверьте влияние выброса."
       controls={[
-        { name: 'slope', label: 'Slope w', type: 'slider', min: -0.5, max: 1.8, step: 0.1 },
-        { name: 'intercept', label: 'Intercept b', type: 'slider', min: -2, max: 4, step: 0.2 },
-        { name: 'residuals', label: 'Residuals', type: 'toggle' },
+        { name: 'slope', label: 'Наклон w', type: 'slider', min: -0.5, max: 1.8, step: 0.1 },
+        {
+          name: 'intercept',
+          label: 'Свободный член b',
+          type: 'slider',
+          min: -2,
+          max: 4,
+          step: 0.2,
+        },
+        {
+          name: 'dataset',
+          label: 'Набор точек',
+          type: 'select',
+          options: [
+            { value: 'base', label: 'Обычный' },
+            { value: 'outlier', label: 'С выбросом' },
+          ],
+        },
+        { name: 'residuals', label: 'Показывать остатки', type: 'toggle' },
       ]}
-      defaults={{ slope: 0.5, intercept: 1, residuals: true }}
+      defaults={{ slope: 0.5, intercept: 1, dataset: 'base', residuals: true }}
     >
       {(state) => <LinearFitChart state={state} />}
     </VisualDemoFrame>
@@ -65,8 +81,18 @@ export function LinearFitDemo() {
 function LinearFitChart({ state }: { state: DemoState }) {
   const slope = Number(state.slope)
   const intercept = Number(state.intercept)
+  const points: readonly (readonly [number, number])[] =
+    state.dataset === 'outlier' ? [...POINTS, [7.3, 1.2]] : POINTS
   const mse =
-    POINTS.reduce((sum, [x, y]) => sum + (y - (slope * x + intercept)) ** 2, 0) / POINTS.length
+    points.reduce((sum, [x, y]) => sum + (y - (slope * x + intercept)) ** 2, 0) / points.length
+  const mae =
+    points.reduce((sum, [x, y]) => sum + Math.abs(y - (slope * x + intercept)), 0) / points.length
+  const meanX = points.reduce((sum, [x]) => sum + x, 0) / points.length
+  const meanY = points.reduce((sum, [, y]) => sum + y, 0) / points.length
+  const olsSlope =
+    points.reduce((sum, [x, y]) => sum + (x - meanX) * (y - meanY), 0) /
+    points.reduce((sum, [x]) => sum + (x - meanX) ** 2, 0)
+  const olsIntercept = meanY - olsSlope * meanX
   const sx = (x: number) => 42 + x * 57
   const sy = (y: number) => 270 - y * 27
   return (
@@ -79,7 +105,7 @@ function LinearFitChart({ state }: { state: DemoState }) {
       >
         <line x1="42" y1="270" x2="515" y2="270" stroke="var(--dp-border-strong)" />
         <line x1="42" y1="20" x2="42" y2="270" stroke="var(--dp-border-strong)" />
-        {POINTS.map(([x, y], index) => {
+        {points.map(([x, y], index) => {
           const prediction = slope * x + intercept
           return (
             <g key={index}>
@@ -106,16 +132,119 @@ function LinearFitChart({ state }: { state: DemoState }) {
           stroke={AMBER}
           strokeWidth="3"
         />
+        <line
+          x1={sx(0)}
+          y1={sy(olsIntercept)}
+          x2={sx(8)}
+          y2={sy(olsSlope * 8 + olsIntercept)}
+          stroke={GREEN}
+          strokeWidth="2"
+          strokeDasharray="7 5"
+        />
         <text x="58" y="42" fill="var(--dp-text-primary)" fontSize="13" fontWeight="600">
           ŷ = {slope.toFixed(1)}x {intercept >= 0 ? '+' : '−'} {Math.abs(intercept).toFixed(1)}
         </text>
-        <text x="400" y="42" fill={mse < 0.5 ? GREEN : RED} fontSize="14" fontWeight="700">
-          MSE {mse.toFixed(2)}
+        <text x="376" y="42" fill={mse < 0.5 ? GREEN : RED} fontSize="13" fontWeight="700">
+          MAE {mae.toFixed(2)} · MSE {mse.toFixed(2)}
+        </text>
+        <text x="58" y="62" fill={GREEN} fontSize="11">
+          пунктир — OLS: ŷ = {olsSlope.toFixed(2)}x {olsIntercept >= 0 ? '+' : '−'}{' '}
+          {Math.abs(olsIntercept).toFixed(2)}
         </text>
       </svg>
       <Note>
-        Красные отрезки — ошибки отдельных объектов. MSE усредняет их квадраты: большие промахи
-        получают непропорционально большой вес.
+        Красные отрезки — остатки. Зелёный пунктир показывает линию с минимальной суммой квадратов.
+        Добавьте выброс: OLS-линия заметно повернётся, потому что MSE особенно сильно штрафует один
+        большой промах.
+      </Note>
+    </div>
+  )
+}
+
+export function GaussianNoiseDemo() {
+  return (
+    <VisualDemoFrame
+      goal="Изменяйте остаток и обычный масштаб шума. Смотрите, как квадрат ошибки превращается в правдоподобие."
+      controls={[
+        { name: 'residual', label: 'Остаток e', type: 'slider', min: -4, max: 4, step: 0.2 },
+        {
+          name: 'sigma',
+          label: 'Стандартное отклонение σ',
+          type: 'slider',
+          min: 0.5,
+          max: 2.5,
+          step: 0.1,
+        },
+      ]}
+      defaults={{ residual: 1, sigma: 1 }}
+    >
+      {(state) => <GaussianNoiseChart state={state} />}
+    </VisualDemoFrame>
+  )
+}
+
+function GaussianNoiseChart({ state }: { state: DemoState }) {
+  const residual = Number(state.residual)
+  const sigma = Number(state.sigma)
+  const density = (x: number) =>
+    Math.exp(-(x ** 2) / (2 * sigma ** 2)) / (Math.sqrt(2 * Math.PI) * sigma)
+  const peak = density(0)
+  const relativeLikelihood = Math.exp(-(residual ** 2) / (2 * sigma ** 2))
+  const sx = (x: number) => 45 + ((x + 5) / 10) * 460
+  const sy = (value: number) => 245 - (value / peak) * 190
+  const curve = Array.from({ length: 101 }, (_, index) => -5 + index * 0.1)
+    .map((x) => `${sx(x)},${sy(density(x))}`)
+    .join(' ')
+
+  return (
+    <div>
+      <svg
+        viewBox="0 0 540 285"
+        className="w-full"
+        role="img"
+        aria-label="Нормальное распределение ошибки и правдоподобие выбранного остатка"
+      >
+        <line x1="45" y1="245" x2="505" y2="245" stroke="var(--dp-border-strong)" />
+        <line x1={sx(0)} y1="45" x2={sx(0)} y2="245" stroke="var(--dp-border-subtle)" />
+        <polyline points={curve} fill="none" stroke={VIOLET} strokeWidth="3" />
+        <line
+          x1={sx(residual)}
+          y1={sy(density(residual))}
+          x2={sx(residual)}
+          y2="245"
+          stroke={RED}
+          strokeWidth="2"
+          strokeDasharray="5 4"
+        />
+        <circle cx={sx(residual)} cy={sy(density(residual))} r="6" fill={AMBER} />
+        <text x="56" y="34" fill="var(--dp-text-primary)" fontSize="13" fontWeight="600">
+          e² = {(residual ** 2).toFixed(2)}
+        </text>
+        <text
+          x="360"
+          y="34"
+          fill={relativeLikelihood > 0.2 ? GREEN : RED}
+          fontSize="13"
+          fontWeight="700"
+        >
+          относительная плотность {relativeLikelihood.toFixed(3)}
+        </text>
+        {[-4, -2, 0, 2, 4].map((value) => (
+          <text
+            key={value}
+            x={sx(value)}
+            y="264"
+            textAnchor="middle"
+            fill="var(--dp-text-muted)"
+            fontSize="10"
+          >
+            {value}
+          </text>
+        ))}
+      </svg>
+      <Note>
+        При фиксированном σ увеличение |e| уменьшает плотность как exp(−e² / 2σ²). Больший σ
+        означает более широкий обычный шум: тот же остаток становится менее неожиданным.
       </Note>
     </div>
   )
