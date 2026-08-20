@@ -189,6 +189,7 @@ def make_vault(root: Path) -> Path:
             "practice_kind": "mini-case",
             "app": "include",
             "course_id": "course.classic-ml",
+            "module_id": "module.classic-ml.one",
             "module_order": 1,
         },
         "# Кейс 1\n\n[[Concept A]] — теория.\n",

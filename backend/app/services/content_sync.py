@@ -118,22 +118,36 @@ class ContentSyncService:
             existing = {item.id: item for item in db.scalars(select(ContentItem)).all()}
             keep_ids: set[str] = set()
 
-            for candidate in validation.candidates:
-                keep_ids.add(candidate.item_id)
-                item = existing.get(candidate.item_id)
-                note = candidate.note
-                if item is not None and item.content_hash == note.content_hash:
-                    report.unchanged += 1
-                    continue
-                if item is not None:
-                    self._apply_to_item(item, candidate)
-                    db.add(item)
-                    report.updated += 1
-                else:
-                    item = ContentItem(id=candidate.item_id)
-                    self._apply_to_item(item, candidate)
-                    db.add(item)
-                    report.created += 1
+            # course_id и module_id — self-referencing foreign keys. В чистой БД SQLite
+            # проверяет их во время INSERT, поэтому родители должны быть записаны раньше
+            # lessons/practice независимо от алфавитного порядка папок в vault.
+            candidate_groups = (
+                [c for c in validation.candidates if c.note.frontmatter.get("type") == "course"],
+                [c for c in validation.candidates if c.note.frontmatter.get("type") == "module"],
+                [
+                    c
+                    for c in validation.candidates
+                    if c.note.frontmatter.get("type") not in {"course", "module"}
+                ],
+            )
+            for candidates in candidate_groups:
+                for candidate in candidates:
+                    keep_ids.add(candidate.item_id)
+                    item = existing.get(candidate.item_id)
+                    note = candidate.note
+                    if item is not None and item.content_hash == note.content_hash:
+                        report.unchanged += 1
+                        continue
+                    if item is not None:
+                        self._apply_to_item(item, candidate)
+                        db.add(item)
+                        report.updated += 1
+                    else:
+                        item = ContentItem(id=candidate.item_id)
+                        self._apply_to_item(item, candidate)
+                        db.add(item)
+                        report.created += 1
+                db.flush()
 
             removed = [cid for cid in existing if cid not in keep_ids]
             if removed:
