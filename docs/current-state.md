@@ -17,8 +17,15 @@
   `scripts/integrate_practice_projects.py`; ручной target — `make sync-practice-projects`.
 - Progress schema v4 хранит статусы, попытки, черновики, использование подсказок, открытие решения
   и последний результат отдельно для SQL и Algorithms. Данные переживают refresh и offline запуск.
-- Service worker `datapath-v20-integrated-practice-assets` кэширует каталоги и runner вместе с
+- Service worker `datapath-v21-practice-ux-editor` кэширует каталоги и runner вместе с
   shell, а крупные SQLite/Pyodide assets — отказоустойчиво и независимо от установки PWA.
+- Desktop navigation уплотнена до 198 px, SQL/AlgoPath task catalogs — до 238/220 px; полезная
+  ширина условия и редактора увеличена без изменения мобильной информационной архитектуры.
+- SQL-кнопка «Схема базы» стала явным contextual action с иконкой, пояснением, текущими таблицами,
+  `aria-expanded` и доступной связью с панелью полей/типов.
+- Общий SQL/Python editor остаётся нативным `textarea`, но получил синхронный syntax layer, номера
+  строк, Tab indentation и отдельные цвета для keywords, definitions, functions, methods, types,
+  strings, numbers и comments. Ввод, выделение, hotkey и выполнение runner не изменены.
 
 ## Эталонный маршрут Linear Regression
 
@@ -160,7 +167,7 @@
 - Content sync: 532 scanned, 0 errors, 0 warnings после slug separation source/manifest.
 - Content validator: 0 errors, 0 warnings.
 - Content quality: 100 lessons, 0 errors, 0 warnings, 0 suggestions.
-- Полный backend suite проходит: 230 tests. Полный frontend suite проходит: 138 tests, включая
+- Полный backend suite проходит: 230 tests. Полный frontend suite проходит: 141 tests, включая
   offline regression для Gini/Entropy, максимальные параметры ensemble-лаборатории и Focus
   progress при медленной/быстрой прокрутке, TOC jump, конце документа и повторном открытии.
 - Ruff, ESLint, TypeScript, Prettier, обычный production build и build с

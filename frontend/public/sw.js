@@ -1,4 +1,4 @@
-const VERSION = 'datapath-v20-integrated-practice-assets'
+const VERSION = 'datapath-v21-practice-ux-editor'
 const SHELL_CACHE = `${VERSION}-shell`
 const STATIC_CACHE = `${VERSION}-static`
 const DATA_CACHE = `${VERSION}-data`

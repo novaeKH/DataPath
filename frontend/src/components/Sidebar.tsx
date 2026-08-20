@@ -110,14 +110,14 @@ export function Sidebar() {
   return (
     <>
       <aside
-        className={`dp-sidebar hidden shrink-0 flex-col transition-[width] duration-200 md:flex ${collapsed ? 'w-[76px]' : 'w-[226px]'}`}
+        className={`dp-sidebar hidden shrink-0 flex-col transition-[width] duration-200 md:flex ${collapsed ? 'w-[64px]' : 'w-[198px]'}`}
       >
         <div
-          className={`flex items-center px-5 pb-8 pt-6 ${collapsed ? 'justify-center px-0' : ''}`}
+          className={`flex items-center px-4 pb-7 pt-5 ${collapsed ? 'justify-center px-0' : ''}`}
         >
           <Brand collapsed={collapsed} />
         </div>
-        <nav aria-label="Основная навигация" className="flex-1 px-3">
+        <nav aria-label="Основная навигация" className="flex-1 px-2.5">
           <div className="space-y-1">
             {PRIMARY_NAV.map(([to, label, Icon]) => (
               <NavItem key={to} to={to} label={label} Icon={Icon} collapsed={collapsed} />
@@ -136,7 +136,7 @@ export function Sidebar() {
             onClick={toggleSidebar}
             aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
             title={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
-            className="flex h-10 w-10 items-center justify-center rounded-xl dp-hover-interactive"
+            className="flex h-9 w-9 items-center justify-center rounded-xl dp-hover-interactive"
             style={{ color: 'var(--dp-text-muted)' }}
           >
             {collapsed ? '›' : '‹'}

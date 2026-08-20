@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
+import { DatabaseIcon } from '../components/ui/icons'
 import { EmptyState, LoadingBlock } from '../components/ui/PageState'
 import { loadSqlCatalog } from '../features/practice/catalog'
 import {
@@ -217,13 +218,32 @@ export function SqlPracticeView() {
             </pre>
           </details>
 
-          <div className="dp-editor-actions-top">
-            <button onClick={() => setSchemaOpen((value) => !value)}>
-              {schemaOpen ? 'Скрыть схему' : 'Схема данных'}
+          <div className="dp-editor-context">
+            <button
+              className={`dp-schema-trigger ${schemaOpen ? 'is-open' : ''}`}
+              onClick={() => setSchemaOpen((value) => !value)}
+              aria-expanded={schemaOpen}
+              aria-controls="sql-schema-panel"
+            >
+              <DatabaseIcon width={20} height={20} />
+              <span>
+                <strong>{schemaOpen ? 'Скрыть схему' : 'Схема базы'}</strong>
+                <small>Поля, типы и связи таблиц</small>
+              </span>
+              <i aria-hidden="true">⌄</i>
             </button>
-            <span>Таблицы: {task.tables.join(', ')}</span>
+            <div className="dp-current-tables">
+              <span>Таблицы задачи</span>
+              <div>
+                {task.tables.map((table) => (
+                  <code key={table}>{table}</code>
+                ))}
+              </div>
+            </div>
           </div>
-          {schemaOpen && <SchemaPanel catalog={catalog} tables={task.tables} />}
+          {schemaOpen && (
+            <SchemaPanel id="sql-schema-panel" catalog={catalog} tables={task.tables} />
+          )}
 
           <EditorTextarea
             value={query}
@@ -337,9 +357,17 @@ function TaskNavigator({
   )
 }
 
-function SchemaPanel({ catalog, tables }: { catalog: SqlCatalog; tables: string[] }) {
+function SchemaPanel({
+  id,
+  catalog,
+  tables,
+}: {
+  id: string
+  catalog: SqlCatalog
+  tables: string[]
+}) {
   return (
-    <section className="dp-schema-panel">
+    <section className="dp-schema-panel" id={id} aria-label="Схема таблиц текущей задачи">
       {tables.map((name) => {
         const table = catalog.schema[name]
         if (!table) return null
