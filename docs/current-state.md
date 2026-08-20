@@ -100,6 +100,23 @@
   reset. Теперь 98 из 100 lessons имеют interactive visual demo; оставшиеся 2 используют
   встроенные teaching figures, поэтому визуальное объяснение есть у всех 100 уроков.
 
+### Focus section progress — Definition of Done
+
+- [x] Все реально просмотренные главы становятся изученными; короткие сцены не теряются при
+  обычной прокрутке, PageDown и быстром непрерывном скролле.
+- [x] Активная глава и сохранённые посещения — разные состояния: уход с главы не снимает зелёный
+  статус, а checkpoint без ответа не считается выполненным.
+- [x] Переход по оглавлению сохраняет исходную и целевую главы, но не помечает автоматически все
+  промежуточные разделы.
+- [x] Последняя доступная для чтения сцена засчитывается у конца документа даже тогда, когда её
+  невозможно выровнять по центру viewport.
+- [x] Посещения записываются последовательной очередью и объединяются монотонно: запоздавший
+  ответ API не может удалить более новый progress.
+- [x] Состояние восстанавливается после refresh/повторного открытия, а процент и счётчик содержания
+  используют один и тот же набор сохранённых scene IDs.
+- [x] Достижение последней главы само по себе не завершает урок: итоговый completion остаётся
+  отдельным явным действием.
+
 ## Figures and offline update
 
 - 21 teaching PNG интегрирован в ML/DL главы по смыслу: Logistic Regression, kNN, SVM, Decision
@@ -107,7 +124,7 @@
   Dropout, CNN, pooling, RNN, LSTM, embeddings, Attention и Transformer.
 - Assets лежат в `frontend/public/content-assets/datapath-v2/figures/`; Markdown renderer добавляет
   base-path-safe URL, lazy loading, alt и caption.
-- Service worker cache поднят до `datapath-v17-linear-regression-track` и pre-cache-ит все 21 figure
+- Service worker cache поднят до `datapath-v18-focus-section-progress` и pre-cache-ит все 21 figure
   вместе с release snapshot, не затрагивая localStorage.
 
 ## Local state migration
@@ -127,8 +144,9 @@
 - Content sync: 532 scanned, 0 errors, 0 warnings после slug separation source/manifest.
 - Content validator: 0 errors, 0 warnings.
 - Content quality: 100 lessons, 0 errors, 0 warnings, 0 suggestions.
-- Полный backend suite проходит: 230 tests. Полный frontend suite проходит: 129 tests, включая
-  offline regression для Gini/Entropy и максимальные параметры ensemble-лаборатории.
+- Полный backend suite проходит: 230 tests. Полный frontend suite проходит: 139 tests, включая
+  offline regression для Gini/Entropy, максимальные параметры ensemble-лаборатории и Focus
+  progress при медленной/быстрой прокрутке, TOC jump, конце документа и повторном открытии.
 - Ruff, ESLint, TypeScript, Prettier, обычный production build и build с
   `VITE_BASE_PATH=/DataPath/` проходят.
 - Release snapshot содержит новый кейс, Math-визуализацию и 14 Atlas-связей Linear Regression;
@@ -140,7 +158,7 @@
 - macOS bundle unsigned/not notarized; это не относится к content v2 migration.
 - Локальный `/Applications/DataPath.app` обновлён той же unsigned-сборкой 1.0.0; после обновления
   запущенное приложение нужно закрыть и открыть снова.
-- Focus bundle остаётся крупнейшим lazy chunk (~475 kB / ~141 kB gzip).
+- Focus bundle остаётся крупнейшим lazy chunk (~479 kB / ~143 kB gzip).
 - В старших NLP/LLM/MLOps главах сохранены общепринятые англоязычные термины и названия API;
   они вводятся в контексте, но отдельная полная русификация терминологии не выполнялась.
 - Release snapshot собран и проверен локально; внешний deployment status фиксируется в GitHub.

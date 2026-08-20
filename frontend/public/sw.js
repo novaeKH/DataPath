@@ -1,4 +1,4 @@
-const VERSION = 'datapath-v17-linear-regression-track'
+const VERSION = 'datapath-v18-focus-section-progress'
 const SHELL_CACHE = `${VERSION}-shell`
 const STATIC_CACHE = `${VERSION}-static`
 const DATA_CACHE = `${VERSION}-data`

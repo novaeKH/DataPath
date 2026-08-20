@@ -21,6 +21,13 @@ import { EmptyState, ErrorState, LoadingBlock } from '../components/ui/PageState
 import { Button } from '../components/ui/Button'
 import { buttonClassNames } from '../components/ui/buttonStyles'
 import { formatCount } from '../lib/format'
+import {
+  canCompleteSceneByVisit,
+  collectVisitedSceneIndices,
+  completedSceneCount,
+  findActiveSceneIndex,
+  mergeCompletedSceneIds,
+} from '../lib/lessonSceneProgress'
 import { CourseArtwork, ProgressRing } from '../components/learning/CourseArtwork'
 import { getCourseVisual } from '../components/learning/courseVisuals'
 
@@ -463,32 +470,56 @@ function ExistingLessonView({
   const sceneElementsRef = useRef<Record<string, HTMLDivElement | null>>({})
   const activeSceneIndexRef = useRef(0)
   const restoredLessonRef = useRef<string | null>(null)
+  const activeLessonIdRef = useRef(lessonId)
+  const completedSceneIdsRef = useRef(new Set<string>())
+  const queuedSceneIdsRef = useRef(new Set<string>())
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const pendingSaveCountRef = useRef(0)
+  const navigationTargetIndexRef = useRef<number | null>(null)
+  const lastScrollYRef = useRef<number | null>(null)
+  const scrollFrameRef = useRef<number | null>(null)
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
       setState({ kind: 'loading' })
+      setProgress(null)
+      activeLessonIdRef.current = lessonId
+      activeSceneIndexRef.current = 0
+      completedSceneIdsRef.current = new Set()
+      queuedSceneIdsRef.current = new Set()
+      saveQueueRef.current = Promise.resolve()
+      pendingSaveCountRef.current = 0
+      navigationTargetIndexRef.current = null
+      lastScrollYRef.current = null
+      restoredLessonRef.current = null
       try {
         const lesson = await fetchLesson(lessonId, signal)
-        setState({ kind: 'ready', lesson })
 
         fetchReviewSummary(lessonId, signal)
           .then((summary) => setReviewCount(summary.active_items))
           .catch(() => setReviewCount(null))
 
+        let savedProgress: LessonProgressDetail | null = null
         try {
-          const saved = await fetchLessonProgress(lessonId, signal)
-          setProgress(saved)
-          if (saved && saved.current_scene_id && !saved.completed_at) {
-            const idx = lesson.scenes.findIndex((scene) => scene.id === saved.current_scene_id)
+          savedProgress = await fetchLessonProgress(lessonId, signal)
+          if (savedProgress && savedProgress.current_scene_id && !savedProgress.completed_at) {
+            const idx = lesson.scenes.findIndex(
+              (scene) => scene.id === savedProgress?.current_scene_id,
+            )
             if (idx >= 0) setSceneIndex(idx)
             else setSceneIndex(0)
           } else {
             setSceneIndex(0)
           }
         } catch {
-          setProgress(null)
           setSceneIndex(0)
         }
+        if (signal?.aborted) return
+        const savedSceneIds = new Set(savedProgress?.completed_scenes ?? [])
+        completedSceneIdsRef.current = savedSceneIds
+        queuedSceneIdsRef.current = new Set(savedSceneIds)
+        setProgress(savedProgress)
+        setState({ kind: 'ready', lesson })
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
         const message = err instanceof Error ? err.message : ''
@@ -512,50 +543,124 @@ function ExistingLessonView({
   }, [load])
 
   const saveScene = useCallback(
-    async (index: number, outcome = 'completed') => {
-      if (state.kind !== 'ready') return
+    (index: number, outcome = 'completed'): Promise<void> => {
+      if (state.kind !== 'ready') return Promise.resolve()
       const scene = state.lesson.scenes[index]
-      if (!scene) return
-      setSaveState('saving')
-      try {
-        const updated = await completeScene(lessonId, scene.id, {
-          scene_type: scene.type,
-          skill_id: state.lesson.skills[0] ?? undefined,
-          outcome,
-        })
-        setProgress((prev) => ({
-          lesson_id: updated.lesson_id,
-          current_scene_id: updated.current_scene_id,
-          completed_scenes: updated.completed_scenes,
-          started_at: updated.started_at,
-          completed_at: updated.completed_at,
-          updated_at: prev?.updated_at ?? updated.started_at,
-        }))
-        setSaveState('saved')
-        if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
-        saveTimerRef.current = window.setTimeout(() => setSaveState('idle'), 1800)
-      } catch {
-        setSaveState('error')
+      if (!scene) return Promise.resolve()
+      const sceneOrder = state.lesson.scenes.map((candidate) => candidate.id)
+      const deduplicateVisit = outcome === 'completed'
+      if (deduplicateVisit && queuedSceneIdsRef.current.has(scene.id)) {
+        return saveQueueRef.current
       }
+      if (deduplicateVisit) queuedSceneIdsRef.current.add(scene.id)
+
+      const optimisticTime = new Date().toISOString()
+      setProgress((previous) => ({
+        lesson_id: lessonId,
+        current_scene_id: scene.id,
+        completed_scenes: mergeCompletedSceneIds(
+          previous?.completed_scenes ?? [],
+          [scene.id],
+          sceneOrder,
+        ),
+        started_at: previous?.started_at ?? optimisticTime,
+        completed_at: previous?.completed_at ?? null,
+        updated_at: optimisticTime,
+      }))
+      pendingSaveCountRef.current += 1
+      setSaveState('saving')
+
+      const request = saveQueueRef.current.then(async () => {
+        let failed = false
+        try {
+          const updated = await completeScene(lessonId, scene.id, {
+            scene_type: scene.type,
+            skill_id: state.lesson.skills[0] ?? undefined,
+            outcome,
+          })
+          if (activeLessonIdRef.current !== lessonId) return
+          completedSceneIdsRef.current.add(scene.id)
+          setProgress((previous) => ({
+            lesson_id: updated.lesson_id,
+            current_scene_id: updated.current_scene_id ?? previous?.current_scene_id ?? scene.id,
+            completed_scenes: mergeCompletedSceneIds(
+              previous?.completed_scenes ?? [],
+              updated.completed_scenes,
+              sceneOrder,
+            ),
+            started_at: previous?.started_at ?? updated.started_at,
+            completed_at: previous?.completed_at ?? updated.completed_at,
+            updated_at: new Date().toISOString(),
+          }))
+        } catch {
+          failed = true
+          if (deduplicateVisit && !completedSceneIdsRef.current.has(scene.id)) {
+            queuedSceneIdsRef.current.delete(scene.id)
+            setProgress((previous) =>
+              previous
+                ? {
+                    ...previous,
+                    completed_scenes: previous.completed_scenes.filter(
+                      (sceneId) => sceneId !== scene.id,
+                    ),
+                  }
+                : previous,
+            )
+          }
+          if (activeLessonIdRef.current === lessonId) setSaveState('error')
+        } finally {
+          pendingSaveCountRef.current = Math.max(0, pendingSaveCountRef.current - 1)
+          if (
+            activeLessonIdRef.current === lessonId &&
+            pendingSaveCountRef.current === 0 &&
+            !failed
+          ) {
+            setSaveState('saved')
+            if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
+            saveTimerRef.current = window.setTimeout(() => setSaveState('idle'), 1800)
+          }
+        }
+      })
+      saveQueueRef.current = request
+      return request
     },
     [lessonId, state],
+  )
+
+  const visitScene = useCallback(
+    (index: number) => {
+      if (state.kind !== 'ready' || !canCompleteSceneByVisit(state.lesson.scenes[index])) return
+      void saveScene(index)
+    },
+    [saveScene, state],
   )
 
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
+      if (scrollFrameRef.current) window.cancelAnimationFrame(scrollFrameRef.current)
     }
   }, [])
 
-  const handleSelectScene = (index: number) => {
-    void saveScene(sceneIndex)
-    setSceneIndex(index)
-    const scene = state.kind === 'ready' ? state.lesson.scenes[index] : null
-    if (scene) {
+  const scrollToScene = useCallback(
+    (index: number, behavior: ScrollBehavior = 'smooth') => {
+      if (state.kind !== 'ready') return
+      const scene = state.lesson.scenes[index]
+      if (!scene) return
+      navigationTargetIndexRef.current = index
+      lastScrollYRef.current = window.scrollY
+      activeSceneIndexRef.current = index
+      setSceneIndex(index)
       window.requestAnimationFrame(() => {
-        sceneElementsRef.current[scene.id]?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+        sceneElementsRef.current[scene.id]?.scrollIntoView?.({ behavior, block: 'start' })
       })
-    }
+    },
+    [state],
+  )
+
+  const handleSelectScene = (index: number) => {
+    visitScene(sceneIndex)
+    scrollToScene(index)
   }
 
   const handleAssessmentAttempt = useCallback(
@@ -568,37 +673,18 @@ function ExistingLessonView({
   )
 
   const handleNext = () => {
-    setSceneIndex((index) => {
-      const next = Math.min(state.kind === 'ready' ? state.lesson.scenes.length - 1 : 0, index + 1)
-      void saveScene(index)
-      const scene = state.kind === 'ready' ? state.lesson.scenes[next] : null
-      if (scene) {
-        window.requestAnimationFrame(() => {
-          sceneElementsRef.current[scene.id]?.scrollIntoView?.({
-            behavior: 'smooth',
-            block: 'start',
-          })
-        })
-      }
-      return next
-    })
+    const next = Math.min(
+      state.kind === 'ready' ? state.lesson.scenes.length - 1 : 0,
+      sceneIndex + 1,
+    )
+    visitScene(sceneIndex)
+    scrollToScene(next)
   }
 
   const handlePrev = () => {
-    setSceneIndex((index) => {
-      const next = Math.max(0, index - 1)
-      void saveScene(index)
-      const scene = state.kind === 'ready' ? state.lesson.scenes[next] : null
-      if (scene) {
-        window.requestAnimationFrame(() => {
-          sceneElementsRef.current[scene.id]?.scrollIntoView?.({
-            behavior: 'smooth',
-            block: 'start',
-          })
-        })
-      }
-      return next
-    })
+    const next = Math.max(0, sceneIndex - 1)
+    visitScene(sceneIndex)
+    scrollToScene(next)
   }
 
   const handleCompleteLesson = async () => {
@@ -641,6 +727,8 @@ function ExistingLessonView({
     const scene = scenes[sceneIndex]
     if (!scene) return
     restoredLessonRef.current = lessonId
+    navigationTargetIndexRef.current = sceneIndex
+    lastScrollYRef.current = window.scrollY
     window.requestAnimationFrame(() => {
       sceneElementsRef.current[scene.id]?.scrollIntoView?.({ block: 'start' })
     })
@@ -650,26 +738,96 @@ function ExistingLessonView({
     if (state.kind !== 'ready' || !('IntersectionObserver' in window)) return
     const observer = new IntersectionObserver(
       (entries) => {
-        const visible = entries
+        const navigationTarget = navigationTargetIndexRef.current
+        const intersecting = entries
           .filter((entry) => entry.isIntersecting)
-          .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0]
-        const rawIndex = visible?.target.getAttribute('data-scene-index')
-        if (rawIndex == null) return
-        const nextIndex = Number(rawIndex)
-        const previousIndex = activeSceneIndexRef.current
-        if (!Number.isFinite(nextIndex) || nextIndex === previousIndex) return
-        activeSceneIndexRef.current = nextIndex
-        setSceneIndex(nextIndex)
-        if (nextIndex > previousIndex) void saveScene(previousIndex)
+          .map((entry) => Number(entry.target.getAttribute('data-scene-index')))
+          .filter((index) => Number.isFinite(index))
+          .filter((index) => navigationTarget == null || index === navigationTarget)
+          .sort((left, right) => left - right)
+        for (const index of intersecting) visitScene(index)
+        if (navigationTarget != null && intersecting.includes(navigationTarget)) {
+          navigationTargetIndexRef.current = null
+          lastScrollYRef.current = window.scrollY
+        }
       },
-      { rootMargin: '-16% 0px -66% 0px', threshold: [0.1, 0.35, 0.7] },
+      { rootMargin: '-8% 0px -8% 0px', threshold: 0 },
     )
     for (const scene of scenes) {
       const element = sceneElementsRef.current[scene.id]
       if (element) observer.observe(element)
     }
     return () => observer.disconnect()
-  }, [saveScene, scenes, state.kind])
+  }, [scenes, state.kind, visitScene])
+
+  useEffect(() => {
+    if (state.kind !== 'ready') return
+
+    const updateFromViewport = () => {
+      scrollFrameRef.current = null
+      const viewportHeight = Math.max(window.innerHeight, 1)
+      const currentScrollY = window.scrollY
+      const positions = scenes.flatMap((scene, index) => {
+        const element = sceneElementsRef.current[scene.id]
+        if (!element) return []
+        const rect = element.getBoundingClientRect()
+        return [{ index, top: rect.top, bottom: rect.bottom }]
+      })
+      // jsdom and hidden containers expose zero-sized rectangles. They are not evidence of a visit.
+      if (!positions.some((position) => position.bottom > position.top)) return
+
+      const documentHeight = document.documentElement.scrollHeight
+      const atDocumentEnd =
+        documentHeight > viewportHeight && currentScrollY + viewportHeight >= documentHeight - 8
+      const navigationTarget = navigationTargetIndexRef.current
+      const visited = collectVisitedSceneIndices({
+        positions,
+        scenes,
+        previousScrollY: lastScrollYRef.current,
+        currentScrollY,
+        viewportHeight,
+        navigationTargetIndex: navigationTarget,
+        atDocumentEnd,
+      })
+      for (const index of visited) visitScene(index)
+
+      if (navigationTarget != null) {
+        if (visited.includes(navigationTarget)) {
+          navigationTargetIndexRef.current = null
+          activeSceneIndexRef.current = navigationTarget
+          setSceneIndex(navigationTarget)
+        }
+      } else {
+        const nextIndex = findActiveSceneIndex(
+          positions,
+          viewportHeight,
+          activeSceneIndexRef.current,
+          atDocumentEnd,
+        )
+        if (nextIndex !== activeSceneIndexRef.current) {
+          activeSceneIndexRef.current = nextIndex
+          setSceneIndex(nextIndex)
+        }
+      }
+      lastScrollYRef.current = currentScrollY
+    }
+
+    const scheduleUpdate = () => {
+      if (scrollFrameRef.current != null) return
+      scrollFrameRef.current = window.requestAnimationFrame(updateFromViewport)
+    }
+    window.addEventListener('scroll', scheduleUpdate, { passive: true })
+    window.addEventListener('resize', scheduleUpdate)
+    scheduleUpdate()
+    return () => {
+      window.removeEventListener('scroll', scheduleUpdate)
+      window.removeEventListener('resize', scheduleUpdate)
+      if (scrollFrameRef.current != null) {
+        window.cancelAnimationFrame(scrollFrameRef.current)
+        scrollFrameRef.current = null
+      }
+    }
+  }, [scenes, state.kind, visitScene])
 
   if (state.kind === 'loading') {
     return <LoadingBlock label="Загрузка урока…" rows={4} />
@@ -697,6 +855,8 @@ function ExistingLessonView({
   }
 
   const lesson = state.lesson
+  const visitedSceneCount = completedSceneCount(progress?.completed_scenes, scenes)
+  const visitedPercent = scenes.length ? Math.round((visitedSceneCount / scenes.length) * 100) : 0
   const goToLesson = (id: string | null) => {
     if (id) onNavigate(`/focus/${id}`)
   }
@@ -814,12 +974,12 @@ function ExistingLessonView({
             <div
               className="h-full rounded-full transition-all duration-300"
               style={{
-                width: `${scenes.length ? ((sceneIndex + 1) / scenes.length) * 100 : 0}%`,
+                width: `${visitedPercent}%`,
                 background: 'var(--dp-accent)',
               }}
             />
           </div>
-          <span>{Math.round(scenes.length ? ((sceneIndex + 1) / scenes.length) * 100 : 0)}%</span>
+          <span>{visitedPercent}%</span>
         </div>
 
         {/* Content area: reading column + sticky outline */}
@@ -836,7 +996,7 @@ function ExistingLessonView({
               <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 py-3">
                 <span className="dp-section-title">Содержание урока</span>
                 <span className="text-xs" style={{ color: 'var(--dp-text-muted)' }}>
-                  {sceneIndex + 1}/{scenes.length} · открыть
+                  {visitedSceneCount}/{scenes.length} · открыть
                 </span>
               </summary>
               <div className="border-t p-3" style={{ borderColor: 'var(--dp-border-subtle)' }}>
@@ -974,7 +1134,7 @@ function ExistingLessonView({
                   <span className="dp-section-title">Содержание</span>
                   {progress && (
                     <span className="text-[11px]" style={{ color: 'var(--dp-text-muted)' }}>
-                      {progress.completed_scenes.length}/{scenes.length}
+                      {visitedSceneCount}/{scenes.length}
                     </span>
                   )}
                 </div>

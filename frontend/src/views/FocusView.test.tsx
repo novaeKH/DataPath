@@ -496,12 +496,177 @@ describe('FocusView: прогресс (Фаза 4)', () => {
     return fetchMock
   }
 
+  function stubVisitProgress(lesson: LessonDetail) {
+    const completed: string[] = []
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      if (url.includes('/api/content/lessons/')) {
+        return Promise.resolve(new Response(JSON.stringify(lesson), { status: 200 }))
+      }
+      if (url.includes('/api/progress/lessons/') && method === 'GET') {
+        if (completed.length > 0) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                lesson_id: lesson.id,
+                current_scene_id: completed.at(-1),
+                completed_scenes: [...completed],
+                started_at: '2026-08-20T10:00:00+00:00',
+                completed_at: null,
+                updated_at: '2026-08-20T10:01:00+00:00',
+              }),
+              { status: 200 },
+            ),
+          )
+        }
+        return Promise.resolve(new Response('{}', { status: 404 }))
+      }
+      if (url.includes('/api/reviews/summary')) {
+        return Promise.resolve(new Response('{}', { status: 404 }))
+      }
+      const sceneMatch = url.match(/\/scenes\/([^/]+)\/complete$/)
+      if (sceneMatch && method === 'POST') {
+        const sceneId = decodeURIComponent(sceneMatch[1])
+        if (!completed.includes(sceneId)) completed.push(sceneId)
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              lesson_id: lesson.id,
+              scene_id: sceneId,
+              current_scene_id: sceneId,
+              completed_scenes: [...completed],
+              started_at: '2026-08-20T10:00:00+00:00',
+              completed_at: null,
+              event_id: completed.length,
+            }),
+            { status: 200 },
+          ),
+        )
+      }
+      return Promise.resolve(new Response('{}', { status: 404 }))
+    }) as unknown as typeof fetch
+    vi.stubGlobal('fetch', fetchMock)
+    return { completed, fetchMock }
+  }
+
+  function installIntersectionObserver() {
+    let callback: IntersectionObserverCallback | null = null
+    let options: IntersectionObserverInit | undefined
+    class FakeIntersectionObserver implements IntersectionObserver {
+      readonly root = null
+      readonly rootMargin = ''
+      readonly scrollMargin = ''
+      readonly thresholds = [0]
+
+      constructor(
+        nextCallback: IntersectionObserverCallback,
+        nextOptions?: IntersectionObserverInit,
+      ) {
+        callback = nextCallback
+        options = nextOptions
+      }
+
+      disconnect() {}
+      observe() {}
+      unobserve() {}
+      takeRecords(): IntersectionObserverEntry[] {
+        return []
+      }
+    }
+    vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver)
+    return {
+      emit(targets: Element[]) {
+        const entries = targets.map(
+          (target) =>
+            ({
+              target,
+              isIntersecting: true,
+              intersectionRatio: 0.01,
+              time: 0,
+              boundingClientRect: target.getBoundingClientRect(),
+              intersectionRect: target.getBoundingClientRect(),
+              rootBounds: null,
+            }) as IntersectionObserverEntry,
+        )
+        if (!callback) throw new Error('IntersectionObserver was not created')
+        callback(entries, {} as IntersectionObserver)
+      },
+      getOptions: () => options,
+    }
+  }
+
   it('восстанавливает последнюю сцену из progress', async () => {
     stubWithProgress({ current_scene_id: 'scene-03', completed_scenes: ['scene-01', 'scene-02'] })
     renderFocus('/focus/lesson.classic-ml.trees.tree')
     // scene-03 — code сцена: показывается после восстановления.
     expect(await screen.findByText(/Раздел 3 из 5/)).toBeInTheDocument()
     expect(screen.getByText('python')).toBeInTheDocument()
+  })
+
+  it('после refresh показывает сохранённые посещения и тот же числовой прогресс', async () => {
+    stubWithProgress({ current_scene_id: 'scene-03', completed_scenes: ['scene-01', 'scene-02'] })
+    renderFocus('/focus/lesson.classic-ml.trees.tree')
+    expect(await screen.findByText('40%')).toBeInTheDocument()
+    expect(screen.getAllByText('2/5')).not.toHaveLength(0)
+    const firstSection = screen.getAllByRole('button', { name: /Идея за 30 секунд/ })[0]
+    expect(within(firstSection).getByText('✓')).toBeInTheDocument()
+  })
+
+  it('фиксирует все фактически пересечённые сцены, включая короткие, но не checkpoint', async () => {
+    const observer = installIntersectionObserver()
+    const lesson = makeLesson()
+    const { completed } = stubVisitProgress(lesson)
+    renderFocus('/focus/lesson.classic-ml.trees.tree')
+    await screen.findByRole('heading', { name: /Decision Tree без магии/ })
+    const sceneElements = [...document.querySelectorAll('[data-scene-index]')]
+    observer.emit(sceneElements)
+
+    await waitFor(() => expect(completed).toEqual(['scene-01', 'scene-02', 'scene-03', 'scene-05']))
+    expect(screen.getByText('80%')).toBeInTheDocument()
+    expect(observer.getOptions()).toMatchObject({ rootMargin: '-8% 0px -8% 0px', threshold: 0 })
+  })
+
+  it('переход по содержанию не отмечает промежуточные разделы', async () => {
+    const observer = installIntersectionObserver()
+    const lesson = makeLesson({
+      scenes: [
+        { id: 'scene-01', type: 'markdown', source_heading: 'Раздел 1', markdown: 'Один' },
+        { id: 'scene-02', type: 'markdown', source_heading: 'Раздел 2', markdown: 'Два' },
+        { id: 'scene-03', type: 'markdown', source_heading: 'Раздел 3', markdown: 'Три' },
+        { id: 'scene-04', type: 'markdown', source_heading: 'Раздел 4', markdown: 'Четыре' },
+      ],
+    })
+    const { completed } = stubVisitProgress(lesson)
+    renderFocus('/focus/lesson.classic-ml.trees.tree')
+    await screen.findByRole('heading', { name: /Decision Tree без магии/ })
+    await userEvent.setup().click(screen.getAllByRole('button', { name: 'Раздел 3' })[0])
+
+    const intermediate = document.querySelector('[data-scene-index="1"]')
+    const target = document.querySelector('[data-scene-index="2"]')
+    if (!intermediate || !target) throw new Error('Scene elements not found')
+    observer.emit([intermediate, target])
+
+    await waitFor(() => expect(completed).toEqual(['scene-01', 'scene-03']))
+    expect(completed).not.toContain('scene-02')
+  })
+
+  it('сохраняет посещённую главу после закрытия и повторного открытия урока', async () => {
+    const observer = installIntersectionObserver()
+    const lesson = makeLesson()
+    const { completed } = stubVisitProgress(lesson)
+    const firstRender = renderFocus('/focus/lesson.classic-ml.trees.tree')
+    await screen.findByRole('heading', { name: /Decision Tree без магии/ })
+    const firstScene = document.querySelector('[data-scene-index="0"]')
+    if (!firstScene) throw new Error('First scene not found')
+    observer.emit([firstScene])
+    await waitFor(() => expect(completed).toEqual(['scene-01']))
+    firstRender.unmount()
+
+    renderFocus('/focus/lesson.classic-ml.trees.tree')
+    expect(await screen.findByText('20%')).toBeInTheDocument()
+    const firstSection = screen.getAllByRole('button', { name: /Идея за 30 секунд/ })[0]
+    expect(within(firstSection).getByText('✓')).toBeInTheDocument()
   })
 
   it('завершает сцену и обновляет индикатор прогресса', async () => {
