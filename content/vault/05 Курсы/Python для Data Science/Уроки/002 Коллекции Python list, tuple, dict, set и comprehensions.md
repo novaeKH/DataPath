@@ -14,7 +14,7 @@ module_order: 1
 lesson_order: 2
 canonical_number: 2
 content_path: 10 Знания/DataPath v2/01_Python_Core_DataPath_v2/source-002 Коллекции Python list, tuple, dict, set и comprehensions.md
-estimated_minutes: 50
+estimated_minutes: 25
 difficulty: foundation
 skill_ids:
 - python.03-dict-set-i-hash-map
@@ -30,7 +30,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №2, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Выбирать list, tuple, dict и set под конкретные операции.
+- Оценивать стоимость поиска и собирать частоты без лишних проходов.
 
 ## Сценарий урока
 
@@ -38,6 +41,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

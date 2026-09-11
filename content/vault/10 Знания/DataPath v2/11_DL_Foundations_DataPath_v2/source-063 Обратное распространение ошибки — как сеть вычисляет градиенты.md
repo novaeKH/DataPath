@@ -17,899 +17,106 @@ tags:
 - canonical/source
 ---
 
-# Обратное распространение ошибки: как сеть вычисляет градиенты
+# Backpropagation: от ошибки к градиенту каждого веса
 
-После forward pass сеть получает prediction и loss.
+Сеть сделала прогноз и получила потерю. Чтобы улучшить веса, нужно выяснить, как изменение каждого веса повлияло бы на эту потерю. Обратное распространение ошибки вычисляет такие производные, используя правило цепочки.
 
-Теперь нужно ответить на главный вопрос обучения:
+Backpropagation не выбирает сам по себе величину обновления и не является синонимом обучения. Он вычисляет градиенты. Оптимизатор использует их для изменения параметров.
 
-> **Как понять, какой weight и насколько изменить, чтобы loss уменьшилась?**
+## Один вычислительный граф
 
-Для одного параметра можно взять производную вручную.
+Возьмём вход $x=2$, вес $w=1$, смещение $b=0$, цель $y=5$. Прогноз $z=wx+b=2$. Для простоты потеря равна половине квадрата ошибки:
 
-Для сети с миллионами parameters это невозможно делать вручную на каждом шаге.
+$$
+L=\frac12(z-y)^2=\frac12(2-5)^2=4.5.
+$$
 
-Решение — **обратное распространение ошибки (backpropagation)**.
+Половина нужна, чтобы производная квадрата не содержала лишний множитель 2. Это учебная функция; средняя MSE в библиотеке может иметь другое масштабирование.
 
-Backpropagation не является отдельным optimizer. Он вычисляет gradients.
+Прямой проход вычисляет значения: вход → умножение → сложение → разность с целью → квадрат. Для обратного прохода сохраняются промежуточные значения, нужные локальным производным.
 
-Optimizer затем использует эти gradients, чтобы обновить weights.
+## Идём назад по правилу цепочки
 
-Это принципиальное разделение:
+Производная потери по прогнозу равна $z-y=-3$. Прогноз по весу меняется со скоростью $x=2$. Поэтому
 
-```text
-backpropagation
-→ вычисляет ∂loss/∂parameter
-
-optimizer
-→ решает, как именно изменить parameter
-```
-
----
-
-## 1. Начнём с одного простого вычисления
-
-Пусть:
-
-\[
-x=2,\qquad
-w=3.
-\]
-
-Prediction:
-
-\[
-\hat y=wx=6.
-\]
-
-Target:
-
-\[
-y=10.
-\]
-
-Возьмём squared loss:
-
-\[
-L=(\hat y-y)^2.
-\]
-
-Тогда:
-
-\[
-L=(6-10)^2=16.
-\]
-
-Хотим:
-
-\[
-\frac{\partial L}{\partial w}.
-\]
-
----
-
-## 2. Chain rule руками
-
-Loss зависит от \(w\) не напрямую:
-
-```text
-w
-→ ŷ
-→ L
-```
-
-По правилу цепочки:
-
-\[
+$$
 \frac{\partial L}{\partial w}
-=
-\frac{\partial L}{\partial \hat y}
-\cdot
-\frac{\partial \hat y}{\partial w}.
-\]
+=\frac{\partial L}{\partial z}\frac{\partial z}{\partial w}
+=(-3)\cdot2=-6.
+$$
 
-Первое:
+Для смещения производная прогноза равна 1, поэтому градиент по $b$ равен $-3$. Отрицательные производные показывают, что небольшое увеличение обоих параметров уменьшит потерю около текущей точки.
 
-\[
-\frac{\partial L}{\partial \hat y}
-=
-2(\hat y-y)
-=
-2(6-10)
-=
--8.
-\]
+Если один параметр используется по нескольким путям, вклады путей суммируются. Поэтому общий вес слоя получает информацию от всех примеров пакета и всех мест своего использования.
 
-Второе:
-
-\[
-\frac{\partial \hat y}{\partial w}
-=x=2.
-\]
-
-Значит:
-
-\[
-\frac{\partial L}{\partial w}
-=
--8\cdot2
-=
--16.
-\]
-
-Отрицательный gradient означает: чтобы уменьшить loss, gradient descent увеличит \(w\).
-
----
-
-## 3. Почему движение идёт против gradient
-
-Gradient показывает направление **роста** функции.
-
-Поэтому update:
-
-\[
-w_{new}
-=
-w-\eta\frac{\partial L}{\partial w}.
-\]
-
-Если:
-
-```text
-w = 3
-gradient = -16
-learning_rate = 0.01
-```
-
-то:
-
-\[
-w_{new}
-=
-3-0.01(-16)
-=
-3.16.
-\]
-
-Prediction увеличится:
-
-\[
-3.16\cdot2=6.32,
-\]
-
-то есть приблизится к target 10.
-
----
-
-## 4. Backpropagation — эффективное применение chain rule
-
-Представим сеть:
-
-\[
-x
-\rightarrow
-z_1
-\rightarrow
-a_1
-\rightarrow
-z_2
-\rightarrow
-L.
-\]
-
-Чтобы получить gradient early weight, chain rule может выглядеть:
-
-\[
-\frac{\partial L}{\partial w_1}
-=
-\frac{\partial L}{\partial z_2}
-\frac{\partial z_2}{\partial a_1}
-\frac{\partial a_1}{\partial z_1}
-\frac{\partial z_1}{\partial w_1}.
-\]
-
-Backprop проходит graph в обратном направлении и переиспользует уже вычисленные intermediate derivatives.
-
-Именно это делает вычисление gradients глубоких networks практичным.
-
----
-
-## 5. Computational graph
-
-PyTorch `autograd` строит **вычислительный граф (computational graph)** из выполненных tensor operations.
-
-Например:
-
-```python
-x = torch.tensor(2.0)
-w = torch.tensor(3.0, requires_grad=True)
-
-pred = x * w
-loss = (pred - 10) ** 2
-```
-
-Graph conceptual:
-
-```text
-x ----\
-       multiply → pred → subtract → square → loss
-w ----/                    ^
-                            |
-                           10
-```
-
-PyTorch знает local derivative каждой operation.
-
----
-
-![Учебная иллюстрация: Backpropagation. Прямые значения идут слева направо, градиенты по chain rule — справа налево.](content-assets/datapath-v2/figures/63_backpropagation.png "Прямые значения идут слева направо, градиенты по chain rule — справа налево.")
-
-## 6. `requires_grad=True`
-
-Если tensor parameter должен получать gradients:
-
-```python
-w = torch.tensor(
-    3.0,
-    requires_grad=True,
-)
-```
-
-PyTorch отслеживает operations, связанные с этим tensor.
-
-Parameters внутри `nn.Module` обычно уже имеют gradient tracking.
-
----
-
-## 7. `loss.backward()`
-
-```python
-loss.backward()
-```
-
-запускает backward pass от scalar loss.
-
-После этого:
-
-```python
-w.grad
-```
-
-содержит:
-
-\[
-\frac{\partial L}{\partial w}.
-\]
-
-В нашем примере expected gradient около:
-
-```text
--16
-```
-
----
-
-## 8. Маленький пример PyTorch
+## Сверяем ручной расчёт с autograd
 
 ```python
 import torch
 
-x = torch.tensor(2.0)
-w = torch.tensor(3.0, requires_grad=True)
+x = torch.tensor(2.)
+w = torch.tensor(1., requires_grad=True)
+b = torch.tensor(0., requires_grad=True)
+y = torch.tensor(5.)
 
-pred = x * w
-loss = (pred - 10.0) ** 2
-
+prediction = w * x + b
+loss = 0.5 * (prediction - y) ** 2
 loss.backward()
 
-print(w.grad)
+print(loss.item())   # 4.5
+print(w.grad.item(), b.grad.item())   # -6.0 -3.0
 ```
 
-PyTorch делает ту же chain rule, которую мы только что посчитали руками.
+`requires_grad=True` просит отслеживать операции для вычисления производных по этому тензору. `backward()` проходит построенный граф назад. Градиенты попадают в `.grad`; сами значения `w` и `b` пока не изменились.
 
----
+Autograd применяет известные локальные производные операций. Он не перебирает веса и не оценивает разности потери для каждого параметра по очереди.
 
-## 9. Почему loss обычно scalar
+## Один шаг обновления
 
-`backward()` особенно естественно использовать для scalar objective.
-
-Batch loss часто сначала агрегируется:
-
-```text
-per-object losses
-→ mean
-→ one scalar
-```
-
-От scalar можно получить gradient по всем parameters.
-
-Для non-scalar tensor PyTorch работает через vector-Jacobian products, но начинающему важно сначала уверенно понимать scalar loss case.
-
----
-
-## 10. Gradients накапливаются
-
-Очень важная особенность PyTorch:
-
-> `.backward()` **добавляет** gradient в `.grad`, а не автоматически заменяет его.
-
-Пример:
-
-```python
-loss.backward()
-loss.backward()
-```
-
-без очистки может удвоить accumulated gradient.
-
-Поэтому training loop обычно содержит:
-
-```python
-optimizer.zero_grad()
-```
-
-перед новым backward.
-
----
-
-## 11. Почему PyTorch накапливает gradients специально
-
-Accumulation полезна, например, для **gradient accumulation**.
-
-Если GPU не вмещает batch 256, можно обработать 4 mini-batches по 64 и суммировать gradients перед одним optimizer step.
-
-То есть accumulation — feature, а не ошибка framework.
-
-Но в обычном loop её нужно контролировать явно.
-
----
-
-## 12. Полный training step
-
-Классический порядок:
-
-```python
-optimizer.zero_grad()
-
-logits = model(x)
-loss = loss_fn(logits, y)
-
-loss.backward()
-
-optimizer.step()
-```
-
-Каждая строка имеет отдельную роль.
-
-### `zero_grad`
-
-Очистить gradients прошлого шага.
-
-### Forward
-
-Посчитать predictions.
-
-### Loss
-
-Получить scalar error.
-
-### `backward`
-
-Вычислить gradients.
-
-### `step`
-
-Optimizer обновляет parameters.
-
----
-
-## 13. Что делает `optimizer.step()`
-
-`optimizer.step()` **не вычисляет gradients**.
-
-Он читает уже существующие:
-
-```text
-parameter.grad
-```
-
-и применяет update rule конкретного optimizer.
-
-Для SGD roughly:
-
-\[
-w\leftarrow w-\eta g.
-\]
-
-Для Adam update сложнее.
-
----
-
-## 14. Forward graph создаётся динамически
-
-PyTorch autograd — dynamic.
-
-Graph строится из operations, реально выполненных в текущем forward.
-
-Можно писать обычный Python control flow:
-
-```python
-if condition:
-    y = x.relu()
-else:
-    y = x.sigmoid()
-```
-
-и graph будет соответствовать пройденному path.
-
-После обычного backward graph обычно освобождается, а на следующем forward строится новый.
-
----
-
-## 15. `grad_fn`
-
-Intermediate tensor, созданный tracked operation, обычно имеет:
-
-```python
-tensor.grad_fn
-```
-
-Это ссылка на backward function, которая знает local derivative operation.
-
-User-created leaf parameter обычно:
-
-```text
-grad_fn = None
-requires_grad = True
-```
-
-но получает `.grad`.
-
----
-
-## 16. Leaf tensors
-
-Gradients по умолчанию сохраняются в `.grad` прежде всего для leaf tensors с `requires_grad=True`.
-
-Intermediate activations нужны для chain rule, но их `.grad` обычно не сохраняется автоматически.
-
-Это важное distinction при debugging autograd.
-
----
-
-## 17. `torch.no_grad()`
-
-На inference gradients не нужны.
+Возьмём скорость обучения 0.1. Вес станет $1-0.1(-6)=1.6$, смещение — $0-0.1(-3)=0.3$. Новый прогноз $1.6\cdot2+0.3=3.5$, новая потеря — 1.125.
 
 ```python
 with torch.no_grad():
-    pred = model(x)
+    w -= 0.1 * w.grad
+    b -= 0.1 * b.grad
+
+new_loss = 0.5 * (w * x + b - y) ** 2
+print(round(new_loss.item(), 3))   # 1.125
 ```
 
-Это отключает gradient tracking внутри block.
+`no_grad` здесь предотвращает включение самого шага обновления в граф производных. В обычном обучении эту работу выполняет оптимизатор.
 
-Плюсы:
+## Накопление градиентов и новый граф
 
-- меньше memory;
-- меньше overhead.
+PyTorch накапливает градиенты в `.grad`. Если перед следующим обычным шагом их не обнулить, новый градиент прибавится к старому. Иногда это намеренно используется для накопления по нескольким маленьким пакетам, но для стандартного цикла нужен `optimizer.zero_grad()`.
 
-Но сегодня для pure inference также существует `torch.inference_mode()`, который может быть ещё более строгим/эффективным режимом.
+После каждого прямого прохода строится новый граф. Сохранение всех потерь как тензоров в длинном списке может удерживать графы и расходовать память. Для журнала обычно сохраняют `loss.item()`.
 
-В учебном начале достаточно понимать `no_grad`.
+`detach()` отделяет тензор от графа. Если применить его к прогнозу до вычисления потери, градиент не дойдёт до модели. Преобразование в обычный Python-объект или сторонний массив также может разорвать нужную цепочку.
 
----
+## Почему градиенты могут исчезнуть или вырасти
 
-## 18. `detach()`
+В длинной цепочке производные перемножаются. Много маленьких множителей ослабляют сигнал, большие — усиливают. Насыщающиеся активации, масштаб данных и инициализация влияют на это поведение.
 
-```python
-z_detached = z.detach()
-```
+Нулевой градиент не всегда ошибка: ReLU на отрицательном входе имеет нулевую локальную производную. Но если большинство параметров постоянно не получают сигнала, нужно исследовать входы, активации, потерю и связность графа.
 
-возвращает tensor, отделённый от текущего autograd graph.
+Для отладки полезно проверить крошечную модель численными разностями в вещественной точности double. Такая проверка подтверждает производные локального механизма, но не доказывает качество обучения на реальных данных.
 
-Используется, когда значение нужно как data, но gradient через эту branch проводить не надо.
+![Иллюстрация к уроку: Backpropagation: от ошибки к градиенту каждого веса](content-assets/datapath-v2/figures/63_backpropagation.png)
 
-Например logging:
+## Самопроверка и практика
 
-```python
-loss.item()
-```
+1. Что меняется после `backward`: веса или градиенты?
+2. Почему общий параметр получает сумму вкладов?
+3. Что произойдёт без обнуления градиентов?
+4. Почему `detach` перед потерей может остановить обучение?
 
-или сохранение representation без продолжения graph.
+Разбор: вычисляются градиенты; параметр влияет на результат по нескольким путям; вклады разных шагов накопятся; нужная зависимость разрывается.
 
----
+**Практика.** Повторите ручной пример с $x=3$, остальное оставьте прежним. Прогноз 3, производная по прогнозу $-2$, градиенты по весу и смещению $-6$ и $-2$. Сначала посчитайте на бумаге, затем проверьте autograd.
 
-## 19. Почему нельзя делать `.numpy()` на tracked CUDA tensor напрямую
-
-Tensor может:
-
-- находиться не на CPU;
-- требовать gradients.
-
-Типичный безопасный pattern:
-
-```python
-x.detach().cpu().numpy()
-```
-
-Но `.numpy(force=True)` и другие API details могут меняться; conceptual rule важнее:
-
-> при выводе из autograd/device world нужно осознанно detach и перенести data туда, где ожидает внешняя библиотека.
-
----
-
-## 20. Backprop через ReLU
-
-ReLU:
-
-\[
-a=\max(0,z).
-\]
-
-Derivative:
-
-\[
-\frac{da}{dz}
-=
-\begin{cases}
-0,&z<0\\
-1,&z>0
-\end{cases}
-\]
-
-Если neuron inactive:
-
-```text
-z < 0
-```
-
-gradient назад через эту ReLU branch становится 0.
-
-Так math activation напрямую влияет на gradient flow.
-
----
-
-## 21. Backprop через sigmoid
-
-Sigmoid:
-
-\[
-\sigma(z)=\frac1{1+e^{-z}}.
-\]
-
-Derivative:
-
-\[
-\sigma'(z)
-=
-\sigma(z)(1-\sigma(z)).
-\]
-
-На больших \(|z|\) sigmoid близка к 0 или 1, derivative становится маленькой.
-
-В глубокой сети произведение многих маленьких derivatives может привести к **затухающим градиентам (vanishing gradients)**.
-
----
-
-## 22. Vanishing gradients
-
-Chain rule умножает derivatives.
-
-Например:
-
-\[
-0.1\times0.1\times0.1\times0.1
-=
-0.0001.
-\]
-
-Early layers получают почти нулевой signal.
-
-Они обучаются очень медленно.
-
-Это одна из причин, почему activation, initialization, normalization и residual connections важны.
-
----
-
-## 23. Exploding gradients
-
-Если derivatives/weights дают factors больше 1:
-
-\[
-3\times3\times3\times3=81.
-\]
-
-Gradient может расти.
-
-Симптомы:
-
-- loss становится `nan`;
-- weights резко растут;
-- training unstable.
-
-В recurrent networks часто применяют gradient clipping, но проблема может встречаться и шире.
-
----
-
-## 24. Gradient clipping
-
-Например:
-
-```python
-torch.nn.utils.clip_grad_norm_(
-    model.parameters(),
-    max_norm=1.0,
-)
-```
-
-обычно вызывается после `backward()` и до `optimizer.step()`.
-
-Clipping не «чинит» любую плохую architecture. Это механизм ограничения слишком больших gradient norms.
-
----
-
-## 25. Gradient check mental model
-
-Если реализуем custom operation вручную, gradient можно проверить finite differences.
-
-Для parameter \(w\):
-
-\[
-\frac{dL}{dw}
-\approx
-\frac{L(w+\epsilon)-L(w-\epsilon)}
-{2\epsilon}.
-\]
-
-Сравниваем numerical derivative с autograd gradient.
-
-Это полезная debugging idea, хотя обычные PyTorch layers уже проверены library authors.
-
----
-
-## 26. Почему нельзя делать in-place operations бездумно
-
-Autograd иногда сохраняет intermediate tensors для backward.
-
-Если in-place operation изменит нужное значение, gradient calculation может стать impossible или вызвать error.
-
-Например:
-
-```python
-x += bias
-```
-
-на graph-critical tensor требует осторожности.
-
-Не надо бояться всех in-place operations, но важно понимать, что forward values могут быть нужны backward pass.
-
----
-
-## 27. Backprop на batch
-
-Для batch loss:
-
-\[
-L=\frac1B\sum_{i=1}^{B}L_i.
-\]
-
-Gradient:
-
-\[
-\nabla L
-=
-\frac1B
-\sum_i
-\nabla L_i.
-\]
-
-То есть gradient mini-batch — усреднённый training signal samples.
-
-Это объясняет, почему batch composition влияет на noise gradient.
-
----
-
-## 28. Computational graph визуально
-
-Для MLP:
-
-```text
-X
-↓
-Linear W1,b1
-↓
-z1
-↓
-ReLU
-↓
-a1
-↓
-Linear W2,b2
-↓
-logits
-↓
-CrossEntropy
-↓
-loss
-```
-
-Backward:
-
-```text
-loss
-↑
-logits gradient
-↑
-W2,b2
-↑
-ReLU derivative
-↑
-W1,b1
-```
-
-Data flows forward; gradient information flows backward.
-
----
-
-## 29. Интерактивная визуализация DataPath
-
-### Режим 1. Chain rule
-
-Graph:
-
-```text
-w → multiply → prediction → squared error → loss
-```
-
-Пользователь нажимает:
-
-```text
-Backward step
-```
-
-и derivatives подсвечиваются справа налево.
-
-### Режим 2. ReLU gate
-
-Slider \(z\).
-
-При negative z gradient backward блокируется.
-
-### Режим 3. Deep chain
-
-Пользователь меняет local derivatives:
-
-```text
-0.1
-0.5
-1.0
-2.0
-```
-
-и видит vanishing/exploding gradient.
-
-### Режим 4. PyTorch loop
-
-Визуально связать:
-
-```text
-zero_grad
-forward
-loss
-backward
-step
-```
-
-с состоянием parameters/gradients.
-
----
-
-## 30. Типичные ошибки
-
-**«Backprop обновляет weights».**\
-Нет, он вычисляет gradients.
-
-**«optimizer.step() вычисляет gradients».**\
-Нет.
-
-**«zero_grad можно не делать, PyTorch сам заменит grad».**\
-Нет, gradients accumulate.
-
-**«Gradient течёт только через Linear».**\
-Он проходит через все differentiable operations graph.
-
-**«`no_grad()` нужен training».**\
-Наоборот, обычно inference.
-
-**«Vanishing gradient = loss маленькая».**\
-Нет, это маленький derivative signal в части network.
-
----
-
-## 31. Проверка понимания
-
-1. Что вычисляет backpropagation?
-2. Что делает optimizer?
-3. Почему нужен chain rule?
-4. Почему `.grad` накапливается?
-5. Правильный порядок training step?
-6. Что такое computational graph?
-7. Что делает `requires_grad=True`?
-8. Почему sigmoid может давать vanishing gradients?
-9. Что делает gradient clipping?
-10. Зачем `torch.no_grad()`?
-
----
-
-## 32. Мини-практика руками
-
-\[
-x=3,\quad
-w=2,\quad
-b=1,\quad
-y=10.
-\]
-
-\[
-\hat y=wx+b,
-\]
-
-\[
-L=(\hat y-y)^2.
-\]
-
-Посчитайте:
-
-1. prediction;
-2. loss;
-3. \(\partial L/\partial\hat y\);
-4. \(\partial\hat y/\partial w\);
-5. \(\partial L/\partial w\);
-6. новый \(w\) при `lr=0.01`.
-
----
-
-## 33. PyTorch debug checklist
-
-Если model не учится:
-
-```text
-проверить loss decreases?
-проверить gradients None?
-проверить gradient norms?
-проверить requires_grad?
-проверить optimizer содержит нужные parameters?
-проверить zero_grad/backward/step order?
-проверить no_grad случайно не окружает training?
-```
-
-Эти проверки часто полезнее мгновенной смены optimizer.
-
----
-
-## Что нужно унести
-
-1. Backpropagation вычисляет gradients loss по parameters.
-2. Chain rule связывает local derivatives.
-3. PyTorch `autograd` строит dynamic computational graph.
-4. `loss.backward()` запускает backward pass.
-5. Gradients сохраняются в `.grad` parameters и накапливаются.
-6. `optimizer.zero_grad()` очищает прошлый gradient.
-7. `optimizer.step()` обновляет parameters.
-8. ReLU/sigmoid влияют на gradient flow.
-9. Глубокие chains могут давать vanishing/exploding gradients.
-10. `no_grad` используется, когда gradients не нужны.
-
-## Куда дальше
-
-Теперь gradients вычислены.
-
-Но всё ещё не решено:
-
-> **как именно использовать gradient для update?**
-
-Простейший ответ — SGD. Затем добавим Momentum и adaptive methods Adam/AdamW.
+В визуализации проходите отдельно forward, loss, backward и update. Разные направления стрелок обозначают значения и производные — не смешивайте их. Следующий урок сравнит способы использования градиента.
 
 ## Источники
-- PyTorch official `torch.autograd` tutorials.
-- PyTorch automatic differentiation documentation.
+
+[Autograd PyTorch](https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html), [обнуление градиентов](https://docs.pytorch.org/tutorials/recipes/recipes/zeroing_out_gradients.html).

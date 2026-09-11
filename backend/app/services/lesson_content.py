@@ -1374,7 +1374,7 @@ class LessonContentService:
             scenes, heading_resolution = self._build_scenes(
                 item, datapath, source_md, body, source_content_id
             )
-            scenes = self._assign_scene_ids(scenes)
+            scenes = self._assign_scene_ids(scenes, (datapath or {}).get("content_revision"))
 
             labs = self.registry.labs_for_lesson(lesson_id)
             laboratory_ids = [lab.id for lab in labs]
@@ -1579,9 +1579,14 @@ class LessonContentService:
         return scenes, heading_resolution
 
     @staticmethod
-    def _assign_scene_ids(scenes: list[dict]) -> list[dict]:
+    def _assign_scene_ids(scenes: list[dict], revision: str | None = None) -> list[dict]:
+        # Major editorial editions must not reuse positional IDs from unrelated old paragraphs.
+        # Keep the legacy IDs unless the author explicitly versions a rewritten lesson.
+        prefix = "scene"
+        if isinstance(revision, str) and re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", revision):
+            prefix = f"scene-{revision}"
         for i, scene in enumerate(scenes, start=1):
-            scene["id"] = f"scene-{i:02d}"
+            scene["id"] = f"{prefix}-{i:02d}"
         return scenes
 
     def _build_materials(self, db, item: ContentItem, source_md: str | None) -> list[dict]:

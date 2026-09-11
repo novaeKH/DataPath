@@ -14,7 +14,7 @@ module_order: 2
 lesson_order: 2
 canonical_number: 5
 content_path: 10 Знания/DataPath v2/01_Python_Core_DataPath_v2/source-005 ООП и модель данных Python.md
-estimated_minutes: 55
+estimated_minutes: 25
 difficulty: foundation
 skill_ids:
 - python.06-oop-i-magicheskie-metody
@@ -30,7 +30,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №5, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Разделять состояние экземпляра, класса и поведение объекта.
+- Построить небольшой объект с fit/transform и объяснить его договор.
 
 ## Сценарий урока
 
@@ -38,6 +41,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

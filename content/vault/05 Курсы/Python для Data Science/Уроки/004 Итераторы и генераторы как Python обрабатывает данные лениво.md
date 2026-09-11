@@ -14,7 +14,7 @@ module_order: 2
 lesson_order: 1
 canonical_number: 4
 content_path: 10 Знания/DataPath v2/01_Python_Core_DataPath_v2/source-004 Итераторы и генераторы как Python обрабатывает данные лениво.md
-estimated_minutes: 45
+estimated_minutes: 25
 difficulty: foundation
 skill_ids:
 - python.05-iterable-iterator-i-generator
@@ -30,7 +30,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №4, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Прослеживать состояние итератора и выполнение yield.
+- Строить поток обработки и замечать, где данные материализуются в памяти.
 
 ## Сценарий урока
 
@@ -38,6 +41,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

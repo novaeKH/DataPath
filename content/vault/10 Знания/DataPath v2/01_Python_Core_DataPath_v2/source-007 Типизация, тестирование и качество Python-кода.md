@@ -17,311 +17,107 @@ tags:
 - canonical/source
 ---
 
-# Типизация и тестирование
+# Проверяем Python-код: типы, примеры и тесты
 
-Data Scientist часто начинает в notebook:
-```text
-исследование → быстрый код
-```
+Вычисление может выглядеть убедительно и всё же быть неверным. Функция среднего успешно работает на `[10, 20]`, но что она должна делать с пустым списком? Если это решение не сформулировано, разные части программы начнут по-разному угадывать ответ.
 
-Но когда код становится повторяемым pipeline, нужны:
-- type hints;
-- tests;
-- formatter/linter;
-- явные boundaries.
+Тестирование начинается с договора: какие входы допустимы, какой результат ожидается и какие побочные эффекты запрещены. Типы помогают описать часть договора, а тесты проверяют конкретное поведение.
 
-Это не бюрократия. Это способ быстрее замечать ошибки.
-
-## 1. Type hints
+## Сначала сформулируем функцию
 
 ```python
 def mean(values: list[float]) -> float:
+    if not values:
+        raise ValueError("Нельзя найти среднее пустого списка")
     return sum(values) / len(values)
+
+print(mean([10.0, 20.0]))   # 15.0
 ```
 
-Python runtime обычно не запрещает передать неправильный type только из-за annotation.
+Аннотация `list[float]` сообщает, какие значения ожидаются, а `-> float` — какой результат возвращается. Python сам не превращает аннотации в проверки при каждом вызове. Их используют редактор, статический анализатор и человек.
 
-Type hints предназначены для:
-- IDE;
-- static checker;
-- documentation;
-- readers.
+`float | None` означает два допустимых варианта результата. Это не то же самое, что необязательный аргумент: необязательность вызова появляется при наличии значения по умолчанию. `Any` ослабляет статическую проверку и требует объяснения, почему тип неизвестен.
 
-## 2. Optional
+## Один тест — одно проверяемое ожидание
 
-```python
-def find_user(user_id: int, users: dict[int, User]) -> User | None:
-    return users.get(user_id)
-```
-
-Теперь caller обязан подумать о `None`.
-
-## 3. `Any`
-
-```python
-from typing import Any
-```
-
-`Any` выключает большую часть type checking для значения.
-
-Полезно на boundary динамической библиотеки, но не надо ставить `Any` везде.
-
-## 4. `Protocol`
-
-Можно описывать behavior, а не concrete class:
-
-```python
-from typing import Protocol
-
-class Predictor(Protocol):
-    def predict(self, X): ...
-```
-
-Это type-level duck typing.
-
-## 5. Dataclass config
-
-```python
-@dataclass
-class TrainConfig:
-    lr: float
-    epochs: int
-```
-
-Typed config лучше unstructured dict:
-```python
-config["epohcs"]  # typo only at runtime
-```
-
-## 6. Unit test
-
-Проверяет маленькую unit behavior.
-
-```python
-def test_ratio():
-    assert ratio(10, 2) == 5
-```
-
-Good tests:
-- deterministic;
-- fast;
-- focus one behavior.
-
-## 7. pytest mental model
-
-```python
-def test_clean_age():
-    assert clean_age("42") == 42
-    assert clean_age("") is None
-```
-
-`pytest` discovers tests by conventions and gives readable failures.
-
-## 8. Parametrization
+В pytest тестом становится функция с именем `test_...`. Сохраните следующий пример вместе с функцией `mean` в файл `test_mean.py`:
 
 ```python
 import pytest
 
+def test_mean_of_two_values():
+    assert mean([10.0, 20.0]) == 15.0
+
+def test_mean_of_empty_input():
+    with pytest.raises(ValueError, match="пустого"):
+        mean([])
+
+def test_mean_does_not_change_input():
+    values = [10.0, 20.0]
+    mean(values)
+    assert values == [10.0, 20.0]
+```
+
+Запуск `python -m pytest test_mean.py` проверит три разных обещания: арифметику, реакцию на недопустимый вход и отсутствие изменения входного списка. Если функция вернёт ноль для пустого списка, второй тест обнаружит нарушение договора.
+
+Тест должен иметь независимое ожидание. Проверка `assert result == sum(values) / len(values)` просто повторяет реализацию и может повторить ту же ошибку. Для небольшого примера вычислите ответ вручную.
+
+## Граничные случаи и дробные числа
+
+Условия на границе часто важнее ещё одного обычного примера. Для среднего полезны один элемент, отрицательные числа, нули и пустой список. Параметризация позволяет перечислить случаи без копирования функции теста:
+
+```python
 @pytest.mark.parametrize(
-    "x, expected",
-    [(1, 1), (2, 4), (3, 9)],
+    "values, expected",
+    [([5.0], 5.0), ([-2.0, 2.0], 0.0), ([0.0, 0.0], 0.0)],
 )
-def test_square(x, expected):
-    assert square(x) == expected
+def test_mean_cases(values, expected):
+    assert mean(values) == pytest.approx(expected)
 ```
 
-Avoid duplicated test functions.
+Двоичное представление дробных чисел не всегда хранит десятичную дробь точно. Поэтому арифметически равные выражения могут немного отличаться. `pytest.approx` допускает небольшую численную погрешность. Допуск выбирают под масштаб задачи: большой допуск способен скрыть реальную ошибку.
 
-## 9. Exceptions test
+## Проверяем преобразование данных, а не только число
+
+Для подготовки признаков нужны проверки формы и смысла: сохранены ли строки, уникален ли ключ, не появились ли события из будущего. Например, для разбиения по времени:
 
 ```python
-with pytest.raises(ValueError):
-    parse_age("-5")
+def split_before(values, cutoff):
+    train = [value for value in values if value < cutoff]
+    test = [value for value in values if value >= cutoff]
+    return train, test
+
+def test_cutoff_belongs_to_test():
+    train, test = split_before([1, 2, 3, 4], cutoff=3)
+    assert train == [1, 2]
+    assert test == [3, 4]
 ```
 
-Failure behavior is part of contract.
+Здесь значение на самой границе явно отнесено к проверочной части. Без этого теста легко получить пересечение или потерять граничную запись. Такая проверка важнее сложной модели, обученной на неверно разделённых данных.
 
-## 10. Floating-point comparisons
+Модульный тест проверяет небольшую функцию. Интеграционный — совместную работу нескольких частей, например чтение файла и построение признаков. Эталонный результат удобен для стабильной небольшой таблицы, но требует осмысленного обновления: нельзя принимать новый результат только потому, что тест покраснел.
 
-Плохо:
-```python
-assert result == 0.1 + 0.2
-```
+## Типы и инструменты дополняют друг друга
 
-Правильно:
-```python
-assert result == pytest.approx(0.3)
-```
+Статический анализатор ищет несовместимые типы до запуска. Линтер замечает подозрительные конструкции и неиспользуемые имена. Форматтер делает оформление единообразным. Ни один из этих инструментов не доказывает правильность смысла расчёта.
 
-or NumPy testing helpers.
+`Protocol` описывает требуемое поведение объекта: например, наличие метода `predict`. Это помогает подменять реализации без жёсткой зависимости от одного класса. `dataclass` удобно хранит конфигурацию. Но прежде чем вводить дополнительные абстракции, полезно иметь работающий маленький пример и ясный договор.
 
-## 11. ML feature tests
+Подменяйте внешние дорогие зависимости в тестах, если нужно проверить свою логику. При этом хотя бы одна проверка должна подтверждать реальное соединение компонентов: полностью искусственные ответы могут скрыть несовместимость интерфейсов.
 
-Useful:
-- no target leakage column;
-- output schema stable;
-- no negative impossible values;
-- split disjoint;
-- transformation deterministic.
+## Самопроверка и практика
 
-Not every ML issue unit-testable, but many pipeline bugs are.
+1. Почему аннотация `int` не гарантирует, что при запуске придёт целое число?
+2. Как тест может повторить ошибку реализации?
+3. Зачем проверять неизменность входа?
+4. Почему фиксированный seed ещё не доказывает воспроизводимость всего эксперимента?
 
-## 12. Integration test
+Разбор: аннотации не включают автоматическую проверку; ожидание может вычисляться тем же ошибочным способом; скрытая мутация влияет на последующие расчёты; результат также зависит от данных, версий библиотек и порядка вычислений.
 
-Checks components together:
+**Практика.** Добавьте тесты для `split_before`: пустой вход, все значения до границы, все после неё и несколько одинаковых граничных значений. Сначала напишите ожидаемые списки, затем запускайте код.
 
-```text
-load tiny data
-→ feature pipeline
-→ model.predict
-```
+В визуализации сравните ошибку типа, ошибку выполнения и неверный ответ без исключения. Качественный код имеет ясные имена, короткие обязанности и проверяемые примеры. Дальше разберём его стоимость по времени и памяти.
 
-Different from unit test.
+## Источники
 
-## 13. Golden test
-
-Known input:
-```text
-prediction approximately fixed
-```
-
-Useful after packaging/library changes.
-
-## 14. Mocking caution
-
-Mocks useful for network/API dependencies.
-
-But too much mocking can test fake system rather than real code.
-
-Prefer small real components when cheap.
-
-## 15. Formatting
-
-Tools like `black`/`ruff format` make style automatic.
-
-Don't spend review time arguing manually about spaces.
-
-## 16. Linting
-
-`ruff` can detect:
-- unused imports;
-- undefined names;
-- many style/bug patterns.
-
-Static checks are cheap.
-
-## 17. Complexity vs readability
-
-One-liner:
-```python
-result = [transform(x) for x in values if is_valid(x) and x not in excluded]
-```
-is not automatically better than clear loop.
-
-Interview and production code should expose intent.
-
-## 18. Function size
-
-A function doing:
-```text
-read CSV
-clean
-train
-plot
-save
-email
-```
-is hard to test.
-
-Separate responsibilities:
-```text
-load_data
-build_features
-train
-evaluate
-save_artifact
-```
-
-## 19. Documentation
-
-Docstring useful when function behavior not obvious:
-
-```python
-def split_by_time(rows, cutoff):
-    """Split observations before cutoff into train and later into validation."""
-    train = [row for row in rows if row["timestamp"] < cutoff]
-    validation = [row for row in rows if row["timestamp"] >= cutoff]
-    return train, validation
-```
-
-Don't write docstring repeating `x: input x`.
-
-## 20. Reproducibility test
-
-A training pipeline can have smoke test on tiny synthetic dataset:
-```text
-runs without crash
-metric finite
-artifact saved
-```
-
-This catches broken interfaces quickly.
-
-## Сквозной пример: проверяем разбиение по времени
-
-Для функции `split_by_time(df, cutoff)` сначала фиксируют контракт: строки раньше границы идут в train, остальные — в validation, вход не изменяется, временная колонка имеет корректный тип. Type hints документируют ожидаемые объекты, но сами по себе не проверяют данные во время выполнения.
-
-Unit-тесты покрывают обычный случай, строку ровно на границе, пустую часть и неверный тип даты. Parametrization позволяет прогнать одно правило на нескольких границах. Если функция обязана отклонять некорректный вход, тест проверяет конкретное исключение, а не любой сбой.
-
-Интеграционный тест собирает маленький pipeline целиком и убеждается, что после разбиения модель обучается и делает прогноз нужной формы. Он не заменяет unit-тесты, а проверяет взаимодействие компонентов. Эталонный тест уместен только для стабильного результата; слишком большой эталон трудно осмысленно обновлять.
-
-Formatter и linter снимают механические споры, а понятные имена и небольшие функции оставляют человеку смысловую проверку. Для воспроизводимости фиксируют seed и версии, но честно учитывают операции и оборудование, где строгая детерминированность не гарантируется.
-
-## Визуализация DataPath
-
-Test pyramid:
-```text
-many fast unit
-some integration
-few full end-to-end
-```
-
-## Типичные ошибки
-
-- annotations but no checker;
-- `Any` everywhere;
-- only happy-path tests;
-- exact float equality;
-- slow full-training test for every function;
-- giant function impossible to isolate.
-
-## Проверка понимания
-
-1. Do annotations enforce runtime types?
-2. Why `T | None` useful?
-3. Unit vs integration?
-4. Why parametrization?
-5. How test float?
-6. What should feature pipeline test?
-7. Why formatter/linter useful?
-
-## Мини-практика
-
-Для функции `split_by_time(df, cutoff)` придумайте:
-- 3 unit tests;
-- 1 integration test with model pipeline.
-
-## Итог
-
-Quality layer:
-```text
-types
-→ small functions
-→ fast tests
-→ static checks
-→ integration smoke
-```
-
-## Куда дальше
-
-Последний урок Python Core: память, reference counting, garbage collection и GIL — ровно на уровне, нужном DS/ML Engineer.
+[Аннотации типов](https://docs.python.org/3/library/typing.html), [проверки pytest](https://docs.pytest.org/en/stable/how-to/assert.html).

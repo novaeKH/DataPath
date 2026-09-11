@@ -17,347 +17,114 @@ tags:
 - canonical/source
 ---
 
-# Надёжный Python
+# Надёжный Python: ошибки, файлы и окружение
 
-ML-скрипт падает не только из-за плохой модели.
+Скрипт может правильно считать результат на примере и ломаться при первом реальном файле. Файл отсутствует, кодировка отличается, обязательное поле не заполнено, установлена другая версия библиотеки. Надёжная программа отличает эти ситуации и сообщает, какое условие нарушено.
 
-Он может:
-- не найти файл;
-- получить неправильный JSON;
-- оставить файл открытым;
-- проглотить exception;
-- импортировать не ту версию module.
+Рассмотрим загрузку конфигурации эксперимента. Цель — получить проверенные настройки или понятную ошибку, а не продолжить обучение с незаметно испорченными значениями.
 
-Надёжность начинается с базового Python.
+## Исключение обозначает прерванный обычный путь
 
-## 1. Exception — сигнал о невозможности продолжить обычный путь
+Исключение — объект, сообщающий, что операция не может завершиться обычным образом. `int("12")` получает число, а `int("двенадцать")` вызывает `ValueError`. Это не обязательно авария всей программы: вызывающий код может обработать ожидаемую проблему.
 
 ```python
-int("abc")
-# ValueError
-```
-
-Python прекращает normal control flow и ищет handler.
-
-## 2. `try/except`
-
-Правильно:
-
-```python
-try:
-    value = int(raw)
-except ValueError:
-    value = None
-```
-
-Ловите конкретное exception.
-
-Плохо:
-
-```python
-try:
-    value = risky_operation()
-except Exception:
-    pass  # ошибка потеряна, а программа продолжает работу
-```
-
-Вы потеряете реальные bugs.
-
-## 3. `else` и `finally`
-
-```python
-try:
-    data = parse()
-except ValueError as exc:
-    print(f"Не удалось разобрать данные: {exc}")
-else:
-    use(data)
-finally:
-    cleanup()
-```
-
-- `else` — если exception не было;
-- `finally` — выполняется при выходе из try независимо от success/failure.
-
-## 4. `raise`
-
-```python
-if age < 0:
-    raise ValueError("age must be non-negative")
-```
-
-Создавайте ранний понятный failure вместо silent corrupted data.
-
-## 5. Exception chaining
-
-```python
-try:
-    model_path = config["model_path"]
-except KeyError as exc:
-    raise ConfigError("missing field") from exc
-```
-
-Сохраняет original cause.
-
-## 6. Context manager
-
-```python
-with open("data.txt") as f:
-    text = f.read()
-```
-
-После block файл закрывается даже при exception.
-
-Protocol:
-```text
-__enter__
-__exit__
-```
-
-## 7. Свой context manager
-
-```python
-from time import perf_counter
-from contextlib import contextmanager
-
-@contextmanager
-def timer():
-    started = perf_counter()
+def read_positive_integer(text):
     try:
-        yield
-    finally:
-        elapsed = perf_counter() - started
-        print(f"Выполнено за {elapsed:.3f} с")
+        value = int(text)
+    except ValueError as error:
+        raise ValueError("Ожидается целое число, например 32") from error
+    if value <= 0:
+        raise ValueError("Число должно быть положительным")
+    return value
+
+print(read_positive_integer("32"))   # 32
 ```
 
-Полезен для resources:
-- files;
-- transactions;
-- locks;
-- temporary settings.
+Блок `try` содержит действие, которое может завершиться ошибкой. `except ValueError` обрабатывает конкретный тип проблемы. `raise ... from error` сохраняет исходную причину: при отладке будет видно и понятное сообщение, и неудавшееся преобразование.
 
-## 8. Paths
+Не заменяйте любой сбой нулём. Тогда отсутствие данных превратится в настоящее числовое значение и исказит расчёт. Перехват `except Exception` уместен на границе приложения для регистрации неожиданного сбоя, но редко нужен вокруг каждой строки.
 
-Используйте `pathlib`:
+## Освобождение ресурса независимо от результата
 
-```python
-from pathlib import Path
-
-path = Path("data") / "train.csv"
-```
-
-Лучше manual string concat:
-```python
-"data/" + filename
-```
-
-`Path` понятнее и portable.
-
-## 9. Encoding
-
-Явно:
-
-```python
-path.read_text(encoding="utf-8")
-```
-
-Cross-platform data projects часто ломаются именно на encoding.
-
-## 10. JSON
+Открытый файл — ресурс, который нужно закрыть. Контекстный менеджер `with` выражает это правило:
 
 ```python
 import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
-data = json.loads(text)
+with TemporaryDirectory() as directory:
+    path = Path(directory) / "config.json"
+    path.write_text('{"batch_size": 32}', encoding="utf-8")
+    with path.open(encoding="utf-8") as source:
+        config = json.load(source)
+    print(config["batch_size"])   # 32
 ```
 
-JSON:
-- interoperability format;
-- не сохраняет arbitrary Python objects.
+После выхода из внутреннего блока файл закрыт, даже если чтение JSON завершилось исключением. После выхода из внешнего блока удаляется временный каталог этого примера. В реальном проекте вместо него будет ваш путь к конфигурации.
 
-Для config он безопаснее pickle-like artifact.
+`finally` выполняет завершающее действие при выходе из `try`, а `else` запускается, если в блоке `try` не возникло исключения. Для файлов `with` обычно яснее ручного закрытия в `finally`.
 
-## 11. Modules
+## Формат файла и проверка его смысла
 
-Файл:
-```text
-features.py
-```
+JSON задаёт синтаксис передачи чисел, строк, списков, словарей, логических значений и `null`. Корректный JSON ещё не гарантирует корректную конфигурацию. Строка `{"batch_size": -3}` читается успешно, но размер пакета недопустим.
 
-можно импортировать:
 ```python
-from features import build_features
+def validate_config(config):
+    batch_size = config.get("batch_size")
+    if type(batch_size) is not int or batch_size <= 0:
+        raise ValueError("batch_size должен быть положительным целым")
+    return {"batch_size": batch_size}
+
+print(validate_config({"batch_size": 32}))   # {'batch_size': 32}
 ```
 
-Module code executes on first import in process and result caches in `sys.modules`.
+Здесь намеренно используется `type(...) is int`: логические значения являются подклассом целых чисел, но `True` не должен считаться осмысленным размером пакета. `assert` подходит для внутренних предположений разработчика, но не для обязательной проверки входа: проверки `assert` можно отключить режимом запуска Python.
 
-## 12. `if __name__ == "__main__"`
+`Path` помогает работать с путями без ручного соединения строк. Кодировку задавайте явно. Относительный путь зависит от рабочей папки процесса, а не автоматически от расположения файла скрипта.
+
+## Модули и безопасный запуск
+
+Модуль — Python-файл, из которого можно импортировать функции и классы. Код верхнего уровня выполняется при первом импорте. Поэтому чтение большого датасета и запуск обучения не должны происходить просто от `import`.
 
 ```python
 def main():
-    data = load_data("data.csv")
-    print(f"Загружено строк: {len(data)}")
+    config = validate_config({"batch_size": 32})
+    print("Размер пакета:", config["batch_size"])
 
 if __name__ == "__main__":
     main()
 ```
 
-При запуске file напрямую `__name__ == "__main__"`.
+Условие запускает `main`, когда файл выполняется как программа, и пропускает запуск при импорте. Пакет объединяет связанные модули. Деление по ответственности позволяет отдельно проверить загрузку, преобразование и вычисление результата.
 
-При import — нет.
+## Окружение и диагностика
 
-Это отделяет reusable code от script entrypoint.
+Виртуальное окружение изолирует установленные библиотеки проекта. Команды для нового учебного проекта:
 
-## 13. Packages
-
-Directory with Python package structure allows:
-```text
-project/
-  src/
-    mypkg/
-      __init__.py
-      features.py
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install pytest
 ```
 
-Avoid хаотичный notebook-only import structure.
+В Windows команда активации отличается. В существующем DataPath используйте уже принятые команды проекта: создавать второе окружение поверх рабочего не требуется.
 
-## 14. Virtual environments
+Для воспроизводимости фиксируют зависимости и версию Python. Секреты и настройки запуска передают через окружение, а не включают в код. Для долговременной диагностики используют `logging`: уровни сообщений позволяют отделить обычный ход работы от предупреждений и ошибок. В логи не следует без необходимости помещать исходные персональные данные.
 
-Project dependencies should not share one global Python environment.
+## Самопроверка и практика
 
-Use:
-```text
-venv
-conda
-uv
-poetry
-```
-depending workflow.
+1. Почему «поймать любую ошибку и вернуть ноль» часто опаснее остановки?
+2. Чем корректный JSON отличается от допустимой конфигурации?
+3. Когда закрывается файл в `with`?
+4. Почему импорт модуля не должен начинать обучение?
 
-Core goal:
-> isolated reproducible dependency environment.
+Разбор: ошибка превращается в правдоподобные данные; формат не проверяет ограничения задачи; файл закрывается при выходе из контекста; импорт нужен для повторного использования и тестирования, а не для запуска побочных действий.
 
-## 15. Dependency pinning
+**Практика.** Добавьте в конфигурацию `learning_rate`. Принимайте числа больше нуля, отклоняйте строки и логические значения. Проверьте `0.1`, `0`, `"0.1"` и `True`. Для каждой ошибки напишите сообщение, которое поможет исправить вход.
 
-```text
-pandas>=...
-```
-может install future incompatible version.
+В визуализации пройдите успешное чтение и ошибку внутри контекста: освобождение ресурса должно произойти в обоих случаях. Следующий урок покажет, как такие ожидания записываются в тестах.
 
-For reproducibility use constraints/lock strategy.
+## Источники
 
-Do not confuse:
-- isolated environment;
-- reproducibly pinned environment.
-
-Both matter.
-
-## 16. Environment variables
-
-Secrets/config:
-```python
-import os
-api_key = os.getenv("API_KEY")
-```
-
-Do not commit secrets in source code.
-
-For local development `.env` may help, but `.env` with secrets should not be committed.
-
-## 17. Logging instead of `print`
-
-```python
-import logging
-
-logger = logging.getLogger(__name__)
-logger.info("loaded %d rows", n)
-```
-
-Logging supports levels/handlers/structured systems.
-
-Notebook exploratory `print` fine; service code needs logging.
-
-## 18. Assertions
-
-```python
-assert len(X) == len(y)
-```
-
-Useful internal invariants during development.
-
-But don't use `assert` for user input/business validation because optimized Python can remove assertions.
-
-## 19. Fail fast
-
-Good pipeline:
-```text
-validate schema
-→ fail with clear error
-```
-
-Bad:
-```text
-continue with broken data
-→ obscure error 20 steps later
-```
-
-## Сквозной пример: безопасная загрузка конфигурации
-
-Функция читает JSON-конфигурацию эксперимента. Открытие файла выполняется через `with`, поэтому ресурс закроется и при успехе, и при исключении. Сначала отдельно обрабатывается ожидаемая ошибка отсутствующего файла, затем ошибка разбора JSON; перехватывать общий `Exception` и продолжать с пустой конфигурацией опасно, потому что причина теряется.
-
-После чтения проверяются обязательные поля и диапазоны. Если `learning_rate` отрицателен, программа должна завершиться рядом с источником проблемы, а не спустя час обучения. При повторном возбуждении ошибки конструкция `raise ... from exc` сохраняет исходную причину и добавляет понятный контекст.
-
-Путь строится через `pathlib`, текст открывается с явной кодировкой, секреты берутся из переменных окружения, но сами значения не пишутся в лог. Модуль предоставляет функции, а блок `if __name__ == "__main__"` запускает командный сценарий только при прямом вызове файла.
-
-Виртуальное окружение изолирует зависимости проекта, а зафиксированные версии позволяют воспроизвести запуск. Надёжность возникает из цепочки небольших контрактов: ресурс освобождается, ожидаемые ошибки названы, вход проверен рано, а окружение и зависимости описаны.
-
-## Визуализация DataPath
-
-Exception flow graph and `with` resource timeline.
-
-## Типичные ошибки
-
-- bare `except`;
-- swallow exception;
-- no encoding;
-- global Python env;
-- secrets in repository;
-- `assert` as external validation;
-- script executing training on import.
-
-## Проверка понимания
-
-1. Why catch specific exceptions?
-2. `finally`?
-3. What does `with` guarantee?
-4. Why `Path`?
-5. What does `__main__` guard do?
-6. Why virtual env?
-7. Why env vars for secrets?
-8. When logging better than print?
-
-## Мини-практика
-
-Напишите функцию:
-```python
-load_config(path)
-```
-которая:
-- читает UTF-8 JSON;
-- выдаёт clear error при missing file;
-- проверяет наличие key `model_name`.
-
-## Итог
-
-Надёжный Python:
-```text
-явные ошибки
-→ controlled resources
-→ portable paths
-→ modular code
-→ isolated environment
-```
-
-## Куда дальше
-
-Следующий урок — типизация, тестирование и качество кода: как уменьшать число ошибок ещё до запуска модели.
+[Исключения Python](https://docs.python.org/3/tutorial/errors.html), [pathlib](https://docs.python.org/3/library/pathlib.html), [виртуальные окружения](https://docs.python.org/3/tutorial/venv.html).

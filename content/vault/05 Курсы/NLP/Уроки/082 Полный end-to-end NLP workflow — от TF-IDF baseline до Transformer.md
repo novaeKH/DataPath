@@ -14,7 +14,7 @@ module_order: 3
 lesson_order: 2
 canonical_number: 82
 content_path: 10 Знания/DataPath v2/13_NLP_DataPath_v2/source-082 Полный end-to-end NLP workflow — от TF-IDF baseline до Transformer.md
-estimated_minutes: 95
+estimated_minutes: 35
 difficulty: capstone
 skill_ids:
 - datapath.v2.082
@@ -32,7 +32,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №82, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Провести NLP-эксперимент от договора входа до финального теста.
+- Сохранить воспроизводимый артефакт и определить политику неизвестных намерений.
 
 ## Сценарий урока
 
@@ -40,6 +43,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

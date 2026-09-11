@@ -14,7 +14,7 @@ module_order: 1
 lesson_order: 1
 canonical_number: 61
 content_path: 10 Знания/DataPath v2/11_DL_Foundations_DataPath_v2/source-061 От линейной модели к нейрону — тензоры, формы и Linear layer.md
-estimated_minutes: 55
+estimated_minutes: 25
 difficulty: foundation
 skill_ids:
 - dl.foundations
@@ -31,7 +31,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №61, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Проследить формы от пакета данных до линейного слоя.
+- Вычислить выход нейрона и найти опасное broadcasting в loss.
 
 ## Сценарий урока
 
@@ -39,6 +42,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

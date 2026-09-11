@@ -17,832 +17,149 @@ tags:
 - canonical/source
 ---
 
-# Полный PyTorch workflow: от Dataset до inference
+# Полный цикл PyTorch: данные, обучение, проверка и сохранение
 
-Знать `nn.Linear` и backprop недостаточно, чтобы решить реальную DL-задачу.
+Работающая архитектура ещё не означает работающий эксперимент. Можно правильно написать слои и получить неверную оценку из-за утечки, режима dropout или ошибки усреднения. В этой главе соберём маленькую задачу целиком: от исходных объектов до повторного предсказания сохранённой моделью.
 
-Нужен воспроизводимый pipeline:
+Все блоки Python выполняются последовательно в одном процессе. Данные синтетические, интернет и видеокарта не нужны. Это учебная проверка жизненного цикла, а не доказательство качества нейросетей на реальной задаче.
 
-```text
-raw data
-→ Dataset
-→ DataLoader
-→ model
-→ optimizer
-→ train loop
-→ validation
-→ checkpoint
-→ test
-→ inference
-```
+## Данные сначала разделяем, потом изучаем
 
-Этот урок собирает всё в один рабочий каркас.
-
----
-
-## 1. Разделение responsibilities
-
-Хороший project не превращает один notebook cell в 500 строк.
-
-Conceptual components:
-
-```text
-data preparation
-Dataset
-DataLoader
-model
-loss
-optimizer
-training step
-validation
-metrics
-checkpoint
-inference
-config
-```
-
-Разделение делает debugging проще.
-
----
-
-## 2. Dataset
-
-PyTorch map-style `Dataset` обычно определяет:
+Создадим объекты с двумя признаками. Класс зависит от суммы признаков с небольшим шумом. Случайное разбиение допустимо именно для этих независимо сгенерированных объектов. Для временных рядов или нескольких записей одного пользователя способ разбиения нужно менять.
 
 ```python
-__len__()
-__getitem__(index)
+import copy
+import torch
+from torch import nn
+from torch.utils.data import TensorDataset, DataLoader
+
+torch.manual_seed(7)
+X = torch.randn(240, 2)
+y = (X[:, 0] + X[:, 1] + 0.15 * torch.randn(240) > 0).long()
+order = torch.randperm(len(X))
+train_ids, valid_ids, test_ids = order[:160], order[160:200], order[200:]
+mean = X[train_ids].mean(0)
+scale = X[train_ids].std(0).clamp_min(1e-6)
+
+def dataset(indices):
+    return TensorDataset((X[indices] - mean) / scale, y[indices])
+
+train_loader = DataLoader(dataset(train_ids), batch_size=32, shuffle=True)
+valid_loader = DataLoader(dataset(valid_ids), batch_size=32)
+test_loader = DataLoader(dataset(test_ids), batch_size=32)
 ```
 
-Пример:
+Среднее и масштаб вычислены только на обучающей части. Валидация и тест используют эти же числа. TensorDataset связывает признаки с меткой одного объекта; DataLoader собирает объекты в пакеты. Для файлов или сложных преобразований можно написать собственный Dataset с `__len__` и `__getitem__`, сохранив ту же роль.
+
+Перемешивание train меняет состав и порядок пакетов, но не разрывает пары признаков и меток. Валидацию перемешивать обычно не требуется.
+
+## Один обучающий шаг и его порядок
+
+Возьмём MLP с двумя выходными логитами. CrossEntropyLoss сама выполняет нужное преобразование логитов; softmax перед ней не добавляем.
 
 ```python
-from torch.utils.data import Dataset
+model = nn.Sequential(nn.Linear(2, 16), nn.ReLU(), nn.Linear(16, 2))
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
+loss_fn = nn.CrossEntropyLoss()
 
-class TabularDataset(Dataset):
-    def __init__(self, X, y):
-        self.X = X
-        self.y = y
-
-    def __len__(self):
-        return len(self.X)
-
-    def __getitem__(self, idx):
-        return self.X[idx], self.y[idx]
-```
-
-Dataset отвечает:
-
-> как получить один training example.
-
----
-
-## 3. DataLoader
-
-`DataLoader` отвечает за batching/loading:
-
-```python
-from torch.utils.data import DataLoader
-
-loader = DataLoader(
-    dataset,
-    batch_size=128,
-    shuffle=True,
-)
-```
-
-Он формирует batches и может использовать worker processes, pinned memory и другие mechanisms.
-
----
-
-## 4. Shuffle
-
-Training:
-
-```text
-shuffle=True
-```
-
-обычно помогает менять batch composition между epochs.
-
-Validation/test:
-
-```text
-shuffle=False
-```
-
-чаще проще и reproducible.
-
-Для time-series sequence задачи нельзя автоматически shuffle temporal samples, если это разрушает training semantics.
-
----
-
-## 5. Custom collate
-
-Если examples имеют variable length:
-
-```text
-text sequences
-audio
-objects per image
-```
-
-обычный stacking не работает.
-
-Можно определить `collate_fn`, который:
-
-- pads;
-- builds masks;
-- packs sequences;
-- объединяет variable-size labels.
-
-DataLoader отвечает за batch construction, не обязательно Dataset.
-
----
-
-## 6. Device transfer
-
-Batch от DataLoader обычно появляется на CPU.
-
-В loop:
-
-```python
-x = x.to(device)
-y = y.to(device)
-```
-
-Model:
-
-```python
-model.to(device)
-```
-
-Device transfer — часть performance path.
-
-Нельзя случайно копировать tensors CPU↔GPU много раз внутри inner operations.
-
----
-
-## 7. Train mode
-
-Перед train:
-
-```python
-model.train()
-```
-
-Это включает training behavior layers вроде:
-
-- Dropout;
-- BatchNorm.
-
-Затем:
-
-```text
-zero gradients
-forward
-loss
-backward
-step
-```
-
----
-
-## 8. Validation mode
-
-Перед validation:
-
-```python
-model.eval()
-```
-
-И:
-
-```python
-with torch.no_grad():
-    for xb, yb in valid_loader:
-        logits = model(xb)
-        valid_loss += loss_fn(logits, yb).item()
-```
-
-`eval()` меняет layer behavior.
-
-`no_grad()` отключает autograd tracking.
-
-Нужны по разным причинам.
-
----
-
-## 9. Полный training epoch
-
-```python
-def train_one_epoch(
-    model,
-    loader,
-    loss_fn,
-    optimizer,
-    device,
-):
+def train_epoch():
     model.train()
-
-    total_loss = 0.0
-
-    for x, y in loader:
-        x = x.to(device)
-        y = y.to(device)
-
-        optimizer.zero_grad()
-
-        logits = model(x)
-        loss = loss_fn(logits, y)
-
+    total_loss, count = 0.0, 0
+    for features, target in train_loader:
+        optimizer.zero_grad(set_to_none=True)
+        logits = model(features)
+        loss = loss_fn(logits, target)
         loss.backward()
         optimizer.step()
-
-        total_loss += loss.item() * x.size(0)
-
-    return total_loss / len(loader.dataset)
+        total_loss += loss.item() * len(target)
+        count += len(target)
+    return total_loss / count
 ```
 
-Почему умножаем loss на batch size?
+Обнуление удаляет градиенты предыдущего шага. Forward строит прогноз, loss измеряет расхождение, backward вычисляет градиенты, а optimizer меняет параметры. Перестановка backward и step изменит смысл или сделает обучение неработающим.
 
-Если loss averaged per batch, последний batch может иметь другой size. Weighted accumulation даёт корректнее average per sample.
+Средняя ошибка пакета умножается на его размер перед суммированием. Иначе короткий последний пакет получит такой же вес, как полный, и итоговая средняя будет искажена.
 
----
-
-## 10. Validation epoch
+## Валидация ничего не обучает
 
 ```python
-def evaluate(
-    model,
-    loader,
-    loss_fn,
-    device,
-):
+def evaluate(loader):
     model.eval()
-
-    total_loss = 0.0
-
+    total_loss, correct, count = 0.0, 0, 0
     with torch.no_grad():
-        for x, y in loader:
-            x = x.to(device)
-            y = y.to(device)
+        for features, target in loader:
+            logits = model(features)
+            total_loss += loss_fn(logits, target).item() * len(target)
+            correct += (logits.argmax(1) == target).sum().item()
+            count += len(target)
+    return total_loss / count, correct / count
 
-            logits = model(x)
-            loss = loss_fn(logits, y)
+best_loss = float("inf")
+best_state = None
+for epoch in range(30):
+    train_loss = train_epoch()
+    valid_loss, valid_accuracy = evaluate(valid_loader)
+    if valid_loss < best_loss:
+        best_loss = valid_loss
+        best_state = copy.deepcopy(model.state_dict())
 
-            total_loss += loss.item() * x.size(0)
-
-    return total_loss / len(loader.dataset)
+model.load_state_dict(best_state)
+test_loss, test_accuracy = evaluate(test_loader)
+print(round(test_loss, 3), round(test_accuracy, 3))
 ```
 
-Metrics могут потребовать accumulate predictions/targets.
+Точная метрика зависит от вычислительной среды, но задача должна обучаться заметно лучше постоянного ответа. Главное здесь — тест используется после выбора состояния по валидации, а не для выбора каждой эпохи.
 
----
+`eval()` переключает поведение dropout и BatchNorm. `no_grad()` отключает построение графа для градиентов. Это разные механизмы. Для ROC-AUC и некоторых других метрик недостаточно усреднить результаты отдельных пакетов: нужно собрать оценки и метки всей выборки.
 
-## 11. Не считать metric по среднему batch score без понимания
+## Сохраняем не только веса
 
-Некоторые metrics decomposable, другие нет.
-
-Например ROC-AUC нельзя корректно получить просто:
-
-```text
-mean(batch_auc)
-```
-
-в общем случае.
-
-Нужно собрать predictions для всего validation set и посчитать metric globally.
-
----
-
-## 12. Checkpoint
-
-Сохранять entire Python model object возможно, но рекомендуемый robust pattern обычно связан с `state_dict`.
+`state_dict` содержит параметры и буферы, но не исходный код архитектуры и не договорённость о признаках. Чтобы воспроизвести прогноз, нужно сохранить масштабирование и порядок входов. Следующий пример пишет только во временный каталог, который затем очищается.
 
 ```python
-torch.save(
-    model.state_dict(),
-    "model.pt",
-)
-```
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
-Load:
-
-```python
-model = MyModel(...)
-state = torch.load(
-    "model.pt",
-    map_location=device,
-)
-model.load_state_dict(state)
-```
-
-Architecture/config должны быть известны отдельно.
-
----
-
-## 13. Training checkpoint больше model weights
-
-Чтобы продолжить training точно с определённого step, полезно сохранять:
-
-```text
-model_state_dict
-optimizer_state_dict
-scheduler_state_dict
-epoch
-best_metric
-config
-```
-
-Например:
-
-```python
-torch.save({
-    "model": model.state_dict(),
-    "optimizer": optimizer.state_dict(),
-    "epoch": epoch,
-}, path)
-```
-
----
-
-## 14. Best checkpoint
-
-Если validation metric:
-
-```text
-epoch 5  = 0.81
-epoch 10 = 0.85
-epoch 20 = 0.82
-```
-
-финальная model не должна автоматически быть epoch 20.
-
-Сохраняем best validation checkpoint.
-
-Early stopping и best checkpoint связаны.
-
----
-
-## 15. Test set
-
-Test не используется:
-
-- для lr;
-- для architecture;
-- для stopping;
-- для threshold iteration.
-
-После freeze model:
-
-```text
-load best config/checkpoint
-→ one final evaluation
-```
-
-Это те же principles Classic ML.
-
----
-
-## 16. Reproducibility
-
-Seeds:
-
-```python
-import random
-import numpy as np
-import torch
-
-seed = 42
-random.seed(seed)
-np.random.seed(seed)
-torch.manual_seed(seed)
-```
-
-Но exact determinism зависит от device/backend/operators.
-
-Seeds нужны, но не являются absolute guarantee identical results across hardware/software.
-
----
-
-## 17. Data leakage в DL
-
-DL не отменяет leakage.
-
-Примеры:
-
-- image duplicates across train/test;
-- same patient both splits;
-- augment validation with training-only stochastic transforms;
-- normalization statistics whole dataset;
-- future tokens/time windows;
-- fine-tune on test labels.
-
-Сильная network ещё эффективнее exploits leakage.
-
----
-
-## 18. Normalization data
-
-Image normalization constants должны fit/come from training recipe.
-
-Если pretrained model ожидает known normalization, используем соответствующий preprocessing.
-
-Если statistics свои — считаем их по training data.
-
----
-
-## 19. Mixed precision
-
-Modern GPU training часто использует lower precision.
-
-Идея:
-
-```text
-FP16/BF16 for many operations
-→ speed/memory gains
-```
-
-PyTorch предоставляет automatic mixed precision mechanisms.
-
-Exact API depends device/version, но conceptual flow:
-
-```text
-autocast forward/loss
-→ scaled or appropriate backward
-→ optimizer
-```
-
-BF16 имеет larger exponent range, часто более stable, но hardware support важна.
-
----
-
-## 20. Gradient accumulation
-
-Если desired effective batch:
-
-```text
-256
-```
-
-но GPU вмещает 64:
-
-```text
-4 mini-batches
-→ accumulate gradients
-→ one optimizer step
-```
-
-Нужно корректно scale loss, если хотим average equivalent behavior.
-
----
-
-## 21. Gradient clipping
-
-Optional:
-
-```python
-loss.backward()
-
-torch.nn.utils.clip_grad_norm_(
-    model.parameters(),
-    max_norm=1.0,
-)
-
-optimizer.step()
-```
-
-Не вставлять blindly. Нужен при diagnostic reason.
-
----
-
-## 22. Scheduler
-
-Scheduler может update lr:
-
-- per epoch;
-- per optimizer step.
-
-Нужно читать contract конкретного scheduler.
-
-Ошибочное место `scheduler.step()` может изменить training schedule.
-
----
-
-## 23. Logging
-
-Минимум:
-
-```text
-epoch
-train loss
-validation loss
-primary metric
-learning rate
-time
-```
-
-Advanced:
-
-```text
-gradient norm
-GPU memory
-throughput
-weight norm
-```
-
-Без logs невозможно сравнивать experiments.
-
----
-
-## 24. Experiment config
-
-Не прятать hyperparameters в 20 cells.
-
-Config:
-
-```yaml
-batch_size: 128
-lr: 0.001
-weight_decay: 0.01
-hidden_size: 256
-epochs: 50
-seed: 42
-```
-
-Так experiment можно воспроизвести и сравнить.
-
----
-
-## 25. Model summary / parameter count
-
-Перед training проверить:
-
-```text
-input shapes
-output shapes
-parameter count
-```
-
-Очень полезно сделать один dummy forward:
-
-```python
-x = torch.randn(...)
-with torch.no_grad():
-    y = model(x)
-print(y.shape)
-```
-
-Это ловит shape errors до часов training.
-
----
-
-## 26. Overfit one batch
-
-До full training:
-
-```text
-взять один tiny batch
-→ train many steps
-→ model должна почти memorise it
-```
-
-Если не может:
-
-- wrong loss;
-- labels;
-- gradients;
-- optimizer;
-- architecture;
-- dtype/shape.
-
-Это один из самых сильных debugging tools.
-
----
-
-## 27. Baseline
-
-Даже в DL нужен baseline.
-
-Image:
-
-```text
-simple CNN
-```
-
-Text:
-
-```text
-TF-IDF + Logistic Regression
-```
-
-Time series:
-
-```text
-last value / boosting lag features
-```
-
-Если huge Transformer barely beats TF-IDF, это важный result.
-
----
-
-## 28. Inference
-
-```python
 model.eval()
-
+probe = torch.tensor([[0.5, 1.0]])
 with torch.no_grad():
-    logits = model(x)
+    before = model((probe - mean) / scale)
+
+with TemporaryDirectory() as tmp:
+    path = Path(tmp) / "model.pt"
+    torch.save({"state": model.state_dict(), "mean": mean, "scale": scale}, path)
+    saved = torch.load(path, weights_only=True)
+    restored = nn.Sequential(nn.Linear(2, 16), nn.ReLU(), nn.Linear(16, 2))
+    restored.load_state_dict(saved["state"])
+    restored.eval()
+    with torch.no_grad():
+        after = restored((probe - saved["mean"]) / saved["scale"])
+    print(torch.allclose(before, after))  # True
 ```
 
-Затем task-specific postprocessing:
+Для продолжения обучения дополнительно нужны состояние optimizer, номер шага и, при использовании, scheduler и состояние случайных генераторов. Загружайте только доверенные артефакты; сериализация не превращает неизвестный файл в безопасный.
 
-Classification:
+## Отладка до большого эксперимента
 
-```text
-softmax/sigmoid
-threshold/argmax
-```
+Сначала проверьте форму одного пакета и одного выхода. Затем попробуйте переобучить сеть на нескольких объектах: если даже маленький набор не запоминается, вероятны ошибка меток, loss, градиентов или режима обучения. Это диагностический тест, а не финальный способ оценивать качество.
 
-Regression:
+Если loss становится NaN, проверьте входы, деления на ноль и величину шага. Если train улучшается, а validation ухудшается, посмотрите на переобучение и различие распределений. Не начинайте с увеличения модели.
 
-```text
-raw numeric output
-```
+Mixed precision и накопление градиентов полезны при ограничении ресурсов, но добавляют условия корректности. Сначала добейтесь воспроизводимого базового цикла; перенос на устройство должен перемещать и модель, и соответствующие тензоры.
 
----
+## Самопроверка и практика
 
-## 29. Batch inference
+1. Почему mean и scale нельзя вычислять по всему X?
+2. Зачем умножать среднюю loss пакета на его размер?
+3. Почему best_state копируется, а не просто присваивается?
+4. Что потеряется, если сохранить только веса?
 
-Даже production inference часто быстрее batches, если latency constraints allow.
+Разбор: оценка получит информацию из отложенных данных; пакетам нужен вес по числу объектов; ссылки на изменяемые тензоры могут продолжить меняться при обучении; исчезнут преобразование входов, архитектура и условия использования.
 
-GPU плохо используется при tiny one-object calls relative to its parallel capacity.
+**Практика.** Замените размер пакета на 17. Число объектов не изменилось, последний пакет станет короче. Проверьте, что оценка loss учитывает каждый объект один раз, а сохранение и загрузка по-прежнему дают `True`. Затем специально уберите масштабирование только при inference и объясните, почему тот же набор весов уже не означает тот же прогноз.
 
-Но online low-latency serving требует trade-off batch delay vs throughput.
-
----
-
-## 30. Input contract
-
-DL model особенно чувствительна к exact preprocessing:
-
-- image size;
-- normalization;
-- tokenizer version;
-- max length;
-- vocabulary;
-- channel order;
-- dtype.
-
-Model artifact без preprocessing metadata неполон.
-
----
-
-## 31. TorchScript / compile / export — не foundation goal
-
-PyTorch ecosystem имеет mechanisms optimization/export:
-
-- `torch.compile`;
-- ONNX/export paths;
-- deployment runtimes.
-
-Но foundation project сначала должен быть correct.
-
-Не надо prematurely optimize deployment, пока training/evaluation не stable.
-
----
-
-## 32. Интерактивная визуализация DataPath
-
-### Training state machine
-
-```text
-Dataset
-→ DataLoader
-→ batch
-→ device
-→ train()
-→ forward
-→ backward
-→ optimizer
-```
-
-### Train vs Eval
-
-Dropout/BatchNorm behavior shown.
-
-### Checkpoint timeline
-
-Epoch metrics и selected best checkpoint.
-
-### Leakage challenge
-
-Пользователь отмечает:
-- normalization before split;
-- duplicate patient;
-- test tuning;
-- augmentation validation.
-
----
-
-## 33. Типичные ошибки
-
-**«Dataset сам обязательно делает batching».**\
-Обычно batching — DataLoader/collate.
-
-**«Validation тоже `model.train()`».**\
-Нет.
-
-**«`eval()` заменяет `no_grad()`».**\
-Нет.
-
-**«Среднее batch ROC-AUC = dataset ROC-AUC».**\
-Нет.
-
-**«Последний epoch = лучший».**\
-Нет.
-
-**«`state_dict` хранит architecture class code».**\
-Нет, главным образом parameter/buffer states.
-
-**«DL split rules отличаются от ML и leakage не страшен».**\
-Нет.
-
----
-
-## 34. Проверка понимания
-
-1. Dataset vs DataLoader?
-2. Что делает shuffle?
-3. Когда нужен collate_fn?
-4. `train()` vs `eval()`?
-5. `eval()` vs `no_grad()`?
-6. Почему global metric нельзя всегда average by batch?
-7. Что сохраняет state_dict?
-8. Что входит resume checkpoint?
-9. Зачем overfit one batch?
-10. Что такое gradient accumulation?
-11. Зачем mixed precision?
-12. Что обязательно хранить про preprocessing?
-
----
-
-## 35. Мини-практика: каркас проекта
-
-Напишите structure project:
-
-```text
-data.py
-model.py
-train.py
-evaluate.py
-config.yaml
-checkpoints/
-```
-
-И опишите responsibility каждого.
-
-Затем задайте lifecycle:
-
-```text
-split
-→ train loader
-→ valid loader
-→ model
-→ optimizer
-→ epochs
-→ best checkpoint
-→ test
-→ inference
-```
-
----
-
-## 36. Что нужно унести
-
-1. DL project — pipeline, не только architecture.
-2. Dataset даёт examples, DataLoader — batches.
-3. Train/eval modes обязательны.
-4. `no_grad` отключает gradient tracking.
-5. Validation metrics считаются корректно на whole validation where needed.
-6. Best checkpoint выбирается validation.
-7. Test остаётся untouched.
-8. Resume checkpoint включает optimizer/scheduler state.
-9. Input preprocessing — часть model contract.
-10. One-batch overfit и dummy forward — базовые debugging tests.
-11. Logs/config нужны для reproducibility.
-12. Mixed precision/accumulation — engineering tools, а не замена корректности.
-
-## Куда дальше
-
-Последний урок блока отвечает на практический вопрос:
-
-> **зачем обучать большую сеть с нуля, если кто-то уже выучил полезные representations на миллионах объектов?**
-
-Следующая тема — transfer learning и fine-tuning.
+Следующая глава покажет, какие части этого цикла меняются, когда начинаем с готовых весов.
 
 ## Источники
-- PyTorch DataLoader/Dataset documentation.
-- PyTorch saving/loading models tutorial.
-- PyTorch training recipes.
+
+[Dataset и DataLoader](https://docs.pytorch.org/tutorials/beginner/basics/data_tutorial.html), [сохранение и загрузка](https://docs.pytorch.org/tutorials/beginner/saving_loading_models.html), [воспроизводимость](https://docs.pytorch.org/docs/stable/notes/randomness.html).

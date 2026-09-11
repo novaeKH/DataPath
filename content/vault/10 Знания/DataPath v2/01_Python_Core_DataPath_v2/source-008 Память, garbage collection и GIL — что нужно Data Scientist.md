@@ -17,322 +17,92 @@ tags:
 - canonical/source
 ---
 
-# Память, GC и GIL
+# Память и параллельность: почему скрипту не хватает ресурсов
 
-Почему:
-```python
-df.copy()
-```
-иногда удваивает memory?
+Ноутбук читает таблицу, делает несколько преобразований и неожиданно занимает всю память. Причиной может быть не исходный файл, а несколько одновременно живущих копий. Прежде чем менять компьютер или добавлять процессы, нужно понять, какие данные программа удерживает и где тратит время.
 
-Почему Python thread не ускоряет CPU-heavy loop?
+Этот урок связывает модель объектов Python с обработкой больших данных. Обсуждение относится прежде всего к CPython; детали управления памятью зависят от реализации и сборки интерпретатора.
 
-Почему NumPy nevertheless может использовать несколько CPU cores?
+## Память занимает граф объектов
 
-Нужна базовая модель runtime, но без погружения в CPython internals ради internals.
-
-## 1. Objects consume memory
-
-Python `int` — не raw 8-byte C integer. Это полноценный object с metadata.
-
-List хранит ссылки на Python objects.
-
-Поэтому:
-```python
-[1, 2, 3]
-```
-намного тяжелее плотного NumPy `int64` array.
-
-Это одна из причин NumPy эффективнее для numeric data.
-
-## 2. Reference counting
-
-CPython в основном отслеживает количество ссылок на object.
-
-Когда refcount становится 0, object можно освободить.
+Список хранит ссылки на объекты и собственный служебный буфер. Объекты, на которые он ссылается, также занимают память. Поэтому размер внешнего контейнера не равен размеру всех вложенных данных.
 
 ```python
-x = [1,2]
-y = x
-del x
+import sys
+
+values = [1, 2, 3]
+print(sys.getsizeof(values))
+print(sum(sys.getsizeof(value) for value in values))
 ```
 
-Object всё ещё нужен через `y`.
+Точные числа зависят от среды. Второе выражение тоже не является универсальным измерителем: при общих ссылках оно может посчитать один объект несколько раз, а некоторые библиотеки хранят память вне обычных Python-объектов.
 
-После:
-```python
-del y
-```
-ссылок нет.
+Для числовой матрицы можно оценить хотя бы основной буфер. Миллион строк, сто признаков и восемь байт на число дают 800 миллионов байт, примерно 763 MiB. Три полные копии потребуют уже около 2.3 GiB только для этих буферов. Служебные структуры и временные результаты увеличат расход.
 
-## 3. Cycles
+## Почему del не равен немедленному освобождению всей памяти
 
-```python
-a = []
-a.append(a)
-```
-
-Object ссылается сам на себя.
-
-Refcount alone не станет 0.
-
-CPython имеет cyclic garbage collector для таких reference cycles.
-
-## 4. `gc` module
-
-Можно inspect/control GC через `gc`, но обычному DS редко нужно вручную вызывать collection.
-
-Если memory leak, сначала ищите:
-- retained references;
-- growing caches;
-- DataFrame copies;
-- lists of predictions/logs.
-
-Не начинайте с `gc.collect()` как универсального fix.
-
-## 5. Why deleting variable may not reduce OS memory immediately
+В обычной сборке CPython подсчёт ссылок помогает освободить многие объекты, когда они больше никому не нужны. Но удаление одного имени не убирает остальные ссылки:
 
 ```python
-del df
+values = [1, 2, 3]
+alias = values
+del values
+print(alias)   # [1, 2, 3]
 ```
 
-удаляет reference, но:
-- other references may remain;
-- Python allocator may keep memory for reuse;
-- library allocator/native buffers may behave differently.
+Объект продолжает жить. Циклические ссылки требуют дополнительного сборщика мусора: объект может ссылаться на себя или через другой объект, оставаясь недоступным программе. Модуль `gc` позволяет исследовать такую работу, но ручной вызов сборщика не исправляет коллекцию, которую код намеренно продолжает хранить.
 
-`del` не гарантирует мгновенное падение RSS процесса.
+После освобождения объектов процесс не обязан сразу вернуть все страницы операционной системе: распределитель памяти может оставить их для повторного использования. Поэтому неизменившееся число в диспетчере задач само по себе не доказывает утечку.
 
-## 6. Copies
+## Сначала измерим
 
-Pandas/NumPy operations can create copies.
+Для времени используйте `time.perf_counter` или профилировщик. Для Python-выделений памяти полезен `tracemalloc`:
 
 ```python
-b = a.copy()
+import tracemalloc
+
+tracemalloc.start()
+values = [number * number for number in range(100_000)]
+current, peak = tracemalloc.get_traced_memory()
+print("Текущие байты:", current)
+print("Пиковые байты:", peak)
+del values
+tracemalloc.stop()
 ```
 
-explicit.
+Пик показывает, сколько отслеживаемой памяти было одновременно занято. Это особенно полезно, если большой временный объект уже исчез к концу функции. Инструмент не является полным измерителем всей памяти процесса, GPU и любых нативных библиотек.
 
-Но некоторые operations may return view or copy depending API.
+Следующий шаг — найти конкретную причину: накопление результатов в списке, повторные копии таблицы, слишком широкий тип числа, ненужные столбцы, материализация генератора. После исправления повторите тот же замер на тех же данных.
 
-Need understand specific library semantics.
+## GIL и выбор способа параллельной работы
 
-## 7. NumPy density
+В обычной сборке CPython с GIL только один поток одновременно выполняет Python-код внутри интерпретатора. Это ограничивает ускорение тяжёлого чистого Python-цикла с помощью потоков. Но поток, ожидающий сеть или диск, не выполняет такой цикл; другие потоки могут в это время работать.
 
-Million Python floats in list:
-- million Python objects;
-- million references.
+Некоторые численные библиотеки освобождают GIL во время нативных вычислений и используют собственные потоки. Поэтому фраза «потоки в Python никогда не ускоряют вычисления» неверна.
 
-NumPy:
-```text
-one ndarray object
-+ contiguous numeric buffer
-```
+Начиная с Python 3.13 существуют также сборки с возможностью работы без GIL. Это отдельная конфигурация, а не автоматическое свойство любого установленного Python. Совместимость расширений и фактический режим нужно проверять. Отсутствие GIL не делает одновременное изменение общих данных автоматически безопасным.
 
-much more memory-efficient.
+## Процессы, asyncio и лишняя параллельность
 
-## 8. GIL
+Процессы имеют отдельные интерпретаторы и могут выполнять Python-код параллельно. За это платят запуском, передачей данных и возможными копиями памяти. Если каждому из восьми процессов отправить большую таблицу, память может закончиться раньше, чем появится ускорение.
 
-**Global Interpreter Lock (GIL)** in standard CPython traditionally allows only one thread at a time to execute Python bytecode within a process.
+`asyncio` организует совместное ожидание множества операций ввода-вывода. Оно не превращает вычислительный цикл в параллельный. Выбор зависит от того, что занимает время: ожидание, Python-вычисления или нативная численная операция.
 
-Therefore CPU-bound pure-Python loop:
-```text
-2 threads
-```
-usually doesn't scale to 2 CPU cores.
+В ML легко создать лишнюю конкуренцию: несколько процессов подбора параметров, каждый со многопоточной моделью и многопоточной линейной алгеброй. Число активных вычислителей становится больше числа ядер. Иногда ограничение одного уровня параллельности ускоряет эксперимент.
 
-## 9. Threads still useful
+## Самопроверка и практика
 
-If thread waits:
-- network;
-- disk;
-- DB,
+1. Почему `del table` не гарантирует исчезновение данных?
+2. Почему генератор может экономить память, но не время?
+3. Когда потоки полезны при включённом GIL?
+4. Почему восемь процессов могут быть медленнее двух?
 
-GIL can be released while blocked, and other threads progress.
+Разбор: есть другие ссылки или внутренние буферы; вычисления всё равно выполняются, но не хранятся одновременно; потоки перекрывают ожидание и могут использовать освобождающие GIL операции; процессы тратят ресурсы на обмен, копии и конкуренцию.
 
-So I/O-bound concurrency can benefit.
+**Практика.** Сравните сумму квадратов ста тысяч чисел через список и генераторное выражение. Проверьте одинаковость результата, измерьте пиковую память и время отдельно. Не ожидайте заранее конкретного коэффициента ускорения: объясните наблюдение устройством двух вариантов.
 
-## 10. Native libraries
+В визуализации отслеживайте одновременно живущие объекты, а не число строк кода. Следующий блок начнёт работу с NumPy — компактным числовым представлением данных.
 
-NumPy, BLAS, PyTorch, scikit-learn compiled kernels may release GIL and use native parallelism.
+## Источники
 
-Thus:
-> "Python has GIL" does not mean "NumPy can only use one core."
-
-Pure Python bytecode and native numerical kernels differ.
-
-## 11. Multiprocessing
-
-Separate processes:
-- separate Python interpreters;
-- separate GILs.
-
-Good for CPU-bound Python tasks.
-
-Costs:
-- process startup;
-- serialization;
-- duplicated memory;
-- inter-process communication.
-
-## 12. Joblib / sklearn
-
-Some sklearn algorithms parallelize through joblib and `n_jobs`.
-
-But nested parallelism can oversubscribe:
-```text
-CV processes × BLAS threads
-```
-→ too many threads, slower than expected.
-
-More parallelism isn't automatically faster.
-
-## 13. Memory sharing multiprocessing
-
-Fork-like systems may initially share pages copy-on-write, but behavior platform-specific and writes duplicate memory.
-
-macOS/Windows process start details differ.
-
-For portable mental model:
-> separate processes can substantially increase memory.
-
-## 14. Asyncio
-
-`asyncio` is for cooperative I/O concurrency, not automatic CPU parallel ML training.
-
-Use:
-- network clients;
-- many waiting operations.
-
-Not:
-```text
-speed up pandas loop
-```
-
-## 15. Profiling
-
-Before optimizing:
-- measure time;
-- measure memory.
-
-Tools:
-```text
-time.perf_counter
-cProfile
-line_profiler
-memory_profiler/tracemalloc
-```
-
-Exact choice project-specific.
-
-## 16. `tracemalloc`
-
-Tracks Python memory allocations.
-
-Useful to compare snapshots and find growing allocation lines, though native library buffers may not all appear as Python allocations.
-
-## 17. Common DS memory mistakes
-
-- keep raw + five transformed DataFrames;
-- convert sparse matrix to dense;
-- `.tolist()` huge ndarray;
-- `pd.concat` repeatedly in loop;
-- cache all batches;
-- duplicate GPU tensors.
-
-## 18. Better patterns
-
-- process chunks;
-- vectorize;
-- use appropriate dtype;
-- sparse representations;
-- generators for streams;
-- delete references when truly no longer needed;
-- avoid copies.
-
-## 19. Complexity meets memory
-
-Algorithm can be O(n) time but O(n) extra memory.
-
-Example:
-```python
-return list(groups.values())
-```
-creates output list references proportional to number groups.
-
-Always state:
-```text
-time
-extra memory
-```
-
-## Сквозной разбор: почему процесс занял всю память
-
-Список из миллионов Python-чисел хранит не только значения, но и ссылки на отдельные объекты. Массив NumPy фиксированного `dtype` размещает значения плотнее. При преобразовании данных дополнительную память могут занимать исходный объект, копия и временный результат одновременно, поэтому пик важнее размера финального массива.
-
-Удаление имени уменьшает число ссылок, но объект освобождается только когда ссылок больше нет. Циклы может обнаружить сборщик мусора, а аллокатор Python или нативной библиотеки не обязан сразу возвращать память операционной системе. Поэтому изменение RSS после `del` нельзя интерпретировать как единственный тест утечки.
-
-GIL ограничивает одновременное выполнение Python-байткода потоками одного процесса, но поток полезен при ожидании сети или диска, а NumPy может выполнять нативный код с освобождением GIL. Для чистого CPU-кода используют процессы или векторизованные библиотеки, учитывая сериализацию и копирование памяти.
-
-Диагностика начинается с измерения: профилируют время и память, проверяют размер промежуточных объектов и число параллельных работников. Часто лучше читать данные чанками, выбрать компактный `dtype` и убрать вложенный параллелизм, чем просто добавить ещё процессов.
-
-## Визуализация DataPath
-
-Show list of Python floats vs NumPy contiguous buffer, and threads:
-```text
-pure Python → one bytecode executor
-native kernel → multiple native threads
-```
-
-## Типичные ошибки
-
-- "GIL means no parallelism anywhere";
-- `gc.collect()` as leak solution;
-- `del` expected to immediately return RSS;
-- multiprocessing without considering serialization/memory;
-- nested oversubscription;
-- dense conversion of sparse text.
-
-## Проверка понимания
-
-1. Why Python list of floats heavy?
-2. Reference counting?
-3. Why cycle needs GC?
-4. Why `del` may not lower RSS?
-5. What GIL restricts?
-6. Why NumPy can still parallelize?
-7. Threads vs processes?
-8. Why async not CPU speedup?
-
-## Мини-практика
-
-For each task choose:
-- thread;
-- process;
-- vectorized NumPy;
-- async.
-
-Tasks:
-1. 10k HTTP requests;
-2. pure Python prime calculation;
-3. matrix multiplication;
-4. reading many files.
-
-## Итог блока Python
-
-Теперь Python Core связан в одну модель:
-
-```text
-objects
-→ collections
-→ functions
-→ iteration
-→ objects/protocols
-→ reliability
-→ tests
-→ runtime/memory
-```
-
-## Куда дальше
-
-Следующий блок — NumPy, pandas и EDA: как Python становится инструментом реального анализа данных.
+[tracemalloc](https://docs.python.org/3/library/tracemalloc.html), [сборки CPython без GIL](https://docs.python.org/3/howto/free-threading-python.html).

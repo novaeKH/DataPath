@@ -14,7 +14,7 @@ module_order: 2
 lesson_order: 1
 canonical_number: 11
 content_path: 10 Знания/DataPath v2/02_NumPy_pandas_EDA_DataPath_v2/source-011 pandas Series, DataFrame, индексы, выбор данных и типы.md
-estimated_minutes: 65
+estimated_minutes: 25
 difficulty: core
 skill_ids:
 - data.analysis
@@ -31,7 +31,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №11, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Выбирать строки и столбцы DataFrame с учётом индекса.
+- Создавать признаки без неявного нарушения выравнивания данных.
 
 ## Сценарий урока
 
@@ -39,6 +42,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

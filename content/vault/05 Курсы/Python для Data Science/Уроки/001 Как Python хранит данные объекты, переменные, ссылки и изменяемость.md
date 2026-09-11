@@ -14,7 +14,7 @@ module_order: 1
 lesson_order: 1
 canonical_number: 1
 content_path: 10 Знания/DataPath v2/01_Python_Core_DataPath_v2/source-001 Как Python хранит данные объекты, переменные, ссылки и изменяемость.md
-estimated_minutes: 45
+estimated_minutes: 30
 difficulty: foundation
 skill_ids:
 - python.00-basics-control-flow
@@ -30,7 +30,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №1, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Различать имя, объект, равенство и идентичность.
+- Предсказывать результат изменения общей ссылки и выбирать подходящий способ копирования.
 
 ## Сценарий урока
 
@@ -38,6 +41,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

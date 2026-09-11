@@ -14,7 +14,7 @@ module_order: 2
 lesson_order: 3
 canonical_number: 21
 content_path: 10 Знания/DataPath v2/03_SQL_DataPath_v2/source-021 NULL, CASE, даты и строки в аналитическом SQL.md
-estimated_minutes: 65
+estimated_minutes: 25
 difficulty: core
 skill_ids:
 - datapath.v2.021
@@ -30,7 +30,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №21, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Проверять логику NULL, CASE и безопасного деления.
+- Задавать временные интервалы с корректными границами.
 
 ## Сценарий урока
 
@@ -38,6 +41,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

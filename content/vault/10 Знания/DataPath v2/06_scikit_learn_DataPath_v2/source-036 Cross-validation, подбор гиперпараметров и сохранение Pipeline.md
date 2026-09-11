@@ -17,115 +17,104 @@ tags:
 - canonical/source
 ---
 
-# Cross-validation, подбор гиперпараметров и сохранение Pipeline
+# Кросс-валидация и подбор параметров: проверяем всю процедуру
 
-Один holdout score может сильно зависеть от случайного split. Cross-validation повторяет train/validation на нескольких folds и показывает среднее качество и его разброс. Но CV должен уважать структуру задачи: классы, группы и время.
+Одна случайная проверочная часть может оказаться лёгкой или сложной. Кросс-валидация повторяет обучение и проверку на нескольких разбиениях. Если мы ещё выбираем настройки модели, проверять нужно всю процедуру вместе с предобработкой.
 
-## KFold/StratifiedKFold
+Главное различие: данные для выбора решения и данные для окончательной оценки выполняют разные роли. Частое обращение к окончательной проверке превращает её в ещё один инструмент подбора.
 
-KFold делит observations на folds. Для classification StratifiedKFold приблизительно сохраняет class proportions. Stratification не решает leakage repeated clients.
+## Как устроены folds
 
-## GroupKFold
+При пятичастной кросс-валидации данные делят на пять частей. На каждом шаге четыре части используются для обучения, оставшаяся — для проверки. Каждый объект проверяется в модели, которая не обучалась на нём в этом шаге.
 
-Если один client имеет много rows, все его rows должны оставаться в одном fold. GroupKFold предотвращает entity overlap между train/validation.
+Для классификации стратификация приблизительно сохраняет доли классов. Но случайное разбиение подходит не всегда: события одного человека требуют группового разделения, прогноз будущего — временного.
 
-## Time split
+Разброс оценок по folds показывает чувствительность к разбиению. Он не является автоматически доверительным интервалом: обучающие наборы пересекаются, оценки зависимы.
 
-Future prediction требует time-aware validation. Обычный KFold перемешивает past/future и может завысить quality. `TimeSeriesSplit` — один базовый инструмент, но custom business cutoffs часто понятнее.
-
-## `cross_validate`
-
-Можно получать несколько metrics и train/test times. Смотрите mean и std, а не только одно число. Большой fold variance — сигнал нестабильности/segments.
-
-## Grid vs randomized search
-
-`GridSearchCV` перебирает все заданные combinations; `RandomizedSearchCV` фиксирует number sampled configurations и удобнее для больших spaces. Оба должны получать whole Pipeline, чтобы preprocessing fit inside CV.
-
-## Scoring
-
-scikit-learn scorers иногда используют sign conventions, например loss-like metrics могут быть представлены как negative score, потому что framework максимизирует scorer. Читайте название scorer и docs.
-
-## Final fit and test
-
-После выбора hyperparameters Pipeline refit-ится на разрешённой training data и один раз оценивается на untouched test. `best_score_` — результат model selection, не независимая final estimate.
-
-## Persistence
-
-Сохраните весь fitted Pipeline через `joblib`, а рядом — metadata, library versions, feature schema и metric. Загружайте pickle/joblib artifacts только из доверенного источника.
-
-## Полный маршрут выбора модели
-
-Сначала один раз отделяют test и больше не используют его для решений. На оставшейся обучающей части выбирают схему CV, соответствующую данным: стратификацию для долей классов, группы для повторных сущностей или временные границы для прогноза будущего. В каждый fold целиком попадает Pipeline, поэтому все обучаемые преобразования видят только локальную train-часть.
-
-По результатам folds сравнивают не только среднее, но и разброс. Разница в две тысячных при большом разбросе редко оправдывает сложную модель. Поиск гиперпараметров также является частью выбора: `best_score_` оптимистично связан с просмотренными конфигурациями и не заменяет независимую test-оценку.
-
-После выбора конфигурации лучший Pipeline заново обучается на всей разрешённой train-выборке и ровно один раз проверяется на test. Если результат приемлем, сохраняют весь объект вместе с версией библиотек, схемой признаков, датой данных и правилом формирования target. Один файл без этого контекста недостаточен для воспроизводимости.
-
-Наконец, загрузка `joblib` исполняет механизм Python pickle и допустима только для доверенного файла. После загрузки полезен smoke-test на известном примере: он проверяет не качество модели целиком, а совместимость артефакта и входного контракта.
-
-## Практический код
+## Воспроизводимый поиск настроек
 
 ```python
-from sklearn.model_selection import (
-    StratifiedKFold,
-    RandomizedSearchCV,
-)
-import joblib
+from sklearn.datasets import load_breast_cancer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import balanced_accuracy_score
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
-cv = StratifiedKFold(
-    n_splits=5,
-    shuffle=True,
-    random_state=42,
+X, y = load_breast_cancer(return_X_y=True)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, stratify=y, random_state=42
 )
-
-search = RandomizedSearchCV(
-    pipe,
-    param_distributions={
-        "model__C": [0.01, 0.1, 1, 10],
-    },
-    n_iter=4,
-    scoring="average_precision",
+pipeline = Pipeline([
+    ("scale", StandardScaler()),
+    ("model", LogisticRegression(max_iter=3000)),
+])
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+search = GridSearchCV(
+    pipeline,
+    param_grid={"model__C": [0.01, 0.1, 1.0]},
+    scoring="balanced_accuracy",
     cv=cv,
+    n_jobs=1,
 )
-
 search.fit(X_train, y_train)
-
-best_pipe = search.best_estimator_
-joblib.dump(best_pipe, "model.joblib")
+print(search.best_params_)
+print(balanced_accuracy_score(y_test, search.predict(X_test)))
 ```
 
-## Интерактивная визуализация DataPath
+Здесь встроенный набор используется только как табличный учебный пример работы API, не для медицинских решений. Balanced accuracy усредняет доли верно распознанных объектов каждого класса, придавая классам равный вес.
 
-Визуализация должна показывать механизм пошагово, позволять менять ключевые параметры и связывать результат с тем, что происходит в коде. Она не должна быть статичной декоративной карточкой.
+Параметр `C` управляет силой регуляризации логистической регрессии: меньшее значение означает более сильное ограничение. Подробную математику разберём в ML-блоке. Запись `model__C` обращается к параметру именованного шага внутри Pipeline.
 
-## Типичные ошибки
+## Что именно повторяется
 
-- использовать StratifiedKFold при repeated clients и считать проблему решённой
-- random CV для future forecasting
-- search model отдельно от preprocessing
-- считать `best_score_` final test quality
-- сохранять только estimator без preprocessing
-- загружать untrusted joblib/pickle
+Три значения параметра и пять folds дают пятнадцать обучений. На каждом заново обучается и масштабирование, и классификатор. Затем при стандартном `refit=True` лучшая конфигурация обучается на всём `X_train`.
 
-## Проверка понимания
+Внешний `X_test` не участвовал ни в вычислении средних, ни в выборе `C`. Финальная метрика оценивает результат выбранной процедуры. Если по ней начать менять настройки и снова смотреть тот же тест, оценка постепенно станет оптимистичной.
 
-1. KFold vs StratifiedKFold?
-2. Когда GroupKFold?
-3. Почему time split?
-4. Что показывает CV std?
-5. Grid vs Randomized?
-6. Почему whole Pipeline inside search?
-7. Why test untouched?
-8. Что сохранять рядом с artifact?
+`best_score_` — лучший результат внутреннего отбора. Он обычно оптимистичнее независимой оценки, потому что по нему выбирали победителя. Для оценки всей процедуры подбора используют внешнее разбиение или вложенную кросс-валидацию.
 
-## Мини-практика
+## Размер поиска и метрика
 
-Для задачи churn с repeated client snapshots и временем предложите validation scheme. Затем настройте search `model__C`, сохраните best Pipeline и перечислите metadata, необходимую для воспроизводимости.
+GridSearch перебирает все комбинации сетки. RandomizedSearch выбирает ограниченное число комбинаций из заданных диапазонов или распределений. Большая сетка не гарантирует полезного результата: она расходует ресурсы и увеличивает вероятность удачно подстроиться к шуму проверки.
 
-## Что нужно унести
+Сначала полезны простой ориентир, разумное разбиение и метрика, соответствующая цене ошибок. Затем меняют небольшое число понятных настроек. Не смешивайте подбор порога, признаков и архитектуры с окончательной проверкой без учёта общего числа решений.
 
-scikit-learn даёт полный безопасный цикл: Pipeline → appropriate CV → search → refit → final test → serialized whole pipeline. Это непосредственный мост к Classic ML.
+Некоторые scoring-имена начинаются с `neg_`, потому что библиотека выбирает большее значение. Например, отрицательная MSE больше при меньшей исходной ошибке.
 
-## Куда дальше
+## Сохраняем весь обученный объект
 
-Следующий блок начинается с постановки ML-задачи, train/validation/test и метрик, после чего переходит к линейным и нелинейным моделям.
+```python
+import joblib
+from pathlib import Path
+from tempfile import TemporaryDirectory
+import numpy as np
+
+with TemporaryDirectory() as directory:
+    path = Path(directory) / "pipeline.joblib"
+    joblib.dump(search.best_estimator_, path)
+    restored = joblib.load(path)
+    assert np.array_equal(
+        search.predict(X_test),
+        restored.predict(X_test),
+    )
+```
+
+Сохранённый Pipeline включает предобработку и модель. Вместе с ним фиксируют версию библиотек, схему входа и условия обучения. Форматы на основе pickle загружают только из доверенного источника: загрузка может выполнять код. Перенос между произвольными версиями библиотек не гарантируется.
+
+## Самопроверка и практика
+
+1. Почему scaler должен переобучаться внутри каждого fold?
+2. Чем `best_score_` отличается от финальной оценки?
+3. Сколько обучений дают четыре настройки и три folds до refit?
+4. Почему среднее по folds не исправляет неправильный временной split?
+
+Разбор: иначе использована информация проверочной части; первое число участвовало в выборе; двенадцать; повторяется всё та же неверная схема доступа к будущему.
+
+**Практика.** Сократите сетку до двух значений и число folds до трёх. Предскажите число обучений, затем изучите `cv_results_`. Не выбирайте окончательную конфигурацию многократным сравнением на `X_test`.
+
+В визуализации проследите один объект: он может участвовать в обучении одних folds и проверке другого, но не в обоих одновременно внутри одного шага. Теперь перейдём к смыслу самих ML-моделей.
+
+## Источники
+
+[Кросс-валидация scikit-learn](https://scikit-learn.org/stable/modules/cross_validation.html), [подбор параметров](https://scikit-learn.org/stable/modules/grid_search.html), [сохранение моделей](https://scikit-learn.org/stable/model_persistence.html).

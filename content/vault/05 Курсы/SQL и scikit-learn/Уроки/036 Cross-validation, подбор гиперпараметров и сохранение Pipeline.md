@@ -14,7 +14,7 @@ module_order: 4
 lesson_order: 1
 canonical_number: 36
 content_path: 10 Знания/DataPath v2/06_scikit_learn_DataPath_v2/source-036 Cross-validation, подбор гиперпараметров и сохранение Pipeline.md
-estimated_minutes: 85
+estimated_minutes: 30
 difficulty: core
 skill_ids:
 - data-tools.cv-tuning
@@ -30,7 +30,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №36, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Проверять всю процедуру внутри кросс-валидации.
+- Отделять подбор настроек от финального теста и сохранять весь Pipeline.
 
 ## Сценарий урока
 
@@ -38,6 +41,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

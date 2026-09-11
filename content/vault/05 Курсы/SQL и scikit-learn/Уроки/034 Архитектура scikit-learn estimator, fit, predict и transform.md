@@ -14,7 +14,7 @@ module_order: 3
 lesson_order: 1
 canonical_number: 34
 content_path: 10 Знания/DataPath v2/06_scikit_learn_DataPath_v2/source-034 Архитектура scikit-learn estimator, fit, predict и transform.md
-estimated_minutes: 65
+estimated_minutes: 25
 difficulty: core
 skill_ids:
 - data-tools.estimator-pipeline
@@ -31,7 +31,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №34, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Различать fit, transform, predict и predict_proba.
+- Проверять формы, порядок классов и границу обучающих данных.
 
 ## Сценарий урока
 
@@ -39,6 +42,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

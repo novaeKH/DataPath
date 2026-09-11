@@ -14,7 +14,7 @@ module_order: 1
 lesson_order: 4
 canonical_number: 64
 content_path: 10 Знания/DataPath v2/11_DL_Foundations_DataPath_v2/source-064 SGD, Momentum, Adam и AdamW — как optimizer превращает градиенты в обучение.md
-estimated_minutes: 75
+estimated_minutes: 30
 difficulty: core
 skill_ids:
 - dl.foundations
@@ -30,7 +30,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №64, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Сравнивать шаги SGD, Momentum и адаптивных оптимизаторов.
+- Различать скорость обучения, накопление градиента и weight decay.
 
 ## Сценарий урока
 
@@ -38,6 +41,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

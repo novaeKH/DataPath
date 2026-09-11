@@ -17,634 +17,91 @@ tags:
 - canonical/source
 ---
 
-# Bag of Words, n-граммы и TF-IDF
+# Bag of Words и TF-IDF: превращаем документ в признаки
 
-Пусть есть три документа:
+После нормализации у нас остаются строки, а классификатору нужна матрица. Начнём с простой идеи: перечислим слова обучающего корпуса и посчитаем, сколько раз каждое встретилось в документе. Такой подход не понимает язык целиком, но даёт сильную и прозрачную исходную модель.
 
-```text
-D1: "банк одобрил кредит"
-D2: "банк отклонил кредит"
-D3: "доставка заказа задержалась"
-```
+Главный вопрос урока: как отличить слово, характерное для конкретного документа, от слова, которое встречается почти везде? Ответ приводит от счётчиков к TF-IDF.
 
-Как превратить их в matrix?
+## Матрица частот и потеря порядка
 
-Один из самых сильных classical approaches:
-
-```text
-токены
-→ vocabulary
-→ counts / TF-IDF
-→ sparse matrix
-```
-
-Несмотря на простоту, TF-IDF + linear model остаётся обязательным baseline для многих classification tasks.
-
----
-
-## 1. Bag of Words
-
-**Мешок слов (Bag of Words, BoW)** игнорирует глобальный порядок и хранит, какие vocabulary tokens встречаются в document.
-
-Vocabulary:
-
-```text
-банк
-одобрил
-отклонил
-кредит
-доставка
-заказа
-задержалась
-```
-
-Document D1:
-
-```text
-[1,1,0,1,0,0,0]
-```
-
-D2:
-
-```text
-[1,0,1,1,0,0,0]
-```
-
----
-
-## 2. CountVectorizer
-
-В scikit-learn:
+Возьмём три документа: «кот спит», «кот ест», «пёс спит». В словаре четыре слова. Каждая строка матрицы соответствует документу, каждый столбец — слову.
 
 ```python
 from sklearn.feature_extraction.text import CountVectorizer
 
-vectorizer = CountVectorizer()
-
-X = vectorizer.fit_transform(texts)
+texts = ["кот спит", "кот ест", "пёс спит"]
+counts = CountVectorizer()
+X = counts.fit_transform(texts)
+print(counts.get_feature_names_out())  # ['ест' 'кот' 'пёс' 'спит']
+print(X.toarray())
+# [[0 1 0 1]
+#  [1 1 0 0]
+#  [0 0 1 1]]
 ```
 
-`fit()` строит vocabulary.
+Это Bag of Words, «мешок слов»: порядок внутри документа потерян. «Пёс кусает кота» и перестановка тех же слов получат одинаковые счётчики. Модель всё ещё может распознавать темы, но сложные отношения потребуют дополнительных признаков или другой архитектуры.
 
-`transform()` создаёт document-term matrix.
+Реальные словари велики, а один документ использует лишь малую часть слов. Поэтому матрица хранится в разреженном виде: в основном сохраняются ненулевые значения и их позиции. `toarray()` здесь нужен только для четырёх столбцов; на большом корпусе он может исчерпать память.
 
----
+## Зачем снижать вес общих слов
 
-## 3. Sparse matrix
+Term frequency, TF, отражает частоту термина в документе. Document frequency, DF, — число документов, где термин встретился хотя бы один раз. Это разные счётчики: десять повторов слова в одном документе увеличивают TF, но дают лишь один вклад в DF.
 
-Vocabulary может иметь:
+Чем больше документов содержит слово, тем меньше информации о различии документов оно обычно несёт. IDF снижает его вес. При стандартном сглаживании scikit-learn:
 
-```text
-100 000 tokens
-```
+$$
+\operatorname{idf}(t)=\log\frac{1+N}{1+\operatorname{df}(t)}+1.
+$$
 
-Document использует 50.
+$N$ — число обучающих документов. Единицы предотвращают некоторые крайние случаи; последняя единица означает, что даже слово во всех документах получает IDF 1, а не 0. В других источниках формула может отличаться, поэтому ручные расчёты нужно сопоставлять с выбранной реализацией.
 
-Dense vector хранит 99 950 zeros.
+## Считаем веса и нормировку
 
-Sparse matrix хранит в основном non-zero values и indices.
-
-Это ключ к efficiency classical NLP.
-
----
-
-## 4. Count не всегда достаточно
-
-Word:
-
-```text
-"банк"
-```
-
-может встречаться почти в каждом document банковского corpus.
-
-Он мало помогает различать categories.
-
-Word:
-
-```text
-"chargeback"
-```
-
-может встречаться редко, но быть очень discriminative.
-
-TF-IDF уменьшает weight ubiquitous words и увеличивает relative weight terms, характерных для меньшего числа документов.
-
----
-
-## 5. Term Frequency
-
-Простейший TF:
-
-\[
-TF(t,d)=count(t,d).
-\]
-
-Есть и normalized/log variants.
-
-Главная idea:
-
-> term, часто встречающийся внутри document, получает больший local weight.
-
----
-
-## 6. Document Frequency
-
-\[
-DF(t)
-\]
-
-— число документов, где встречается term.
-
-Если word есть почти везде:
-
-```text
-DF high
-```
-
-оно хуже различает documents.
-
----
-
-## 7. Inverse Document Frequency
-
-Общая conceptual idea:
-
-\[
-IDF(t)
-\approx
-\log
-\frac{N}{DF(t)}.
-\]
-
-Редкие across-corpus terms получают larger IDF.
-
-В scikit-learn exact formula с default smoothing отличается:
-
-\[
-idf(t)=\log\frac{1+n}{1+df(t)}+1.
-\]
-
-Важно понимать principle и сверять exact implementation, когда formula matters.
-
----
-
-## 8. TF-IDF
-
-\[
-TFIDF(t,d)
-=
-TF(t,d)\cdot IDF(t).
-\]
-
-Term важен, если:
-
-```text
-часто встречается в конкретном document
-+
-не встречается во всех documents
-```
-
----
-
-## 9. Небольшой пример руками
-
-Documents:
-
-```text
-D1: cat cat dog
-D2: dog car
-D3: dog tree
-```
-
-`dog` встречается во всех 3 documents:
-
-```text
-DF=3
-```
-
-`cat` только в одном:
-
-```text
-DF=1
-```
-
-IDF `cat` выше.
-
-Поэтому два `cat` в D1 получают сильный distinctive weight, а ubiquitous `dog` downweighted.
-
----
-
-## 10. Нормализация vector
-
-`TfidfVectorizer` по default часто применяет L2 normalization rows.
-
-То есть каждый document vector масштабируется так, что norm≈1.
-
-Это уменьшает прямое влияние document length и удобно linear/cosine geometry.
-
-Exact behavior управляется `norm`.
-
----
-
-## 11. Word n-grams
-
-Unigram:
-
-```text
-"not", "good"
-```
-
-теряет relationship.
-
-Bigram:
-
-```text
-"not good"
-```
-
-сохраняет local phrase.
-
-`ngram_range=(1,2)` создаёт:
-
-```text
-unigrams + bigrams
-```
-
-Это часто очень сильно улучшает sentiment/intents.
-
----
-
-## 12. Почему n-граммы взрывают vocabulary
-
-Если unigrams:
-
-```text
-50k
-```
-
-possible bigrams могут быть hundreds thousands/millions.
-
-Нужны controls:
-
-```text
-min_df
-max_df
-max_features
-```
-
----
-
-## 13. `min_df`
-
-Удаляет terms, встречающиеся слишком редко.
-
-Например:
+В нашем корпусе «кот» встречается в двух документах, «ест» — в одном. Поэтому IDF для них равны примерно 1.288 и 1.693. Для «кот ест» ненормированные веса — 1.288 и 1.693. После деления на длину вектора получаются примерно 0.605 и 0.796.
 
 ```python
-min_df=3
-```
-
-может убрать typos/unique noise.
-
-Но rare token может быть critical fraud/domain signal.
-
-Поэтому threshold validate.
-
----
-
-## 14. `max_df`
-
-Можно исключить terms, которые встречаются почти во всех documents.
-
-Это corpus-specific alternative/дополнение stop-word lists.
-
-Например:
-
-```python
-max_df=0.95
-```
-
-убирает term, присутствующий >95% docs.
-
----
-
-## 15. Character n-grams
-
-Вместо слов:
-
-```text
-"карта"
-```
-
-можно использовать character pieces:
-
-```text
-"кар"
-"арт"
-"рта"
-```
-
-Например:
-
-```python
-TfidfVectorizer(
-    analyzer="char_wb",
-    ngram_range=(3,5),
-)
-```
-
-Character n-grams полезны для:
-
-- опечаток;
-- morphology;
-- usernames;
-- noisy text;
-- language identification.
-
----
-
-## 16. Почему char n-grams сильны для русского
-
-Формы:
-
-```text
-оплатил
-оплатила
-оплатили
-оплата
-```
-
-имеют общие character substrings.
-
-Без полноценной lemmatization model может всё равно уловить common morphology.
-
----
-
-## 17. Word + char features
-
-Можно объединять:
-
-```text
-word TF-IDF
-+
-char TF-IDF
-```
-
-Это часто очень сильный sparse baseline.
-
-В sklearn можно использовать `FeatureUnion` или вручную sparse `hstack`.
-
----
-
-## 18. Binary counts
-
-Иногда важно только:
-
-```text
-term присутствует?
-```
-
-а не count.
-
-`CountVectorizer(binary=True)` или соответствующая representation может быть useful для коротких messages.
-
----
-
-## 19. Sublinear TF
-
-`TfidfVectorizer(sublinear_tf=True)` заменяет raw frequency примерно на:
-
-\[
-1+\log(tf).
-\]
-
-Это уменьшает difference между term count 10 и 100.
-
-Полезно для длинных documents, где raw repetitions слишком доминируют.
-
----
-
-## 20. Vocabulary fit только на train
-
-Неправильно:
-
-```text
-fit TF-IDF на train+validation
-→ потом CV/model
-```
-
-IDF и vocabulary уже использовали validation corpus statistics.
-
-Правильно:
-
-```text
-Pipeline
-→ vectorizer fit внутри train fold
-→ classifier
-```
-
----
-
-## 21. Pipeline
-
-```python
-from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
 
-model = Pipeline([
-    ("tfidf", TfidfVectorizer(
-        ngram_range=(1, 2),
-        min_df=3,
-    )),
-    ("clf", LogisticRegression(
-        max_iter=1000,
-    )),
-])
+tfidf = TfidfVectorizer()
+Z = tfidf.fit_transform(texts)
+print(tfidf.get_feature_names_out())
+print(tfidf.idf_.round(3))       # [1.693 1.288 1.693 1.288]
+print(Z.toarray().round(3))
+# [[0.000 0.707 0.000 0.707]
+#  [0.796 0.605 0.000 0.000]
+#  [0.000 0.000 0.796 0.605]]
 ```
 
-Теперь CV честно fit vocabulary/IDF inside folds.
+Нормировка L2 делает длины ненулевых документов одинаковыми. Это уменьшает прямое влияние длины текста, но не означает, что длина вообще перестала быть полезным признаком. Пустой или полностью неизвестный документ может дать нулевую строку; для него модель не получила текстовых сведений.
 
----
+## Возвращаем немного порядка и устойчивости
 
-## 22. Why Linear model works well on TF-IDF
+Word n-граммы — последовательности соседних слов. При `ngram_range=(1,2)` появятся и отдельное «прошёл», и сочетание «не прошёл». Это помогает различать локальные выражения, но быстро увеличивает словарь. Полного понимания дальних зависимостей биграммы не дают.
 
-TF-IDF matrix имеет:
+Символьные n-граммы строятся из фрагментов букв. Они полезны для опечаток, окончаний и артикулов: «платёж» и «платежа» могут иметь общие фрагменты, даже если словоформы различны. `analyzer="char_wb"` ограничивает построение рамками слов с дополнением границ.
 
-```text
-очень много dimensions
-очень мало nonzeros per document
-```
+`min_df` исключает слишком редкие признаки, `max_df` — слишком распространённые. Порог числа документов и порог доли задаются разными типами значений. На маленьком корпусе чрезмерная фильтрация может удалить весь словарь. `sublinear_tf=True` заменяет линейный рост частоты логарифмическим: повтор слова сто раз не должен быть в сто раз убедительнее одного.
 
-Text classes часто разделимы по комбинациям indicative n-grams.
+## Правильная граница fit
 
-Linear model:
+`fit_transform` выполняется на train: запоминает словарь и IDF, затем строит матрицу. Для validation, test и новых сообщений используется только `transform`. Неизвестные слова не добавляются в словарь автоматически.
 
-\[
-score=w^Tx+b
-\]
+Не обучайте TF-IDF по всему корпусу до кросс-валидации: проверочные документы повлияют на признаки. В следующем уроке поместим векторизатор внутрь Pipeline, чтобы библиотека переобучала его на нужной части каждого разбиения.
 
-может назначить positive/negative weights тысячам terms без дорогой nonlinear feature interaction.
+## Самопроверка и практика
 
----
+1. Почему десять повторов в одном документе не дают DF, равную десяти?
+2. Почему более редкое слово получает больший IDF?
+3. Что теряет мешок слов?
+4. Почему нельзя пересчитывать словарь на каждом новом запросе?
 
-## 23. Интерпретация coefficients
+Разбор: DF считает документы; редкость помогает отличать документы; порядок и часть смысловых связей; изменятся число и смысл входов уже обученной модели.
 
-Для binary classifier можно посмотреть top positive/negative n-grams.
+**Практика.** Добавьте слово «кот» в третий документ и переобучите учебный векторизатор. Его IDF станет 1, потому что оно есть во всех трёх документах. Затем подайте «тигр» через `transform` без переобучения: строка будет нулевой. Объясните, почему эти два опыта проверяют разные механизмы.
 
-Например:
-
-```text
-positive:
-"списали дважды"
-"мошенничество"
-
-negative:
-"спасибо"
-"всё работает"
-```
-
-Это полезно для debugging leakage и sanity check.
-
----
-
-## 24. Limitation: order mostly local
-
-Bag of Words не различает:
-
-```text
-dog bites man
-man bites dog
-```
-
-по unigrams.
-
-Bigrams partially restore local order, но long-distance syntax/context всё ещё плохо моделируются.
-
----
-
-## 25. Limitation: semantic similarity
-
-Terms:
-
-```text
-машина
-автомобиль
-```
-
-разные dimensions.
-
-Model не знает semantic similarity, пока training data не научит похожие weights independently.
-
-Embeddings/Transformers решают это иначе.
-
----
-
-## 26. Интерактивная визуализация
-
-### Vocabulary builder
-
-Три documents → vocabulary → count matrix.
-
-### TF-IDF
-
-Slider DF term показывает IDF decreasing.
-
-### n-grams
-
-Toggle:
-
-```text
-unigram
-bigram
-word+char
-```
-
-Показать features фразы `не работает`.
-
-### Sparse matrix
-
-Heatmap mostly zeros и comparison dense memory.
-
----
-
-## 27. Типичные ошибки
-
-**«TF-IDF понимает смысл слов».**\
-Нет, это weighting lexical features.
-
-**«TF-IDF dense».**\
-Обычно sparse.
-
-**«IDF высокий у frequent-in-all-documents term».**\
-Наоборот.
-
-**«Bigrams бесплатны».**\
-Vocabulary резко растёт.
-
-**«Vectorizer можно fit на всём corpus до CV».**\
-Нет.
-
-**«Char n-grams бесполезны, если есть слова».**\
-Они могут быть очень сильны на noisy/morphological text.
-
----
-
-## 28. Проверка понимания
-
-1. Что хранит Bag of Words?
-2. Что делает CountVectorizer?
-3. Зачем sparse matrix?
-4. TF vs DF?
-5. Что делает IDF?
-6. Зачем L2 normalize?
-7. Unigram vs bigram?
-8. Почему vocabulary растёт?
-9. Чем char n-grams полезны?
-10. Почему TF-IDF fit внутри CV?
-
----
-
-## 29. Мини-практика
-
-Dataset: 200k коротких support messages.
-
-Предложите 3 baseline representations:
-
-1. word unigram;
-2. word 1–2 grams;
-3. char 3–5 grams.
-
-Для каждого:
-- `min_df`;
-- memory trade-off;
-- какие errors ожидаете;
-- с какой linear model сравнить.
-
----
-
-## Что нужно унести
-
-1. BoW превращает text в lexical feature vector.
-2. Sparse matrices делают huge vocabulary practical.
-3. TF-IDF downweights corpus-wide frequent terms.
-4. Word n-grams возвращают local order.
-5. Char n-grams устойчивы к morphology/noise.
-6. `min_df/max_df` контролируют vocabulary.
-7. Vectorizer — fitted transformer и должен жить внутри CV.
-8. TF-IDF + linear model — обязательный strong NLP baseline.
-
-## Куда дальше
-
-Representation готов.
-
-Следующий вопрос:
-
-> какая модель лучше работает на huge sparse text matrix?
-
-Разберём Logistic Regression, Linear SVM и Naive Bayes и построим сильный classical NLP baseline.
+В визуализации сначала сравните частоты, затем IDF и итоговые веса. Не путайте большой вес признака с доказанной причиной принадлежности к классу: классификатор ещё не обучался.
 
 ## Источники
-- scikit-learn text feature extraction documentation.
-- scikit-learn `TfidfVectorizer`, `CountVectorizer`.
+
+[Текстовые признаки и формула TF-IDF](https://scikit-learn.org/stable/modules/feature_extraction.html#tfidf-term-weighting), [TfidfVectorizer](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html).

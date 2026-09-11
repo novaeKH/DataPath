@@ -14,7 +14,7 @@ module_order: 3
 lesson_order: 1
 canonical_number: 6
 content_path: 10 Знания/DataPath v2/01_Python_Core_DataPath_v2/source-006 Надёжный Python exceptions, context managers, файлы, модули и окружения.md
-estimated_minutes: 55
+estimated_minutes: 25
 difficulty: foundation
 skill_ids:
 - python.07-iskliucheniia-i-context-manager
@@ -31,7 +31,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №6, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Обрабатывать ожидаемые ошибки, не скрывая причину сбоя.
+- Безопасно читать файлы и конфигурацию, организовать запуск модуля.
 
 ## Сценарий урока
 
@@ -39,6 +42,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

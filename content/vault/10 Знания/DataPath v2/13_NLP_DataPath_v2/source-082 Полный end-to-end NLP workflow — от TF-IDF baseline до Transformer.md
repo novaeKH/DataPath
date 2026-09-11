@@ -17,803 +17,114 @@ tags:
 - canonical/source
 ---
 
-# Полный end-to-end NLP workflow
+# NLP-проект целиком: от обращения до воспроизводимого ответа
 
-Представим задачу:
+Теперь объединим подготовку текста, модель и проверку в один небольшой процесс. Задача — маршрутизировать новое обращение в «доставку» или «оплату». Важно не только получить метку, но и знать, на каких данных решение выбрано, как обработать незнакомый запрос и что сохранить для следующего запуска.
 
-> автоматически классифицировать обращения клиентов банка по 30 темам.
+Учебный пример ниже полностью автономен. Его маленький размер не позволяет делать выводы о реальном качестве. Он проверяет договорённости и порядок действий; в рабочем проекте те же шаги выполняются на большем размеченном наборе.
 
-Есть:
-```text
-150 000 сообщений
-client_id
-conversation_id
-timestamp
-text
-target_intent
+## Формулируем договор до обучения
+
+Вход — текст первого сообщения. Выход — один маршрут либо передача человеку по отдельному правилу. Ответы оператора и последующая переписка не доступны в момент решения. Для обращения с двумя проблемами нужно заранее определить приоритет или разрешить несколько меток.
+
+Разбиение в реальной поддержке часто должно учитывать время и диалоги: проверяем работу на новых обращениях, а не на копиях обучающих шаблонов. Ниже наборы уже перечислены отдельно, чтобы роли train, validation и test были видны прямо в коде.
+
+## Baseline и выбор одной настройки
+
+```python
+from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import f1_score
+
+train_text = [
+    "курьер опаздывает", "где посылка", "изменить адрес доставки",
+    "доставка задержалась", "посылка потерялась", "заказ не доставлен",
+    "деньги списали дважды", "ошибка оплаты", "вернуть деньги",
+    "платёж отклонён", "не проходит оплата", "списание с карты",
+]
+train_y = ["доставка"] * 6 + ["оплата"] * 6
+valid_text = ["задержалась посылка", "оплата отклонена",
+              "где курьер", "вернуть платёж"]
+valid_y = ["доставка", "оплата", "доставка", "оплата"]
+test_text = ["доставка на другой адрес", "дважды списали платёж"]
+test_y = ["доставка", "оплата"]
+
+candidates = []
+for C in [0.1, 1.0]:
+    candidate = Pipeline([
+        ("text", TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5))),
+        ("classifier", LogisticRegression(C=C, max_iter=1000)),
+    ])
+    candidate.fit(train_text, train_y)
+    score = f1_score(valid_y, candidate.predict(valid_text), average="macro")
+    candidates.append((score, candidate))
+chosen = max(candidates, key=lambda pair: pair[0])[1]
+test_prediction = chosen.predict(test_text)
+print(test_prediction)
+print(f1_score(test_y, test_prediction, average="macro"))
 ```
 
-Нужно построить не просто model, а **NLP-систему**, которую можно честно оценить и потом использовать.
+Символьные признаки выбраны как простой способ делиться фрагментами между словоформами. Словарь каждого кандидата обучается только на train. По validation выбирается C, после чего тест вызывается один раз. Если результаты двух кандидатов равны, код выбирает первого: это явное правило, а не дополнительный подбор по тесту.
 
-Этот урок объединяет весь блок в один workflow.
+В реальном наборе четыре проверочных и два тестовых примера были бы недостаточны. Полезность примера в порядке операций. Для качества нужны достаточно большие независимые выборки, исходный постоянный baseline и анализ по классам.
 
----
+## Решаем, нужна ли более сложная модель
 
-# Фаза 1. Постановка задачи
+Прочитайте ошибки выбранного Pipeline. Если они связаны с плохими метками, исправьте правила данных. Если с далёкими смысловыми связями и перефразированием, сравните готовый encoder. Если с обрезанным концом, сначала пересмотрите вход.
 
-## 1. Что именно предсказываем
+Transformer должен использовать то же разбиение и ту же метрику. Сравните не только средний F1, но и редкие классы, задержку, память, стоимость подготовки и способность работать локально. Улучшение на несколько спорных примерах может не оправдывать заметно более тяжёлый запуск.
 
-Нужно определить:
-- один intent или несколько;
-- момент prediction;
-- whole conversation или one message;
-- можно ли использовать previous messages;
-- кто потребляет prediction;
-- цена ошибки.
+При повторных экспериментах validation постепенно становится частью процесса выбора. Финальный test нужно сохранять независимым; бесконечно смотреть его после каждой новой гипотезы нельзя.
 
-Например:
+## Сохраняем весь договор, а не только коэффициенты
 
-> После первого сообщения клиента определить один primary intent для маршрутизации обращения.
+Продолжим код. Сохраним Pipeline и список классов во временный каталог, затем проверим одинаковость ответов.
 
-Теперь later operator replies использовать нельзя.
+```python
+import joblib
+import numpy as np
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
----
-
-## 2. Unit of observation
-
-Если target — conversation intent, dataset row message-level неудобна.
-
-Варианты:
-```text
-first user message
-all user messages before routing
-conversation concatenation
+with TemporaryDirectory() as tmp:
+    path = Path(tmp) / "router.joblib"
+    joblib.dump({
+        "pipeline": chosen,
+        "input_field": "first_message",
+        "labels": chosen.classes_.tolist(),
+        "normalization": "TfidfVectorizer defaults, char_wb 3..5",
+    }, path)
+    artifact = joblib.load(path)
+    restored_prediction = artifact["pipeline"].predict(test_text)
+    assert np.array_equal(test_prediction, restored_prediction)
 ```
 
-Но split обязательно group by `conversation_id`/client where needed.
+Код проверяет восстановление в той же среде. Для переноса фиксируют версии библиотек и данных, revision кода, правила разметки и отчёт оценки. Pickle-подобные файлы загружают только из доверенного источника: загрузка может выполнять код.
 
----
+Для Transformer сохраняются веса, конфигурация, совместимый токенизатор, порядок меток и параметры обрезания. Одинаковые веса с другим входным преобразованием — уже другая система.
 
-# Фаза 2. Audit
+## Неизвестное намерение и контроль после запуска
 
-## 3. Прочитать реальные тексты
+Запрос «хочу работать курьером» содержит знакомое слово, но не относится к обычной доставке заказа. Закрытый классификатор всё равно выберет один из известных классов. Высокая уверенность не доказывает, что выбранный класс вообще применим.
 
-Не начинать с tokenizer.
+Подготовьте набор неизвестных и неоднозначных обращений. Решите, что отправляется человеку, как измеряется доля отказов и как новые типы запросов попадут в разметку. Не превращайте низкую уверенность в новую метку без проверки её качества.
 
-Сначала:
-```text
-50 random messages
-20 per rare class
-20 longest
-20 shortest
-20 duplicates
-```
+После запуска полезно отслеживать пустые сообщения, длины, языки, доли маршрутов и качество по позже полученным меткам. Изменение входов — повод исследовать, но не автоматическое доказательство деградации. Перезапуск обучения должен отвечать на подтверждённую проблему.
 
-Нужно понять language/domain.
+## Самопроверка и практика
 
----
+1. Чем validation отличается от test в этом процессе?
+2. Почему Pipeline нужно сохранять целиком?
+3. Как знакомое слово может привести к неправильному маршруту?
+4. Что должно оправдывать замену baseline на Transformer?
 
-## 4. Leakage
+Разбор: validation выбирает решение, test оценивает уже выбранное; словарь и веса связаны; слово встречается в новом намерении вне известных классов; измеримое улучшение полезных ошибок с приемлемыми ресурсами, а не название архитектуры.
 
-Искать:
-- operator category tags;
-- post-routing replies;
-- labels inside text;
-- system messages;
-- templates;
-- future conversation parts.
+**Практика.** Добавьте диагностические запросы: пустую строку, опечатку, два намерения и запрос о работе. Не включайте их задним числом в объявленный тест. Для каждого заранее запишите допустимое поведение и результат текущей модели. Предложите одно изменение и способ честно проверить его.
 
-Text leakage часто сильнее structured leakage.
-
----
-
-## 5. Duplicates
-
-Exact/near duplicate templates:
-```text
-"Карта не работает, ошибка 105"
-```
-могут массово repeat.
-
-Если random split, copies leak.
-
-Group/template-aware split may be needed.
-
----
-
-# Фаза 3. Split
-
-## 6. Выбрать validation scheme
-
-Если production future:
-```text
-train: Jan–Apr
-validation: May
-test: June
-```
-
-Если same clients repeat, possible group-time compromise.
-
-Главный вопрос:
-> какую generalization мы хотим измерить?
-
----
-
-# Фаза 4. Baseline
-
-## 7. Dummy baseline
-
-Most frequent class.
-
-Если largest class 25%:
-```text
-accuracy baseline=25%
-```
-
-Но для 30 imbalanced classes primary metric:
-```text
-macro F1
-```
-может быть more useful.
-
----
-
-## 8. TF-IDF baseline
-
-Начать:
-
-```text
-word 1–2 grams
-→ Logistic Regression / LinearSVC
-```
-
-Затем:
-```text
-char 3–5 grams
-```
-
-Очень часто это даст surprisingly strong result.
-
----
-
-## 9. Почему baseline обязателен
-
-Если Transformer:
-```text
-macro F1 0.86
-```
-а TF-IDF:
-```text
-0.85
-```
-при latency 50x lower, production choice неочевиден.
-
-Без baseline не знаем value deep model.
-
----
-
-# Фаза 5. Baseline error analysis
-
-## 10. Top coefficients
-
-Проверить:
-```text
-most positive terms per class
-```
-
-Искать:
-- reasonable language;
-- leaked labels;
-- templates;
-- IDs.
-
----
-
-## 11. Confusions
-
-Если:
-```text
-fraud ↔ card_security
-```
-путаются постоянно, возможно taxonomy overlap.
-
-Это может быть label problem, не model problem.
-
----
-
-# Фаза 6. Transformer candidate
-
-## 12. Выбрать checkpoint
-
-Criteria:
-- target language;
-- domain;
-- model size;
-- license/use constraints;
-- tokenizer efficiency;
-- max sequence length;
-- latency/memory.
-
-Не выбирать model только по популярности.
-
----
-
-## 13. Tokenization audit
-
-Собрать:
-```text
-token length p50/p95/p99
-fraction truncated
-tokens per word
-domain terms fragmentation
-```
-
-Это влияет на max_length и compute.
-
----
-
-## 14. Training configuration
-
-Пример:
-```text
-batch size
-learning rate
-weight decay
-epochs
-warmup
-max_length
-seed
-```
-
-Все fixed in config/log.
-
----
-
-## 15. Fine-tuning
-
-Pipeline:
-```text
-tokenizer
-→ dynamic padding
-→ pretrained encoder
-→ classification head
-→ CrossEntropyLoss
-→ AdamW
-```
-
-Validation after epochs/steps.
-
-Save best checkpoint.
-
----
-
-# Фаза 7. Fair comparison
-
-## 16. Same split, same metric
-
-TF-IDF и Transformer:
-- same train;
-- same validation;
-- same label mapping;
-- same primary metric.
-
-Иначе comparison meaningless.
-
----
-
-## 17. More than score
-
-Compare:
-
-| Model | Macro F1 | p95 latency | Size | Train time |
-|---|---:|---:|---:|---:|
-| TF-IDF + LinearSVC | .84 | 3 ms | 80 MB | 2 min |
-| Transformer small | .87 | 18 ms | 250 MB | 40 min |
-| Transformer large | .875 | 70 ms | 1.2 GB | 3 h |
-
-Winner depends requirements.
-
----
-
-# Фаза 8. Error analysis
-
-## 18. Same error set
-
-Create table:
-
-```text
-text
-true
-tfidf_pred
-bert_pred
-tfidf_score
-bert_score
-length
-source
-```
-
-Then categories:
-- lexical synonym;
-- long context;
-- typo;
-- ambiguity;
-- rare class;
-- truncation.
-
----
-
-## 19. Where Transformer adds value
-
-Example:
-```text
-"Деньги ушли, но получатель говорит, что ничего нет"
-```
-
-TF-IDF may lack exact n-grams.
-
-Transformer may connect contextual semantics.
-
-But if all intents use fixed templates, TF-IDF may already saturate task.
-
----
-
-# Фаза 9. Threshold / abstention
-
-## 20. Human review
-
-System can choose:
-```text
-high confidence → auto-route
-low confidence → human
-```
-
-But confidence must be validated/calibrated.
-
-Metric:
-```text
-coverage vs accuracy/F1
-```
-
-At 70% coverage maybe auto-route precision extremely high.
-
-This can be more useful than forcing model answer every message.
-
----
-
-## 21. Unknown intent
-
-Production may contain messages outside 30 known classes.
-
-Closed-set classifier still chooses one known class.
-
-Need possible:
-- confidence rejection;
-- OOD detection;
-- `other` class;
-- human fallback.
-
-Important system concern not captured by validation with only known intents.
-
----
-
-# Фаза 10. Final test
-
-## 22. Freeze model selection
-
-Before test fix:
-```text
-model
-checkpoint
-tokenizer
-max_length
-label mapping
-threshold
-preprocessing
-metric code
-```
-
-Then one final evaluation.
-
----
-
-## 23. Test slices
-
-Report:
-- macro F1;
-- per-class F1;
-- confusion;
-- length;
-- time;
-- source;
-- latency.
-
-A single headline score insufficient.
-
----
-
-# Фаза 11. Artifact
-
-## 24. TF-IDF artifact
-
-Save:
-```text
-normalizer
-vectorizer
-classifier
-label encoder
-threshold
-```
-
-Ideally as Pipeline + metadata.
-
----
-
-## 25. Transformer artifact
-
-Need:
-```text
-model checkpoint
-tokenizer files/version
-label mapping
-max length
-preprocessing contract
-config
-threshold
-```
-
-Tokenizer is part of model artifact.
-
----
-
-# Фаза 12. Inference
-
-## 26. Input contract
-
-```json
-{
-  "text": "Не могу оплатить картой"
-}
-```
-
-Validation:
-- not null;
-- max raw size;
-- encoding valid;
-- language policy.
-
-Output:
-```json
-{
-  "intent": "card_payment_issue",
-  "score": 0.91,
-  "model_version": "..."
-}
-```
-
-If score not calibrated probability, call it `score`, not `probability`.
-
----
-
-## 27. Batch inference
-
-For offline routing millions messages:
-```text
-batch tokenization
-batch model inference
-```
-much more efficient than one request at a time.
-
-For online:
-latency/throughput trade-off.
-
----
-
-# Фаза 13. Monitoring
-
-## 28. Input drift
-
-Monitor:
-- text length;
-- language share;
-- token length;
-- unknown/unusual tokenization;
-- class prediction distribution;
-- confidence distribution;
-- source mix.
-
----
-
-## 29. Label drift
-
-New products create new intents.
-
-Prediction distribution change could mean:
-- real business change;
-- model drift;
-- upstream template change.
-
-Need delayed ground truth where possible.
-
----
-
-## 30. Error review loop
-
-Periodically sample:
-```text
-high-confidence errors
-low-confidence routed human
-new phrases
-new products
-```
-
-Update taxonomy/data before blindly retraining.
-
----
-
-# Фаза 14. Re-training
-
-## 31. Dataset versioning
-
-Need record:
-```text
-data cutoff
-label schema version
-dedup rules
-split dates
-preprocessing version
-```
-
-Otherwise cannot explain why new model changed.
-
----
-
-## 32. Challenger vs current
-
-New model should compare on same test/recent evaluation:
-```text
-quality
-latency
-size
-failure slices
-```
-
-Deploy only if improvement meaningful.
-
----
-
-# Полный пример проекта
-
-## 33. Banking intents
-
-### Step 1
-Read 100 messages manually.
-
-### Step 2
-Remove post-routing system replies.
-
-### Step 3
-Group/time split.
-
-### Step 4
-TF-IDF word+char + LinearSVC.
-
-Result:
-```text
-macro F1 = 0.81
-```
-
-### Step 5
-Error analysis:
-```text
-rare intents
-semantic paraphrases
-long mixed messages
-```
-
-### Step 6
-Russian pretrained encoder fine-tune.
-
-Result:
-```text
-macro F1 = 0.86
-```
-
-### Step 7
-Latency:
-```text
-TF-IDF = 2 ms
-Transformer = 22 ms
-```
-
-SLA:
-```text
-<30 ms
-```
-
-Transformer still feasible.
-
-### Step 8
-Confidence fallback:
-```text
-top score < threshold
-→ human review
-```
-
-### Step 9
-Final test + slice report.
-
-That is complete NLP solution.
-
----
-
-## 34. What interviewer wants to hear
-
-Not:
-> «Я использовал BERT.»
-
-Better:
-
-> «Сначала построил word/char TF-IDF + LinearSVC baseline на group-time split и получил macro F1 0.81. По error analysis увидел, что baseline плохо обрабатывает paraphrases и mixed-context messages. Fine-tuned Russian encoder on same split, получил 0.86, отдельно проверил rare classes, long texts and latency. Final model fit SLA, tokenizer/checkpoint and label mapping saved as artifact.»
-
-Это показывает:
-- methodology;
-- baseline;
-- validation;
-- model understanding;
-- error analysis;
-- engineering awareness.
-
----
-
-## 35. Интерактивная capstone-сцена DataPath
-
-Пользователь получает corpus и должен:
-
-```text
-1. найти leakage
-2. выбрать split
-3. выбрать primary metric
-4. собрать TF-IDF baseline
-5. посмотреть confusions
-6. решить, нужен ли Transformer
-7. выбрать max_length
-8. compare score/latency
-9. set human fallback
-10. freeze final test
-```
-
-Неверное действие показывает consequence, а не просто красный ответ.
-
-Например:
-
-```text
-fit vectorizer on full corpus
-→ validation vocabulary leaked
-```
-
-или:
-
-```text
-random split conversations
-→ duplicates inflate score
-```
-
----
-
-## 36. Типичные ошибки
-
-**«Начинать NLP надо с BERT».**\
-Нет, сначала task/data/baseline.
-
-**«TF-IDF baseline слишком простой, можно пропустить».**\
-Нет.
-
-**«Same accuracy достаточно fair comparison».**\
-Need same split/metric and constraints.
-
-**«Transformer score выше → production winner».**\
-Latency/size may matter.
-
-**«Tokenizer не нужно сохранять».**\
-Нужно.
-
-**«Confidence всегда probability».**\
-Нет.
-
-**«Closed-set classifier понимает unknown intents».**\
-Нет.
-
-**«Monitoring NLP = только server latency».**\
-Нужно monitor data/prediction drift.
-
----
-
-## 37. Проверка понимания
-
-1. Почему first step не tokenizer?
-2. Что даёт TF-IDF baseline?
-3. Почему same split critical?
-4. Что смотреть в tokenization audit?
-5. Когда Transformer justified?
-6. Зачем paired error analysis?
-7. Что такое abstention?
-8. Почему unknown intent problem separate?
-9. Что входит Transformer artifact?
-10. Какие NLP drift signals monitor?
-
----
-
-## 38. Capstone-практика
-
-Составьте проект для:
-
-```text
-500k support tickets
-40 intents
-Russian + English
-p99 length=900 tokens
-some clients have many tickets
-monthly product changes
-online SLA 25 ms
-```
-
-Нужно решить:
-1. unit;
-2. split;
-3. baseline;
-4. language strategy;
-5. metrics;
-6. tokenizer/max length;
-7. candidate Transformer;
-8. latency benchmark;
-9. error slices;
-10. fallback;
-11. artifact;
-12. monitoring/retraining.
-
----
-
-## Итог блока NLP
-
-Теперь полный путь:
-
-```text
-raw text
-→ minimal justified preprocessing
-→ TF-IDF
-→ Logistic / LinearSVC / NB
-→ strong sparse baseline
-→ subword tokenizer
-→ embeddings / neural models
-→ BERT-like encoder
-→ fine-tuning
-→ metrics
-→ error analysis
-→ production-ready NLP workflow
-```
-
-Главный принцип:
-
-> **Transformer — не замена хорошей постановке задачи, clean split, strong baseline и error analysis.**
-
-## Куда дальше
-
-Следующий крупный блок DataPath логично посвятить **LLM и RAG**:
-
-- language modeling;
-- autoregressive generation;
-- decoding;
-- prompt/context;
-- embeddings and retrieval;
-- chunking;
-- vector search;
-- reranking;
-- RAG;
-- evaluation;
-- agents.
+На этом заканчивается базовый NLP-путь. Следующий блок посвящён языковой генерации и RAG: там к поиску и пониманию текста добавятся построение ответа, источники и отдельная проверка достоверности.
 
 ## Источники
-- scikit-learn text extraction/classification/metrics.
-- Hugging Face tokenization and sequence-classification documentation.
-- Original BERT paper.
-- Previous canonical DataPath lessons 75–81.
+
+[Работа с текстом в scikit-learn](https://scikit-learn.org/stable/tutorial/text_analytics/working_with_text_data.html), [сохранение моделей](https://scikit-learn.org/stable/model_persistence.html), [разбиение и оценка](https://scikit-learn.org/stable/modules/cross_validation.html).

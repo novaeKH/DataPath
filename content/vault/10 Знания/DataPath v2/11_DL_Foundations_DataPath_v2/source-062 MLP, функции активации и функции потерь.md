@@ -17,662 +17,95 @@ tags:
 - canonical/source
 ---
 
-# Многослойный перцептрон: зачем сети нелинейность и loss
+# MLP, активации и потери: сеть как обучаемая композиция
 
-Мы уже умеем считать:
+Одна прямая не разделит данные, если нужное правило зависит от сочетания признаков. Например, в задаче XOR класс равен единице, когда из двух логических признаков включён ровно один. Многослойная сеть может сначала построить промежуточные признаки, затем использовать их для ответа.
 
-\[
-z=Wx+b.
-\]
+MLP — полносвязная сеть из последовательности линейных слоёв и нелинейных активаций. Чтобы обучать такую сеть, нужно также определить, как измерять ошибку её выхода.
 
-Но несколько Linear-слоёв подряд без нелинейности эквивалентны одному Linear.
+## Почему двух линейных слоёв недостаточно
 
-Чтобы сеть могла изгибать decision boundary и строить сложные функции, между слоями добавляют **функции активации (activation functions)**.
+Если первый слой вычисляет $h=W_1x+b_1$, а второй $z=W_2h+b_2$, подстановка даёт ещё одно линейное преобразование со смещением. Без нелинейности глубина не создаёт нового класса нелинейных правил.
 
-Получается:
-
-```text
-input
-→ Linear
-→ activation
-→ Linear
-→ activation
-→ ...
-→ output
-```
-
-Такой fully-connected network называют **многослойным перцептроном (Multilayer Perceptron, MLP)**.
-
----
-
-## 1. Самый маленький MLP
+Активация между слоями меняет ситуацию. ReLU применяет $\max(0,z)$, поэтому разные области входного пространства могут включать разные наборы нейронов. Сеть строит кусочно-линейное правило.
 
 ```python
-import torch.nn as nn
+import torch
+from torch import nn
 
-model = nn.Sequential(
-    nn.Linear(2, 16),
+network = nn.Sequential(
+    nn.Linear(2, 4),
     nn.ReLU(),
-    nn.Linear(16, 16),
-    nn.ReLU(),
-    nn.Linear(16, 1),
+    nn.Linear(4, 2),
 )
+X = torch.tensor([[0., 0.], [0., 1.], [1., 0.], [1., 1.]])
+logits = network(X)
+print(logits.shape)   # torch.Size([4, 2])
 ```
 
-Shape:
+Первый слой превращает два исходных признака в четыре промежуточных. ReLU меняет значения, сохраняя форму. Последний слой выдаёт по два числа на объект. Пока сеть не обучена, эти числа не должны правильно решать XOR.
 
-```text
-[batch,2]
-→ [batch,16]
-→ [batch,16]
-→ [batch,1]
-```
+## ReLU, sigmoid и tanh
 
-Каждый hidden neuron вычисляет свою линейную комбинацию, затем activation меняет её нелинейно.
+ReLU проста и не насыщается на положительной полуоси. На отрицательной стороне её производная равна нулю; если нейрон постоянно получает отрицательные суммы, он может почти не обучаться.
 
----
+Sigmoid переводит число в диапазон от нуля до единицы. Это удобно для вероятности одного бинарного события, но при больших по модулю входах производная мала. Tanh выдаёт значения от минус единицы до единицы и тоже насыщается.
 
-## 2. Почему ReLU
+Активацию выбирают по роли слоя. Внутри MLP часто используются ReLU или её варианты. На выходе выбор определяется задачей и интерфейсом функции потерь, а не единым правилом для всей сети.
 
-ReLU:
+## Logits и вероятности
 
-\[
-ReLU(x)=\max(0,x).
-\]
+Логиты — необработанные оценки классов. Для многоклассовой задачи softmax преобразует их в положительные значения с суммой один:
 
-То есть:
+$$
+p_k=\frac{e^{z_k}}{\sum_j e^{z_j}}.
+$$
 
-```text
-x < 0 → 0
-x > 0 → x
-```
+Если все логиты одинаковы, вероятности одинаковы. Добавление одной константы ко всем логитам не меняет вероятности: важны относительные различия.
 
-PyTorch:
+Для двух логитов `[0, 0]` вероятности равны `[0.5, 0.5]`. Для более уверенного правильного ответа потеря должна уменьшаться, а для уверенного ошибочного — увеличиваться.
+
+## Функция потерь соответствует типу цели
+
+Для одного правильного класса из $C$ вариантов используют cross-entropy:
 
 ```python
-nn.ReLU()
+target = torch.tensor([0, 1, 1, 0], dtype=torch.long)
+loss = nn.CrossEntropyLoss()(logits, target)
+probabilities = torch.softmax(logits, dim=1)
+print(loss.ndim)              # 0: одно число
+print(probabilities.shape)    # torch.Size([4, 2])
 ```
 
-ReLU проста и не насыщается на положительной полуоси, поэтому стала стандартной базовой activation для многих architectures.
+`CrossEntropyLoss` получает логиты формы `(B,C)` и целочисленные метки формы `(B,)`. Она сама выполняет нужное устойчивое преобразование. Не подавайте в неё заранее вычисленный softmax вместо ожидаемых логитов.
 
----
+Для бинарной цели с одним логитом используют `BCEWithLogitsLoss`; цели должны быть вещественными 0 или 1 согласованной формы. Для нескольких независимых меток также нужны отдельные бинарные выходы, а не softmax, который заставляет классы конкурировать.
 
-## 3. Как ReLU создаёт нелинейность
+Для числовой регрессии подходит, например, MSE: средний квадрат разности прогноза и цели. Масштаб цели определяет масштаб ошибки и может влиять на обучение.
 
-Пусть:
+## Числовая проверка потери
 
-\[
-h=ReLU(Wx+b).
-\]
+Для правильного класса с вероятностью $p$ cross-entropy одной строки равна $-\log p$. При $p=0.5$ это около 0.693, при $p=0.9$ — около 0.105, при $p=0.01$ — около 4.605.
 
-Теперь нельзя просто объединить два Linear multiplication в одну matrix.
+Потеря различает уверенность, даже когда `argmax` не изменился. Поэтому доля верных ответов и loss могут двигаться по-разному. Метрика нужна для оценки прикладного качества, потеря — для обучения через градиенты.
 
-ReLU меняет formula в зависимости от sign каждого hidden pre-activation.
+Уменьшение потери на обучении не гарантирует улучшение новых данных. Для проверки нужен отдельный набор, а для анализа — ошибки по группам и классам.
 
-Каждый neuron создаёт своего рода «излом» пространства.
+![Иллюстрация к уроку: MLP, активации и потери: сеть как обучаемая композиция](content-assets/datapath-v2/figures/62_mlp.png)
 
-Много ReLU neurons → piecewise-linear сложная function.
+## Самопроверка и практика
 
----
+1. Почему несколько линейных слоёв без активаций не дают полноценную нелинейную сеть?
+2. Когда softmax не подходит для нескольких выходов?
+3. Почему не нужно применять softmax перед `CrossEntropyLoss`?
+4. Почему одинаковая accuracy может сопровождаться разной потерей?
 
-![Учебная иллюстрация: MLP и активации. Путь 2→3→1 с hidden activations, logit и sigmoid probability.](content-assets/datapath-v2/figures/62_mlp.png "Путь 2→3→1 с hidden activations, logit и sigmoid probability.")
+Разбор: композиция остаётся аффинной; когда метки могут одновременно быть истинными; преобразование уже входит в устойчивую функцию; уверенность правильных и неправильных ответов различается.
 
-## 4. XOR как мотивация
+**Практика.** Вычислите `CrossEntropyLoss` для логитов `[[0., 0.]]` и цели `[1]`. Ожидается примерно 0.693. Затем используйте `[[0., 2.]]`: потеря уменьшится примерно до 0.127. Поменяйте цель на 0 и объясните рост потери.
 
-Классическая задача:
-
-```text
-(0,0) → 0
-(0,1) → 1
-(1,0) → 1
-(1,1) → 0
-```
-
-Одной прямой нельзя разделить classes.
-
-Линейный classifier не решает XOR.
-
-MLP с hidden layer может создать промежуточное representation, где задача становится separable.
-
-Это короткий, но важный пример:
-
-> hidden layers нужны не потому, что «глубина модная», а потому что representation может становиться полезнее для следующего слоя.
-
----
-
-## 5. Другие activation functions
-
-### Sigmoid
-
-\[
-\sigma(x)=\frac{1}{1+e^{-x}}.
-\]
-
-Range:
-
-```text
-0..1
-```
-
-Полезна как output transform для binary probability, но в hidden layers сегодня часто уступает ReLU-family из-за saturation/gradient issues.
-
-### Tanh
-
-Range:
-
-```text
--1..1
-```
-
-Центрирована около 0, но тоже насыщается на больших absolute inputs.
-
-### Leaky ReLU
-
-Для negative x сохраняет небольшой slope вместо полного нуля.
-
-Помогает уменьшить проблему permanently inactive ReLU neurons.
-
-### GELU
-
-Часто используется в Transformer architectures; будет подробно позже.
-
----
-
-## 6. «Мёртвые» ReLU
-
-Если neuron постоянно получает:
-
-```text
-z < 0
-```
-
-то:
-
-```text
-ReLU(z)=0
-```
-
-и derivative на этой области 0.
-
-Если updates загнали neuron в режим, где все relevant inputs дают negative pre-activation, он может перестать обучаться.
-
-Это **dying ReLU**.
-
-Причины могут включать:
-
-- слишком большой learning rate;
-- неудачную initialization;
-- distribution activations.
-
----
-
-## 7. Output layer зависит от задачи
-
-### Регрессия
-
-Часто:
-
-```text
-last Linear → raw numeric output
-```
-
-без ReLU, если target может быть любым real number.
-
-### Binary classification
-
-Часто model выдаёт один raw logit.
-
-Для training можно использовать `BCEWithLogitsLoss`, которая numerically stable объединяет sigmoid + binary cross entropy.
-
-### Multiclass classification
-
-Model выдаёт:
-
-```text
-C logits
-```
-
-и `CrossEntropyLoss`.
-
----
-
-## 8. CrossEntropyLoss и logits
-
-Официальная PyTorch документация прямо указывает:
-
-> `CrossEntropyLoss` ожидает **unnormalized logits**.
-
-То есть:
-
-```python
-model = nn.Linear(hidden, num_classes)
-loss_fn = nn.CrossEntropyLoss()
-
-logits = model(x)
-loss = loss_fn(logits, y)
-```
-
-Не нужно:
-
-```python
-softmax = nn.Softmax(dim=1)
-proba = softmax(logits)
-loss = loss_fn(proba, y)
-```
-
-перед `CrossEntropyLoss`.
-
-Внутренне loss сочетает нужный log-softmax/NLL calculation более устойчиво.
-
----
-
-## 9. Shape для CrossEntropyLoss
-
-Типичный multiclass case:
-
-```text
-logits shape: [batch, C]
-target shape: [batch]
-```
-
-Target содержит class indices:
-
-```text
-0,1,...,C-1
-```
-
-и обычно dtype:
-
-```python
-torch.long
-```
-
-Например:
-
-```python
-logits = torch.randn(32, 5)
-target = torch.randint(0, 5, (32,))
-```
-
----
-
-## 10. Почему loss нужна вообще
-
-Model выдаёт prediction.
-
-Но optimizer должен знать:
-
-> насколько prediction плох и в какую сторону менять parameters?
-
-Для regression:
-
-\[
-MSE=\frac1n\sum(y-\hat y)^2.
-\]
-
-Для classification:
-
-```text
-cross entropy
-```
-
-Loss превращает quality одного batch в scalar objective, от которой затем считаются gradients.
-
----
-
-## 11. Loss и metric не одно и то же
-
-Classifier можно training по:
-
-```text
-CrossEntropyLoss
-```
-
-а report:
-
-```text
-accuracy
-precision
-recall
-F1
-ROC-AUC
-```
-
-Loss нужна differentiable optimization.
-
-Metric нужна для оценки задачи.
-
----
-
-## 12. Hidden width
-
-```python
-nn.Linear(20, 16)
-```
-
-16 — размер hidden representation.
-
-Больше hidden units:
-
-```text
-capacity ↑
-parameters ↑
-compute ↑
-overfit risk ↑
-```
-
-Меньше:
-
-```text
-bottleneck
-capacity ↓
-```
-
-Width — hyperparameter, а не automatically «чем больше, тем лучше».
-
----
-
-## 13. Depth
-
-Больше layers даёт возможность строить hierarchical compositions.
-
-Но:
-
-- optimization сложнее;
-- gradients могут быть unstable;
-- memory/compute выше.
-
-Для маленьких tabular tasks глубокий MLP не обязательно выигрывает у 2–3 hidden layers.
-
----
-
-## 14. Число parameters MLP
-
-Architecture:
-
-```text
-2 → 16 → 16 → 1
-```
-
-Первый Linear:
-
-\[
-2\cdot16+16=48.
-\]
-
-Второй:
-
-\[
-16\cdot16+16=272.
-\]
-
-Третий:
-
-\[
-16\cdot1+1=17.
-\]
-
-Итого:
-
-\[
-337.
-\]
-
-Activations не имеют learnable parameters.
-
----
-
-## 15. Forward pass
-
-```python
-x = torch.randn(32, 2)
-logits = model(x)
-```
-
-Что происходит:
-
-```text
-matrix multiplication
-→ bias
-→ ReLU
-→ matrix multiplication
-→ ReLU
-→ final linear
-```
-
-Это **прямой проход (forward pass)**.
-
-На этом этапе network ещё ничего не «исправляет». Она только вычисляет output текущих parameters.
-
----
-
-## 16. Training cycle пока без деталей backprop
-
-```text
-batch
-→ forward
-→ loss
-→ backward
-→ optimizer step
-```
-
-Следующий урок полностью разберёт `backward`.
-
----
-
-## 17. `nn.Sequential`
-
-Для простой линейной цепочки удобно:
-
-```python
-model = nn.Sequential(
-    nn.Linear(10, 32),
-    nn.ReLU(),
-    nn.Linear(32, 3),
-)
-```
-
-Но сложные networks с residual branches, multiple inputs или attention обычно оформляют custom `nn.Module`.
-
-`Sequential` — удобство, не фундаментальное ограничение PyTorch.
-
----
-
-## 18. Почему не все layers имеют activation после себя
-
-Output layer зависит от semantics.
-
-Multiclass:
-
-```text
-Linear → logits → CrossEntropyLoss
-```
-
-Если вставить ReLU перед CrossEntropy, logits не смогут быть negative, что бессмысленно ограничит score space.
-
-Activation hidden layer и transformation output — разные решения.
-
----
-
-## 19. Маленький binary model
-
-```python
-class BinaryMLP(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(2, 16),
-            nn.ReLU(),
-            nn.Linear(16, 16),
-            nn.ReLU(),
-            nn.Linear(16, 1),
-        )
-
-    def forward(self, x):
-        return self.net(x).squeeze(-1)
-```
-
-Loss:
-
-```python
-loss_fn = nn.BCEWithLogitsLoss()
-```
-
-Probability для inference:
-
-```python
-proba = torch.sigmoid(logits)
-```
-
-Но sigmoid не нужно вставлять перед `BCEWithLogitsLoss`.
-
----
-
-## 20. Multiclass model
-
-```python
-model = nn.Sequential(
-    nn.Linear(20, 64),
-    nn.ReLU(),
-    nn.Linear(64, 5),
-)
-
-loss_fn = nn.CrossEntropyLoss()
-```
-
-Output:
-
-```text
-[batch,5] logits
-```
-
-Target:
-
-```text
-[batch] class indices
-```
-
----
-
-## 21. Интерактивная визуализация
-
-### Режим 1. XOR
-
-Показать 4 points.
-
-Сначала одну linear boundary → невозможно.
-
-Затем hidden layer → representation перестраивается → classes становятся separable.
-
-### Режим 2. Activation
-
-Пользователь переключает:
-
-```text
-none
-ReLU
-sigmoid
-tanh
-```
-
-и видит shape function.
-
-### Режим 3. Logits → probability
-
-Binary slider logit:
-
-```text
--5 ... 0 ... +5
-```
-
-показывает sigmoid probability.
-
-Multiclass — несколько logits и softmax.
-
-### Режим 4. CrossEntropy
-
-Увеличивать correct-class logit и показывать уменьшение loss.
-
----
-
-## 22. Типичные ошибки
-
-**«ReLU нужна после каждого Linear, включая output».**\
-Нет.
-
-**«CrossEntropyLoss принимает probabilities».**\
-Она ожидает raw logits.
-
-**«Softmax надо всегда писать в model».**\
-Нет, зависит от loss/inference.
-
-**«MLP глубокий = автоматически лучше».**\
-Нет.
-
-**«Activation имеет weights».**\
-Обычная ReLU — нет.
-
-**«Metric и loss одно и то же».**\
-Нет.
-
----
-
-## 23. Проверка понимания
-
-1. Почему Linear→Linear эквивалентны одному Linear?
-2. Что делает ReLU?
-3. Почему XOR требует nonlinear representation?
-4. Что такое hidden layer?
-5. Что такое logit?
-6. Что ожидает `CrossEntropyLoss`?
-7. Shape logits для 32 objects и 5 classes?
-8. Почему ReLU обычно не ставят перед multiclass logits?
-9. Width vs depth?
-10. Loss vs metric?
-
----
-
-## 24. Мини-практика
-
-Нужно классифицировать 10 classes по 100 input features.
-
-Architecture:
-
-```text
-100 → 64 → 32 → 10
-```
-
-Предложите PyTorch model и ответьте:
-
-1. где поставить ReLU;
-2. shape каждого stage при batch=128;
-3. какая loss;
-4. нужен ли Softmax перед loss;
-5. сколько parameters в последнем Linear.
-
----
-
-## Что нужно унести
-
-1. MLP — цепочка Linear + nonlinear activations.
-2. Нелинейность делает deep composition выразительнее одного Linear.
-3. ReLU — базовая activation `max(0,x)`.
-4. Output layer зависит от задачи.
-5. CrossEntropyLoss принимает logits.
-6. BCEWithLogitsLoss объединяет sigmoid-like transformation и binary loss стабильно.
-7. Loss задаёт objective обучения.
-8. Width/depth управляют capacity.
-9. Следующий вопрос — как вычислить gradients всех этих parameters.
-
-## Куда дальше
-
-У сети сотни, тысячи и миллионы weights.
-
-Вручную выводить derivative каждого невозможно.
-
-Следующий урок разберёт **обратное распространение ошибки (backpropagation)** и покажет, как `torch.autograd` строит вычислительный граф и автоматически применяет chain rule.
+На иллюстрации отметьте скрытые признаки и выходные логиты. В визуализации сравните функцию активации и её локальный наклон. Следующий урок вычислит, как ошибка влияет на каждый вес.
 
 ## Источники
-- PyTorch `nn.ReLU`.
-- PyTorch `CrossEntropyLoss`.
-- PyTorch official model-building tutorials.
+
+[Построение сети PyTorch](https://docs.pytorch.org/tutorials/beginner/basics/buildmodel_tutorial.html), [CrossEntropyLoss](https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html).

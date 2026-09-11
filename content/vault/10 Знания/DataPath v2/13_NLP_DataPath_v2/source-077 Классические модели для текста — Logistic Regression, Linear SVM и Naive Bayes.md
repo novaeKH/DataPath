@@ -17,582 +17,91 @@ tags:
 - canonical/source
 ---
 
-# Классические модели для текста: как получить сильный baseline без Transformer
+# Классический NLP baseline: от признаков к проверяемому решению
 
-После TF-IDF документ может иметь:
+Для автоматической маршрутизации обращений сначала нужна модель, которую легко обучить, измерить и разобрать. TF-IDF с линейным классификатором часто подходит лучше сложной сети как первая версия: обучение быстрое, признаки видны, ошибки можно связать с текстом.
 
-```text
-100 000 features
-```
+Baseline — не формальность, которую нужно поскорее заменить Transformer. Это точка сравнения. Новая модель должна улучшать нужное поведение достаточно сильно, чтобы оправдать свою стоимость.
 
-но только десятки/сотни non-zero.
+## Один Pipeline для текста и модели
 
-В такой geometry классические linear models работают удивительно хорошо.
-
-Главные candidates:
-
-- Logistic Regression;
-- Linear SVM;
-- Multinomial Naive Bayes.
-
-Задача урока — понять, почему sparse high-dimensional text не обязательно требует deep model.
-
----
-
-## 1. Logistic Regression на TF-IDF
-
-Score:
-
-\[
-z=w^Tx+b.
-\]
-
-Каждый token/n-gram имеет coefficient.
-
-Для binary classification:
-
-\[
-P(y=1|x)=\sigma(z).
-\]
-
-Если feature:
-
-```text
-"списали дважды"
-```
-
-имеет large positive coefficient, его presence повышает log-odds class 1.
-
----
-
-## 2. Почему linear boundary может быть достаточно
-
-Text representation уже high-dimensional.
-
-Каждая n-gram — отдельная axis.
-
-Nonlinearity partially encoded самой feature engineering:
-
-```text
-word
-bigram
-char n-gram
-```
-
-Поэтому classifier не обязан быть nonlinear, чтобы учитывать phrase patterns.
-
----
-
-## 3. Regularization особенно важна
-
-Features:
-
-```text
-50k–1m
-```
-
-многие rare.
-
-Без regularization coefficients могут подстроиться под noise.
-
-Logistic Regression обычно использует L2 penalty как strong default.
-
-Parameter `C` в sklearn inverse regularization strength:
-
-```text
-C small → stronger regularization
-C large → weaker
-```
-
----
-
-## 4. Linear SVM
-
-SVM строит separating hyperplane с margin.
-
-Для huge sparse text используют linear implementation, например:
-
-```python
-from sklearn.svm import LinearSVC
-```
-
-Не kernel RBF на 200k × 100k sparse matrix как первый choice.
-
----
-
-## 5. Margin intuition
-
-SVM хочет не просто classify training examples, но расположить boundary с хорошим margin.
-
-Points near boundary особенно влияют на solution.
-
-Для text classification LinearSVC часто является одним из сильнейших classical baselines.
-
----
-
-## 6. `LinearSVC` не даёт probability напрямую
-
-Он выдаёт:
-
-```python
-decision_function
-```
-
-— margin-like score.
-
-Если нужны calibrated probabilities, можно использовать calibration отдельно.
-
-Нельзя воспринимать SVM score 2.3 как 230% или probability.
-
----
-
-## 7. Logistic vs LinearSVC
-
-### Logistic
-
-- probability-like output;
-- logloss training;
-- удобно threshold/calibration;
-- coefficients interpretable.
-
-### LinearSVC
-
-- margin objective;
-- часто очень strong classification boundary;
-- no native probability;
-- calibration отдельным этапом.
-
-Нельзя утверждать заранее winner.
-
----
-
-## 8. Naive Bayes intuition
-
-Naive Bayes использует Bayes rule:
-
-\[
-P(y|x)
-\propto
-P(y)P(x|y).
-\]
-
-**Наивное** assumption:
-
-> features conditionally independent given class.
-
-Для words это явно не строго верно.
-
-Но model всё равно часто работает удивительно хорошо на text counts.
-
----
-
-## 9. Multinomial Naive Bayes
-
-Подходит для count-like nonnegative features.
-
-Он оценивает class-specific term probabilities.
-
-Если word сильно чаще встречается в spam, его presence повышает spam posterior.
-
-`MultinomialNB` historically natural for counts/TF-IDF-like nonnegative text features.
-
----
-
-## 10. Почему NB работает, хотя independence неверна
-
-Для classification не обязательно идеально моделировать true joint distribution.
-
-Даже грубые class-specific lexical statistics могут дать правильное ranking/decision.
-
-Кроме того, high-dimensional sparse words действительно содержат сильные independent-ish evidences.
-
----
-
-## 11. Smoothing
-
-Если word никогда не встречался в class:
-
-```text
-P(word|class)=0
-```
-
-наивное multiplication обнулит whole likelihood.
-
-Используют additive/Laplace smoothing.
-
-В `MultinomialNB` parameter:
-
-```text
-alpha
-```
-
-контролирует smoothing.
-
----
-
-## 12. NB и long documents
-
-Multiplication многих tiny probabilities numerically unstable.
-
-На практике calculations выполняются в log-space:
-
-\[
-\log P(y|x)
-=
-\log P(y)
-+
-\sum_j x_j\log P(feature_j|y)
-+\text{const}.
-\]
-
-Это превращает product в sum.
-
----
-
-## 13. Complement Naive Bayes
-
-Для imbalanced text classification `ComplementNB` был разработан как variant, использующий statistics complement classes и иногда работает лучше MultinomialNB.
-
-Это useful candidate, но не нужно считать обязательным.
-
----
-
-## 14. Class imbalance
-
-Text dataset:
-
-```text
-95% normal
-5% complaint
-```
-
-Нужны:
-
-- appropriate metrics;
-- stratified/group split;
-- class weights where supported;
-- threshold selection if probabilities/scores used.
-
-Accuracy — доля правильных ответов — может быть misleading.
-
----
-
-## 15. Strong baseline pipeline
+Ниже маленький набор обращений двух классов. Он демонстрирует API, но слишком мал для честной оценки качества. В настоящей задаче нужна отдельная выборка с теми же правилами разметки.
 
 ```python
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
+texts = [
+    "не пришла посылка", "где мой заказ", "доставка задержалась",
+    "курьер не приехал", "посылка потерялась", "изменить адрес доставки",
+    "дважды списали деньги", "вернуть оплату", "ошибка платежа",
+    "не проходит оплата", "списание с карты", "возврат денег на карту",
+]
+labels = ["доставка"] * 6 + ["оплата"] * 6
 model = Pipeline([
-    ("tfidf", TfidfVectorizer(
-        ngram_range=(1, 2),
-        min_df=3,
-        sublinear_tf=True,
-    )),
-    ("clf", LogisticRegression(
-        C=2.0,
-        max_iter=1000,
-        class_weight="balanced",
-    )),
+    ("text", TfidfVectorizer(ngram_range=(1, 2))),
+    ("classifier", LogisticRegression(C=1.0, max_iter=1000)),
 ])
+model.fit(texts, labels)
+queries = ["задержалась доставка", "вернуть деньги"]
+print(model.predict(queries))
+print(model.classes_)                    # порядок столбцов вероятностей
+print(model.predict_proba(queries).shape) # (2, 2)
 ```
 
-Но `class_weight="balanced"` используем только если validation показывает benefit для task metric.
+Pipeline сохраняет соответствие между словарём и коэффициентами. На новых строках векторизатор выполняет transform, а не fit. Вероятности из двух столбцов нужно читать согласно `classes_`, а не по предположению, что второй столбец всегда означает заранее выбранный класс.
 
----
+## Как линейная модель использует текст
 
-## 16. LinearSVC pipeline
+Для каждого документа вычисляется взвешенная сумма признаков плюс смещение. Слово или биграмма могут увеличивать либо уменьшать оценку класса. Нелинейное преобразование превращает оценку логистической регрессии в вероятность в рамках модели.
+
+Большой словарь не делает правило нелинейным по TF-IDF-признакам. Он предоставляет много отдельных направлений, по которым простая граница может хорошо разделить классы. Регуляризация ограничивает чрезмерные коэффициенты редких выражений. В LogisticRegression меньшее `C` означает более сильное ограничение.
+
+Коэффициенты помогают отладке. Продолжим пример:
 
 ```python
-from sklearn.svm import LinearSVC
+import numpy as np
 
-model = Pipeline([
-    ("tfidf", TfidfVectorizer(
-        ngram_range=(1, 2),
-        min_df=3,
-    )),
-    ("clf", LinearSVC(
-        C=1.0,
-    )),
-])
+names = model.named_steps["text"].get_feature_names_out()
+weights = model.named_steps["classifier"].coef_[0]
+top = np.argsort(weights)[-5:][::-1]
+print(model.classes_[1], names[top])
 ```
 
-Очень быстрый и сильный baseline для many text tasks.
+Положительные коэффициенты относятся ко второму классу в `classes_`. Это не доказательство причинности. Если в признаках неожиданно лидирует подпись оператора, проверьте утечку, а не поздравляйте модель с пониманием текста.
 
----
+## Три разумных кандидата
 
-## 17. Naive Bayes pipeline
+**Logistic Regression** удобна, когда нужны оценки вероятностей и настройка порога. Эти оценки не обязаны быть идеально откалиброваны: соответствие реальным частотам проверяют отдельно.
 
-```python
-from sklearn.naive_bayes import MultinomialNB
+**Linear SVM** ищет разделение с зазором между классами. `LinearSVC` возвращает метки и decision_function, но не predict_proba. Значение decision_function — оценка положения относительно границы, а не вероятность. Калибровка требует отдельной корректной процедуры с данными, не использованными для подгонки соответствующего базового прогноза.
 
-model = Pipeline([
-    ("tfidf", TfidfVectorizer(
-        ngram_range=(1, 2),
-        min_df=2,
-    )),
-    ("clf", MultinomialNB(
-        alpha=1.0,
-    )),
-])
-```
+**Multinomial Naive Bayes** связывает частоты признаков с классом при упрощающем предположении условной независимости. Слова в языке зависимы, но простое правило всё равно бывает полезным. Сглаживание предотвращает нулевые вероятности невстречавшихся признаков. Эта модель ожидает неотрицательные признаки; произвольное центрирование входа может нарушить условия.
 
----
+Не выбирайте победителя по учебным двум запросам. Сравните кандидатов на одном разбиении и одной метрике, включая время обучения и задержку.
 
-## 18. Word + char union
+## Ошибки как следующий план работы
 
-Сильный approach:
+Если модель путает «оплата прошла» и «оплата не прошла», изучите биграммы и примеры отрицания. Если ошибается на опечатках, попробуйте символьные признаки. Если все новые продукты неизвестны словарю, проверьте актуальность обучающих данных.
 
-```text
-word TF-IDF
-+
-char TF-IDF
-→ concatenate
-→ Linear model
-```
+Для редких классов общая accuracy может скрывать полный провал. Смотрите precision, recall и F1 по классам, число примеров и матрицу ошибок. Выбор веса классов не заменяет разметку и не гарантирует калиброванных вероятностей.
 
-Char captures:
-- typos;
-- suffixes;
-- morphology.
+Деревья на огромной разреженной матрице текста не всегда экономичный первый выбор: им приходится искать разбиения среди множества слабых признаков. Это не запрет на деревья, а причина начинать с более естественной опорной модели.
 
-Word captures:
-- semantic lexical units;
-- phrases.
+## Самопроверка и практика
 
----
+1. Почему модель и векторизатор нужно сохранять вместе?
+2. Чем decision_function отличается от вероятности?
+3. Почему редкая фраза с большим весом требует проверки?
+4. Какой эксперимент отвечает на проблему опечаток?
 
-## 19. Почему trees обычно не первый choice на raw TF-IDF
+Разбор: коэффициент привязан к конкретному столбцу словаря; числовая оценка не обязана лежать между нулём и единицей; возможны переобучение и утечка; сравнение символьных признаков на том же отложенном наборе.
 
-Random Forest на 200k sparse high-dimensional features:
+**Практика.** Создайте отдельный список из шести новых обращений, включая опечатку, отрицание и смешанную проблему. До запуска задайте правильный маршрут или правило передачи человеку. Получите прогнозы и запишите для каждой ошибки вероятную причину. Не называйте шесть примеров итоговым тестом: это небольшой диагностический набор.
 
-- many split candidates;
-- sparse geometry;
-- expensive;
-- often weaker than linear models.
-
-Boosting тоже обычно естественнее на dense tabular features.
-
-Text TF-IDF — domain, где linear inductive bias очень силён.
-
----
-
-## 20. Coefficients как debugging
-
-Logistic/LinearSVC позволяет вывести top n-grams.
-
-Если top feature:
-
-```text
-"target_category_3"
-```
-
-или system template after label creation, вы нашли leakage.
-
-Это огромный плюс transparent baseline.
-
----
-
-## 21. Error analysis
-
-Не ограничиваться score.
-
-Посмотреть:
-
-```text
-false positives
-false negatives
-short texts
-long texts
-rare language
-typos
-negation
-mixed intents
-```
-
-Ошибки часто подсказывают, стоит ли:
-
-- char n-grams;
-- bigger n-grams;
-- better labels;
-- Transformer.
-
----
-
-## 22. Cross-validation cost
-
-Vectorizer должен fit inside fold.
-
-Но text matrix может быть large, поэтому full CV expensive.
-
-Practical options:
-
-- fixed validation for iteration;
-- final CV for promising configs;
-- cache transformations carefully without leakage.
-
-Не надо 1000 random trials classical NLP.
-
----
-
-## 23. Threshold
-
-Logistic Regression:
-
-```text
-predict_proba
-```
-
- позволяет threshold tune.
-
-LinearSVC:
-
-```text
-decision_function
-```
-
- тоже можно threshold tune на score.
-
-Threshold выбирается по validation/OOF, не test.
-
----
-
-## 24. Calibration LinearSVC
-
-Если нужны probabilities:
-
-```python
-from sklearn.calibration import CalibratedClassifierCV
-```
-
-можно calibrate SVM scores с independent/OOF logic.
-
-Это отдельная model-selection step.
-
----
-
-## 25. Multiclass
-
-Logistic Regression/LinearSVC naturally support multiclass strategies.
-
-Metrics:
-
-- macro F1;
-- weighted F1;
-- per-class precision/recall;
-- confusion matrix.
-
-При imbalanced intents macro F1 особенно полезна, потому что rare classes не исчезают за large common class.
-
----
-
-## 26. Интерактивная визуализация
-
-### Linear coefficients
-
-Document sparse vector + weight per n-gram → sum score.
-
-### SVM margin
-
-2D toy sparse projection → margin.
-
-### Naive Bayes
-
-Term likelihood tables per class → log-score.
-
-### Baseline race
-
-На одном toy corpus compare:
-- NB;
-- Logistic;
-- LinearSVC.
-
-Показывать quality, train time, probability availability.
-
----
-
-## 27. Типичные ошибки
-
-**«Transformer всегда сильнее TF-IDF».**\
-Не гарантировано, особенно на small/domain-specific data.
-
-**«Linear model слишком простая для text».**\
-High-dimensional representation уже очень expressive.
-
-**«LinearSVC score = probability».**\
-Нет.
-
-**«Naive Bayes independence assumption реалистична».**\
-Нет, но model может хорошо classify.
-
-**«Random Forest — универсальный baseline для любого dataset».**\
-Не для raw sparse text.
-
-**«Top coefficient = causal word».**\
-Нет.
-
----
-
-## 28. Проверка понимания
-
-1. Почему linear model сильна на TF-IDF?
-2. Что делает C?
-3. Logistic vs LinearSVC?
-4. Почему SVC score не probability?
-5. Что предполагает Naive Bayes?
-6. Зачем smoothing?
-7. Почему calculations в log-space?
-8. Чем char features дополняют word?
-9. Почему trees не natural first baseline?
-10. Что смотреть в error analysis?
-
----
-
-## 29. Мини-практика
-
-Intent classification:
-
-```text
-100k messages
-25 classes
-largest class=30%
-smallest=0.2%
-```
-
-Постройте experiment plan:
-
-1. word TF-IDF + Logistic;
-2. word+char + LinearSVC;
-3. MultinomialNB/ComplementNB;
-4. metrics;
-5. split;
-6. top-feature inspection;
-7. criterion перехода к Transformer.
-
----
-
-## Что нужно унести
-
-1. TF-IDF + Logistic/LinearSVC — strong sparse baseline.
-2. LinearSVC оптимизирует margin и не даёт probability native.
-3. Logistic удобна для probabilities/threshold.
-4. Naive Bayes использует class-specific term statistics.
-5. Smoothing предотвращает zero probabilities.
-6. Word+char TF-IDF часто очень competitive.
-7. Transparent coefficients помогают leakage/debugging.
-8. Deep NLP надо сравнивать с strong classical baseline.
-
-## Куда дальше
-
-Classical representation использует vocabulary features.
-
-Modern NLP решает unknown words и vocabulary size иначе:
-
-> текст разбивается на **subword tokens**.
-
-Следующий урок подробно разберёт BPE, WordPiece, SentencePiece, special tokens, padding, truncation и attention masks.
+Далее разберём, как нейронные модели делят текст на токены и почему их словарь нельзя заменять произвольно.
 
 ## Источники
-- scikit-learn Logistic Regression, LinearSVC and Naive Bayes documentation.
-- scikit-learn text classification examples.
+
+[Обработка текстовых документов](https://scikit-learn.org/stable/tutorial/text_analytics/working_with_text_data.html), [Naive Bayes](https://scikit-learn.org/stable/modules/naive_bayes.html), [LinearSVC](https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html).

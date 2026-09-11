@@ -17,110 +17,109 @@ tags:
 - canonical/source
 ---
 
-# Pipeline и ColumnTransformer: preprocessing без leakage
+# Pipeline и ColumnTransformer: единое правило подготовки данных
 
-Типичный табличный dataset содержит numeric и categorical columns. Если imputer/scaler/OHE делать вручную до cross-validation, легко fit-нуть statistics на validation. `Pipeline` и `ColumnTransformer` помещают все обучаемые transformations внутрь одной CV boundary.
+В таблице одновременно есть возраст, доход и город. Числа нужно масштабировать, пропуски — обработать, категории — превратить в признаки. Если вручную повторять эти действия отдельно для обучения и проверки, легко забыть этап или вычислить параметры по чужим данным.
 
-## Pipeline
+`Pipeline` задаёт последовательность действий. `ColumnTransformer` применяет разные действия к разным столбцам и соединяет результаты. Вместе они образуют один объект, который можно обучать, проверять и сохранять.
 
-`Pipeline` последовательно вызывает `fit/transform` промежуточных steps и `fit` final estimator. На `predict` preprocessing автоматически повторяется теми же fitted objects.
+## Почему предобработка относится к обучению
 
-## ColumnTransformer
+Среднее для заполнения пропуска, масштаб столбца и список известных категорий зависят от данных. Их нужно вычислять только по обучающей части. Иначе информация из проверки повлияет на вход модели ещё до её `fit`.
 
-Разные columns требуют разных transformations: numeric `impute→scale`, categorical `impute→OneHotEncoder`. `ColumnTransformer` применяет ветви параллельно и объединяет features.
+Это называется утечкой данных. Для её появления не требуется явно передавать правильные ответы. Даже статистика будущего набора может изменить процедуру обучения.
 
-## Leakage barrier
+Pipeline помогает соблюдать границу, но не исправляет признак, который сам содержит будущее, или неверное разбиение клиентов.
 
-При cross-validation sklearn clone-ит Pipeline для каждого fold. Imputer/scaler/encoder fit-ятся только на training part fold. Validation проходит только через transform. Это главный методологический benefit.
-
-## Unknown categories
-
-`OneHotEncoder(handle_unknown="ignore")` позволяет inference с unseen category, не падая. Но quality может ухудшиться, поэтому production стоит мониторить unknown rate.
-
-## Remainder and feature selection
-
-`remainder="drop"`/`"passthrough"` определяет судьбу unspecified columns. Лучше явно контролировать schema, чем случайно протаскивать ID/target-like fields.
-
-## Custom transformers
-
-Если feature engineering зависит от train statistics, он должен быть sklearn-compatible transformer или иным образом fit-иться внутри fold. Pure row-wise deterministic features могут быть вычислены до split, если не используют future/target/distribution, но единый pipeline часто всё равно удобнее.
-
-## Pipeline params
-
-Nested hyperparameters задаются через `step__param`, например `model__C`, `prep__num__imputer__strategy`. Это позволяет model selection без разрыва pipeline.
-
-## Пошагово внутри одного fold
-
-Пусть fold разбит на обучающую и проверочную части. Сначала числовой imputer находит медианы только по обучающим строкам, а scaler — их средние и стандартные отклонения. Категориальная ветвь там же строит словарь категорий. Преобразованные обучающие признаки поступают в модель, и только после её обучения проверочные строки проходят через уже зафиксированные преобразования.
-
-На следующем fold создаётся новая копия всего Pipeline. Медианы, масштабы, категории и коэффициенты модели вычисляются заново по другой обучающей части. Именно поэтому передавать в `cross_validate` нужно весь pipeline, а не заранее подготовленную матрицу.
-
-`ColumnTransformer` отвечает за параллельные ветви, `Pipeline` — за последовательные шаги. Числовые колонки могут пройти `imputer → scaler`, категориальные — `imputer → encoder`; затем результаты объединяются и передаются estimator. Явные списки колонок одновременно служат частью схемы.
-
-Если на inference появляется неизвестная категория, `handle_unknown="ignore"` предотвращает падение, но не делает ситуацию автоматически безопасной. Долю неизвестных значений нужно наблюдать: её рост может означать изменение данных или нарушение входного контракта.
-
-## Практический код
+## Полный пример смешанной таблицы
 
 ```python
+import numpy as np
+import pandas as pd
 from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-num_pipe = Pipeline([
-    ("imputer", SimpleImputer(strategy="median")),
-    ("scaler", StandardScaler()),
+rng = np.random.default_rng(42)
+X = pd.DataFrame({
+    "age": rng.integers(18, 70, 120).astype(float),
+    "income": rng.normal(70, 20, 120),
+    "city": rng.choice(["Казань", "Москва", "Пермь"], 120),
+})
+y = (X["income"] + rng.normal(0, 15, 120) > 70).astype(int)
+X.loc[::10, "age"] = np.nan
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, stratify=y, random_state=42
+)
+numeric = Pipeline([
+    ("impute", SimpleImputer(strategy="median")),
+    ("scale", StandardScaler()),
 ])
-
-cat_pipe = Pipeline([
-    ("imputer", SimpleImputer(strategy="most_frequent")),
-    ("ohe", OneHotEncoder(handle_unknown="ignore")),
+prepare = ColumnTransformer([
+    ("numeric", numeric, ["age", "income"]),
+    ("category", OneHotEncoder(handle_unknown="ignore"), ["city"]),
 ])
-
-prep = ColumnTransformer([
-    ("num", num_pipe, numeric_cols),
-    ("cat", cat_pipe, categorical_cols),
+model = Pipeline([
+    ("prepare", prepare),
+    ("classifier", LogisticRegression(max_iter=1000)),
 ])
-
-pipe = Pipeline([
-    ("prep", prep),
-    ("model", LogisticRegression(max_iter=1000)),
-])
-
-pipe.fit(X_train, y_train)
-proba = pipe.predict_proba(X_valid)[:, 1]
+model.fit(X_train, y_train)
+print(model.predict(X_test).shape)   # (30,)
 ```
 
-## Интерактивная визуализация DataPath
+Данные искусственные: цель связана с доходом и шумом. Они нужны для изучения порядка операций, а не для выводов о реальных людях. Пропуски возраста добавлены намеренно.
 
-Визуализация должна показывать механизм пошагово, позволять менять ключевые параметры и связывать результат с тем, что происходит в коде. Она не должна быть статичной декоративной карточкой.
+## Что происходит внутри fit
 
-## Типичные ошибки
+Числовая ветвь сначала вычисляет медианы по обучению, заполняет пропуски, затем оценивает средние и масштабы. Категориальная ветвь запоминает встреченные города и создаёт по столбцу на категорию. `ColumnTransformer` соединяет оба результата.
 
-- делать `pd.get_dummies` на train+validation вместе
-- масштабировать до CV
-- случайно передавать target/ID через remainder
-- писать отдельный production preprocessing вручную
-- не обрабатывать unseen categories
+Последний шаг получает уже числовую матрицу и обучает классификатор. У каждой части есть собственное сохранённое состояние. Оно относится к одному и тому же набору обучающих строк.
 
-## Проверка понимания
+В вызове `predict(X_test)` параметры не пересчитываются. Проверочные данные проходят через сохранённые преобразования и затем через обученную модель.
 
-1. Что делает Pipeline?
-2. Зачем ColumnTransformer?
-3. Почему они уменьшают leakage?
-4. Что делает `handle_unknown='ignore'`?
-5. Как обратиться к nested hyperparameter?
-6. Какие transformations должны fit inside fold?
+## Неизвестные категории и оставшиеся столбцы
 
-## Мини-практика
+`handle_unknown="ignore"` позволяет обработать город, которого не было при обучении: в его группе one-hot-столбцов будут нули. Это техническая политика, а не обещание хорошего прогноза для нового города. Долю неизвестных категорий полезно отслеживать.
 
-Соберите Pipeline для dataset с `age, income, city, tariff`. Numeric: median+scale; categories: most-frequent+OHE; final LogisticRegression. Затем объясните, что именно fit-ится заново в каждом CV fold.
+По умолчанию `ColumnTransformer` исключает столбцы, не перечисленные в ветвях. `remainder="passthrough"` сохраняет остальные, но применять его нужно осмысленно: случайный идентификатор или целевой столбец не должны незаметно попасть в модель.
 
-## Что нужно унести
+Порядок выходных признаков определяется преобразователями. Для исследования используйте `get_feature_names_out()`, а не вручную угадывайте, какому столбцу соответствует коэффициент.
 
-Pipeline — не просто удобный syntax. Это executable boundary, которая связывает preprocessing и estimator в одну воспроизводимую модель и защищает validation.
+## Проверяем границу обучения
 
-## Куда дальше
+```python
+new_client = pd.DataFrame({
+    "age": [np.nan],
+    "income": [80.],
+    "city": ["Самара"],
+})
+print(model.predict_proba(new_client).shape)   # (1, 2)
 
-Следующий урок добавит cross-validation, hyperparameter search и сохранение готового Pipeline как artifact.
+names = model.named_steps["prepare"].get_feature_names_out()
+print(len(names))   # число числовых и категориальных признаков
+```
+
+Смысл проверки — отсутствие сбоя и сохранение договора входа. Она не оценивает качество на новых городах. Для этого нужны размеченные примеры и отдельный анализ.
+
+Если preprocessing вычислен заранее по всей таблице, помещение готовой матрицы в Pipeline задним числом не убирает утечку. Внутри должны находиться сами обучаемые преобразования.
+
+## Самопроверка и практика
+
+1. Почему заполнение медианой является обучаемым действием?
+2. Чем последовательность Pipeline отличается от ветвей ColumnTransformer?
+3. Что означает неизвестная категория при указанной политике?
+4. Какие ошибки Pipeline не может исправить?
+
+Разбор: медиана определяется данными; один объект соединяет этапы, другой распределяет столбцы по ветвям; нулевой вектор в группе категорий; будущие признаки, неверную цель и неверный способ разбиения.
+
+**Практика.** Добавьте столбец `debug_id` и убедитесь, что он не попал в выходные признаки при стандартном `remainder`. Затем измените доход нового клиента, сохраняя форму и типы входа. Проследите, что вызов прогноза не меняет медиану заполнения возраста.
+
+В визуализации пройдите две ветви предобработки и их соединение. Дальше будем сравнивать несколько настроек такого единого объекта.
+
+## Источники
+
+[Pipeline и составные преобразователи](https://scikit-learn.org/stable/modules/compose.html), [предотвращение утечки](https://scikit-learn.org/stable/common_pitfalls.html).

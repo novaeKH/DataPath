@@ -14,6 +14,29 @@ LESSON_THREE = "lesson.classic-ml.two.one"
 LESSON_FOUR = "lesson.classic-ml.two.two"
 
 
+def test_editorial_revision_does_not_reuse_old_scene_visits() -> None:
+    original = LessonContentService._assign_scene_ids([{"type": "markdown"}])
+    revised = LessonContentService._assign_scene_ids(
+        [{"type": "markdown"}, {"type": "checkpoint"}], "theory-2026-09"
+    )
+    assert original[0]["id"] == "scene-01"
+    assert [scene["id"] for scene in revised] == [
+        "scene-theory-2026-09-01",
+        "scene-theory-2026-09-02",
+    ]
+    assert original[0]["id"] not in {scene["id"] for scene in revised}
+    reopened = LessonContentService._assign_scene_ids(
+        [{"type": "markdown"}, {"type": "checkpoint"}], "theory-2026-09"
+    )
+    assert reopened == revised
+
+
+def test_invalid_editorial_revision_keeps_legacy_scene_ids() -> None:
+    for revision in (None, "", "../invalid", 123):
+        scenes = LessonContentService._assign_scene_ids([{"type": "markdown"}], revision)
+        assert scenes[0]["id"] == "scene-01"
+
+
 def test_visual_demo_id_survives_api_serialization() -> None:
     scene = LessonScene(
         id="scene-visual",

@@ -831,6 +831,10 @@ function ExistingLessonView({
   const lesson = state.lesson
   const visitedSceneCount = completedSceneCount(progress?.completed_scenes, scenes)
   const visitedPercent = scenes.length ? Math.round((visitedSceneCount / scenes.length) * 100) : 0
+  const currentSceneIds = new Set(scenes.map((scene) => scene.id))
+  const hasEarlierEditionVisits =
+    scenes.some((scene) => scene.id.startsWith('scene-theory-')) &&
+    (progress?.completed_scenes ?? []).some((sceneId) => !currentSceneIds.has(sceneId))
   const goToLesson = (id: string | null) => {
     if (id) onNavigate(`/focus/${id}`)
   }
@@ -955,6 +959,16 @@ function ExistingLessonView({
           </div>
           <span>{visitedPercent}%</span>
         </div>
+
+        {hasEarlierEditionVisits && (
+          <p
+            className="mx-auto mt-3 max-w-[920px] text-xs leading-5"
+            style={{ color: 'var(--dp-text-muted)' }}
+          >
+            Теория обновлена. Здесь показано чтение новой редакции; история освоения и заметки
+            сохранены.
+          </p>
+        )}
 
         {/* Content area: reading column + sticky outline */}
         {scenes.length === 0 ? (

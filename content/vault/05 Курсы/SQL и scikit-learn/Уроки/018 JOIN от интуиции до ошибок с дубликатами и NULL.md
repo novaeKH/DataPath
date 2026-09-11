@@ -14,7 +14,7 @@ module_order: 1
 lesson_order: 3
 canonical_number: 18
 content_path: 10 Знания/DataPath v2/03_SQL_DataPath_v2/source-018 JOIN от интуиции до ошибок с дубликатами и NULL.md
-estimated_minutes: 75
+estimated_minutes: 30
 difficulty: core
 skill_ids:
 - datapath.v2.018
@@ -31,7 +31,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №18, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Предсказывать строки результата INNER и LEFT JOIN.
+- Находить размножение строк и ошибки условия в WHERE.
 
 ## Сценарий урока
 
@@ -39,6 +42,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

@@ -17,567 +17,110 @@ tags:
 - canonical/source
 ---
 
-# Нейронная классификация текста: что было между TF-IDF и BERT
+# Нейронная классификация текста: представление, маска и выход
 
-До Transformers существовало множество neural NLP architectures.
+TF-IDF описывает текст через фиксированные частоты. Нейронный классификатор может обучать само представление слов вместе с правилом решения. Это полезно, когда важны общие закономерности между формулировками, но требует аккуратно обращаться с длинами, дополнением и количеством данных.
 
-Они до сих пор полезны, потому что показывают фундаментальную задачу:
+Начнём не со сложной архитектуры, а с усреднения embeddings. Затем увидим, какие ограничения исправляют свёртка и рекуррентная сеть. Для этого урока нужны ID и маски из токенизации, а также embeddings и основные слои из Deep Learning.
 
-```text
-sequence token embeddings
-→ fixed-size document representation
-→ classifier
-```
+## Минимальная модель, которую можно проверить
 
-Разные models отличаются тем, **как из sequence получить representation**.
-
----
-
-## 1. Общий pipeline
-
-```text
-token IDs
-→ nn.Embedding
-→ contextual/aggregation layer
-→ document vector
-→ Linear head
-→ logits
-```
-
-Вопрос:
-
-> как объединить token vectors?
-
----
-
-# Mean / Max Pooling
-
-## 2. Самый простой neural baseline
-
-Embeddings:
-
-```text
-[B,L,D]
-```
-
-Среднее по tokens:
-
-```text
-[B,D]
-```
+Каждый ID превращается в вектор. Векторы настоящих токенов усредняются, а линейная голова выдаёт оценки классов. Такой классификатор учит таблицу и голову одновременно, но по-прежнему не учитывает порядок.
 
 ```python
-doc = x.mean(dim=1)
-```
+import torch
+from torch import nn
 
-Затем:
+torch.manual_seed(7)
 
-```text
-Linear(D,C)
-```
-
-Это простой **mean pooling**.
-
----
-
-## 3. Padding problem
-
-Нельзя averaging включать padding.
-
-Нужно masked mean:
-
-\[
-doc
-=
-\frac{
-\sum_t mask_t x_t
-}{
-\sum_t mask_t
-}.
-\]
-
-Иначе short documents с большим padding будут biased к padding embedding.
-
----
-
-## 4. Max pooling
-
-По каждой embedding dimension:
-
-```text
-взять max по sequence
-```
-
-Это может ловить strongest local feature response.
-
-Но loses order и nuanced composition.
-
----
-
-## 5. Mean pooling surprisingly strong
-
-Если embeddings/contextual representations уже meaningful, average может быть хорошим baseline.
-
-Это напоминает Bag of Words:
-
-> global order largely discarded.
-
-Но dense learned representation позволяет semantic sharing между tokens.
-
----
-
-# Text CNN
-
-## 6. Convolution по sequence
-
-Text embeddings:
-
-```text
-[L,D]
-```
-
-1D convolution смотрит на local windows tokens.
-
-Kernel width 3:
-
-```text
-token t-1
-token t
-token t+1
-```
-
-может learn phrase pattern.
-
-Это neural analogue word n-grams.
-
----
-
-## 7. Text CNN pipeline
-
-```text
-embeddings
-→ Conv1d width 3/4/5
-→ ReLU
-→ global max pooling
-→ concatenate
-→ classifier
-```
-
-Разные kernel sizes capture local phrases разных lengths.
-
----
-
-## 8. Почему Conv1d channels layout tricky
-
-PyTorch `Conv1d` обычно ждёт:
-
-```text
-[N,C,L]
-```
-
-Но embedding output:
-
-```text
-[N,L,D]
-```
-
-Поэтому нужно transpose:
-
-```python
-x = x.transpose(1, 2)
-```
-
-чтобы embedding dimension стала channels.
-
----
-
-## 9. Toy TextCNN
-
-```python
-class TextCNN(nn.Module):
-    def __init__(self, vocab, emb_dim, channels, classes):
+class MeanClassifier(nn.Module):
+    def __init__(self, vocabulary_size, dimension, classes):
         super().__init__()
-        self.emb = nn.Embedding(vocab, emb_dim, padding_idx=0)
-        self.conv = nn.Conv1d(
-            emb_dim,
-            channels,
-            kernel_size=3,
-            padding=1,
-        )
-        self.head = nn.Linear(channels, classes)
+        self.embedding = nn.Embedding(vocabulary_size, dimension, padding_idx=0)
+        self.head = nn.Linear(dimension, classes)
 
     def forward(self, ids):
-        x = self.emb(ids)        # [B,L,D]
-        x = x.transpose(1, 2)    # [B,D,L]
-        x = torch.relu(self.conv(x))
-        x = x.max(dim=-1).values
-        return self.head(x)
+        vectors = self.embedding(ids)
+        mask = ids.ne(0).unsqueeze(-1)
+        pooled = (vectors * mask).sum(1) / mask.sum(1).clamp_min(1)
+        return self.head(pooled)
+
+model = MeanClassifier(vocabulary_size=10, dimension=8, classes=2)
+ids = torch.tensor([[2, 3, 4, 0], [5, 6, 0, 0]])
+labels = torch.tensor([0, 1])
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
+optimizer.zero_grad(set_to_none=True)
+logits = model(ids)
+loss = nn.CrossEntropyLoss()(logits, labels)
+loss.backward()
+optimizer.step()
+print(logits.shape)  # torch.Size([2, 2])
 ```
 
----
+Это один шаг на двух учебных объектах, не готовый обученный классификатор. Первый объект усредняется по трём токенам, второй — по двум. Если делить оба на четыре, длина технического дополнения изменит представление.
 
-# RNN/LSTM classifier
+Пустой документ в такой реализации даёт нулевой вектор и ответ на основе смещения головы. Это технически определённый результат, но маршрут пустого обращения лучше задавать явно.
 
-## 10. Sequence order
+## Проверяем инвариантность к дополнению
 
-RNN/LSTM читает token embeddings по порядку:
-
-```text
-embedding1
-→ state1
-embedding2
-→ state2
-...
-```
-
-Final state используется как document representation.
-
----
-
-## 11. LSTM classifier
+Правильная маска должна сделать прогноз независимым от числа добавленных PAD. Продолжим пример:
 
 ```python
-class LSTMClassifier(nn.Module):
-    def __init__(self, vocab, emb, hidden, classes):
-        super().__init__()
-        self.embedding = nn.Embedding(
-            vocab,
-            emb,
-            padding_idx=0,
-        )
-        self.lstm = nn.LSTM(
-            emb,
-            hidden,
-            batch_first=True,
-        )
-        self.head = nn.Linear(hidden, classes)
-
-    def forward(self, ids):
-        x = self.embedding(ids)
-        _, (h_n, _) = self.lstm(x)
-        return self.head(h_n[-1])
+model.eval()
+with torch.no_grad():
+    original = model(ids)
+    extended = model(torch.cat([ids, torch.zeros(2, 3, dtype=torch.long)], dim=1))
+print(torch.allclose(original, extended))  # True
 ```
 
-Для padded data лучше использовать real lengths/packing или правильный pooling/masking, чтобы final state не correspond padding timestep.
+Это полезный автоматический тест для реального проекта. Он обнаруживает ошибку раньше, чем она начнёт влиять на метрику. Но тот же усредняющий классификатор даст одинаковый ответ для перестановки ID: маска исправляет дополнение, а не потерю порядка.
 
----
+## Свёртка замечает локальные выражения
 
-## 12. Bidirectional LSTM
+TextCNN применяет фильтр вдоль последовательности векторов. Окно из трёх токенов может выделять локальные сочетания, затем pooling собирает сильные отклики. Это обучаемый аналог поиска фраз, но не буквальное перечисление всех n-грамм.
 
-Для full-text classification whole sequence доступна.
-
-Bidirectional LSTM читает:
-
-```text
-left→right
-right→left
-```
-
-и concat representations.
-
-Это помогает context обеих сторон.
-
-Для causal generation/forecasting future direction нельзя.
-
----
-
-## 13. Attention over LSTM outputs
-
-До Transformer популярная architecture:
-
-```text
-BiLSTM
-→ hidden states each token
-→ attention pooling
-→ weighted document vector
-```
-
-То есть attention возникла ещё до Transformer как способ не сжимать sequence только в final state.
-
----
-
-## 14. Pretrained static embeddings
-
-Можно initialize `nn.Embedding` pretrained Word2Vec/FastText vectors.
-
-FastText особенно интересен morphology, потому что word representations используют character n-grams.
-
-Потом:
-- freeze embeddings;
-- или fine-tune.
-
-Но modern contextual Transformers обычно сильнее при достаточных resources.
-
----
-
-## 15. OOV problem static word embeddings
-
-Word-level embedding vocabulary:
-
-```text
-"переподключение" absent
-```
-
-может дать `<UNK>`.
-
-Subword Transformer tokenizer лучше handles rare words.
-
-FastText partially решает через character n-grams.
-
----
-
-## 16. Padding/masks во всех architectures
-
-Pooling:
-- mask padding explicitly.
-
-RNN:
-- lengths/packing.
-
-Transformer:
-- attention mask.
-
-Один technical padding token не должен влиять как real word.
-
----
-
-## 17. Loss
-
-Multiclass:
+У Conv1d каналы стоят перед длиной. Поэтому embeddings `[B,L,d]` нужно переставить в `[B,d,L]`:
 
 ```python
-nn.CrossEntropyLoss()
+embedding = nn.Embedding(10, 8)
+conv = nn.Conv1d(in_channels=8, out_channels=12, kernel_size=3)
+short_batch = torch.tensor([[1, 2, 3, 4], [4, 3, 2, 1]])
+features = embedding(short_batch).transpose(1, 2)
+local = torch.relu(conv(features))
+pooled = local.amax(dim=-1)
+print(local.shape)   # torch.Size([2, 12, 2])
+print(pooled.shape)  # torch.Size([2, 12])
 ```
 
-Input:
+Здесь все четыре позиции настоящие. Для разных длин нельзя бездумно брать максимум по окнам, затрагивающим только дополнение. Нужно знать, какие окна содержательны, маскировать недопустимые отклики и отдельно обрабатывать слишком короткие документы.
 
-```text
-[B,C] logits
-```
+## Рекурсия и attention расширяют контекст
 
-Target:
+LSTM обрабатывает позиции последовательно и может связать более далёкие фрагменты. Для документов разной длины используйте последнее настоящее состояние или упакованные последовательности, а не последний нулевой столбец пакета. Двунаправленность допустима для полностью известного текста обращения.
 
-```text
-[B] class IDs
-```
+Attention поверх состояний учится по-разному взвешивать позиции. Его маска должна исключать дополнение до нормировки. Большой вес не является самостоятельным объяснением конечного решения; сеть ещё преобразует и смешивает эти значения.
 
-Binary:
-- one logit;
-- `BCEWithLogitsLoss`.
+Выбор архитектуры отвечает на конкретную ошибку: локальные выражения, дальние зависимости или слабое представление редких слов. Он не отменяет сравнение с TF-IDF на одинаковом наборе.
 
----
+## Один класс или несколько одновременно
 
-## 18. Class imbalance
+Если каждому тексту соответствует ровно одна категория, нужны логиты по классам и CrossEntropyLoss с целочисленной меткой. Если обращение может одновременно касаться оплаты и доставки, это multi-label-задача: отдельная бинарная цель на каждую категорию, обычно BCEWithLogitsLoss и отдельные пороги.
 
-Same principles Classic ML:
+Softmax заставляет классы конкурировать за сумму один; sigmoid рассматривает выходы независимо. Неправильная постановка loss может навязать модели неверное ограничение ещё до обучения.
 
-- macro F1;
-- per-class recall;
-- weights;
-- threshold for binary/multilabel.
+## Самопроверка и практика
 
-Deep model не отменяет metrics.
+1. Почему усреднение embeddings не учитывает порядок?
+2. Почему нужны маски не только в Transformer?
+3. Какая ось становится каналами Conv1d?
+4. Почему для двух совместимых меток нельзя автоматически использовать обычный softmax?
 
----
+Разбор: сумма не меняется при перестановке; дополнение влияет на среднее, рекурсию и pooling; размер embedding; softmax вынуждает выбирать конкурирующие категории, хотя обе могут быть верными.
 
-## 19. Multi-label text classification
+**Практика.** Переставьте настоящие ID первой строки модели MeanClassifier. Прогноз не изменится. Затем сравните промежуточные отклики TextCNN для прямого и обратного порядка. Объясните, почему свёртка может различить порядок, но глобальное усреднение не может.
 
-Один document может иметь несколько tags:
-
-```text
-fraud
-card
-urgent
-```
-
-Это не multiclass.
-
-Output:
-
-```text
-C independent logits
-```
-
-Loss:
-
-```python
-BCEWithLogitsLoss
-```
-
-Target:
-
-```text
-multi-hot [B,C]
-```
-
-Threshold can be per-label.
-
----
-
-## 20. Why sparse baseline may still win
-
-Small dataset:
-
-```text
-3k documents
-```
-
-TextCNN/LSTM training from scratch может learn poor embeddings.
-
-TF-IDF уже directly exposes discriminative lexical features.
-
-Поэтому fair comparison mandatory.
-
----
-
-## 21. Why neural model can win
-
-Advantages:
-
-- shared dense representations;
-- semantic similarity;
-- sequence order;
-- local composition;
-- pretrained embeddings;
-- end-to-end feature learning.
-
-Но requires:
-- more data;
-- tuning;
-- compute.
-
----
-
-## 22. Error comparison
-
-TF-IDF may fail:
-```text
-synonyms
-long context
-word order
-```
-
-LSTM may fail:
-```text
-very long docs
-rare vocabulary
-optimization
-```
-
-TextCNN may fail:
-```text
-long-range dependencies
-```
-
-Comparing errors tells which inductive bias needed.
-
----
-
-## 23. Интерактивная визуализация
-
-### Pooling
-
-Token embeddings → mean/max document vector.
-
-### Text CNN
-
-Kernel window slides over token embeddings, activations spike at phrase.
-
-### LSTM
-
-Hidden state evolves word-by-word.
-
-### Architecture comparison
-
-Sentence with long negation dependency:
-- mean pool;
-- CNN width3;
-- LSTM.
-
-Show what context each naturally captures.
-
----
-
-## 24. Типичные ошибки
-
-**«Mean pooling понимает order».**\
-Нет.
-
-**«Text CNN то же самое, что image Conv2d».**\
-Principle convolution same, geometry/shape different.
-
-**«Final LSTM state всегда correct при padded sequence».**\
-Нужно учитывать real lengths.
-
-**«Multi-label = multiclass».**\
-Нет.
-
-**«Neural model обязательно лучше TF-IDF».**\
-Нет.
-
-**«Static embedding уже contextual».**\
-Нет.
-
----
-
-## 25. Проверка понимания
-
-1. Как из `[B,L,D]` получить doc vector mean pooling?
-2. Почему mask padding?
-3. Что Text CNN capture?
-4. Shape Conv1d?
-5. Что LSTM добавляет?
-6. Когда bidirectional допустим?
-7. Multiclass vs multilabel loss?
-8. Почему static embeddings limited?
-9. Почему sparse baseline может выиграть?
-10. Что attention pooling даёт поверх LSTM?
-
----
-
-## 26. Мини-практика
-
-Dataset:
-```text
-20k reviews
-median 120 tokens
-binary sentiment
-```
-
-Сравните:
-1. TF-IDF + Logistic;
-2. learned embedding + mean pooling;
-3. TextCNN;
-4. BiLSTM.
-
-Для каждого:
-- expected strengths;
-- compute;
-- preprocessing;
-- likely failure mode.
-
----
-
-## Что нужно унести
-
-1. Neural text classifier = embeddings → sequence aggregation → head.
-2. Mean/max pooling просты, но largely ignore order.
-3. Text CNN captures local phrase patterns.
-4. RNN/LSTM models sequence order.
-5. Bidirectional models whole context when future available.
-6. Padding handling architecture-specific.
-7. Multi-label classification uses independent logits.
-8. Classical sparse baseline remains mandatory.
-9. BERT next combines contextual token representations with Transformer pretraining.
-
-## Куда дальше
-
-Следующий шаг:
-
-> не обучать embeddings и sequence model с нуля, а взять Transformer, предварительно обученный на огромном text corpus.
-
-Разберём BERT и encoder Transformers.
+Следующий шаг — готовый кодировщик BERT, который уже обучал контекстные представления на большой текстовой задаче.
 
 ## Источники
-- PyTorch `Embedding`, `Conv1d`, `LSTM`.
-- Classical neural text classification architectures as conceptual references.
+
+[Классификация текста свёртками](https://arxiv.org/abs/1408.5882), [Conv1d](https://docs.pytorch.org/docs/stable/generated/torch.nn.Conv1d.html), [BCEWithLogitsLoss](https://docs.pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html).

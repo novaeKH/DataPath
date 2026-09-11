@@ -14,7 +14,7 @@ module_order: 2
 lesson_order: 2
 canonical_number: 20
 content_path: 10 Знания/DataPath v2/03_SQL_DataPath_v2/source-020 Оконные функции OVER, PARTITION BY, ORDER BY, ROW_NUMBER, LAG и running aggregates.md
-estimated_minutes: 85
+estimated_minutes: 30
 difficulty: core
 skill_ids:
 - datapath.v2.020
@@ -31,7 +31,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №20, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Считать ранги, предыдущие значения и накопительные показатели.
+- Отличать оконную функцию от сворачивания строк GROUP BY.
 
 ## Сценарий урока
 
@@ -39,6 +42,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

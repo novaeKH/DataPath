@@ -17,321 +17,132 @@ tags:
 - canonical/source
 ---
 
-# ООП и модель данных Python
+# Объекты и классы: объединяем состояние с поведением
 
-Класс полезен не потому, что «всё должно быть объектом».
+В предыдущих уроках функции получали данные и возвращали результат. Иногда несколько операций должны работать с одним состоянием. Например, преобразователь сначала вычисляет среднее по обучающим данным, затем вычитает это же среднее из новых данных. Если передавать сохранённое среднее вручную в десятки функций, легко перепутать параметры.
 
-Он полезен, когда есть:
-```text
-состояние + поведение + инварианты
-```
+Класс описывает такой объект: какие данные он хранит и какие действия поддерживает. Начнём с минимального преобразователя, а затем свяжем его с устройством библиотек машинного обучения.
 
-Пример:
+## Один класс, разные экземпляры
+
 ```python
-class Standardizer:
+class Centerer:
+    def __init__(self):
+        self.mean = None
+
     def fit(self, values):
-        self.mean_ = sum(values) / len(values)
-        self.scale_ = (sum((x - self.mean_) ** 2 for x in values) / len(values)) ** 0.5
+        if not values:
+            raise ValueError("Нужны хотя бы одни данные")
+        self.mean = sum(values) / len(values)
         return self
 
     def transform(self, values):
-        return [(x - self.mean_) / self.scale_ for x in values]
+        if self.mean is None:
+            raise ValueError("Сначала вызовите fit")
+        return [value - self.mean for value in values]
+
+centerer = Centerer()
+centerer.fit([10, 20, 30])
+print(centerer.transform([15, 40]))   # [-5.0, 20.0]
 ```
 
-после `fit` объект хранит mean/std и затем `transform` использует это состояние.
+`Centerer` — класс, а `centerer` — экземпляр. Метод `__init__` устанавливает начальное состояние при создании экземпляра. Параметр `self` обозначает конкретный объект, для которого вызван метод. Запись `centerer.fit(values)` передаёт объект в `self` автоматически.
 
-Это уже знакомая идея sklearn estimator.
+Метод `fit` сохранил среднее 20. Метод `transform` использовал его для новых чисел. Он не пересчитывал среднее по `[15, 40]`: это важно для честной обработки будущих данных. Возврат `self` из `fit` позволяет выстраивать цепочку вызовов.
 
-## 1. Class и instance
+## Где находится состояние
 
-```python
-class User:
-    pass
-
-u = User()
-```
-
-`User` — class object.
-`u` — instance.
-
-## 2. `__init__`
+У каждого экземпляра свои атрибуты, если они создаются через `self`. Атрибуты самого класса доступны всем экземплярам, поэтому общий изменяемый список часто приводит к ошибке.
 
 ```python
-class User:
+class Experiment:
     def __init__(self, name):
         self.name = name
+        self.scores = []
+
+first = Experiment("baseline")
+second = Experiment("improved")
+first.scores.append(0.8)
+print(first.scores)    # [0.8]
+print(second.scores)   # []
 ```
 
-`self` — ссылка на instance, передаваемая автоматически при method call.
+Если написать `scores = []` прямо в теле класса, оба объекта первоначально будут обращаться к одному списку. Причина та же, что у общих ссылок в первом уроке.
+
+Инкапсуляция означает, что объект поддерживает правила работы со своим состоянием. В Python имя с одним подчёркиванием, например `_mean`, обычно сообщает «внутренняя деталь». Это соглашение, а не защита доступа. `property` позволяет представить вычисление или проверку как доступ к атрибуту; применять его нужно, когда такая запись действительно яснее вызова метода.
+
+## Объединение объектов и наследование
+
+Допустим, обработка состоит из преобразования и прогноза. Композиция означает, что один объект содержит другие объекты:
 
 ```python
-u = User("Ilya")
-u.name
+class Predictor:
+    def __init__(self, transformer):
+        self.transformer = transformer
+
+    def prepare(self, values):
+        return self.transformer.transform(values)
+
+pipeline = Predictor(centerer)
+print(pipeline.prepare([20, 25]))   # [0.0, 5.0]
 ```
 
-## 3. Instance attributes vs class attributes
+Компонент можно заменить другим, если у него есть подходящий метод `transform`. Проверяется поддерживаемое поведение, а не обязательно конкретное имя класса. Такой подход называют утиной типизацией.
+
+Наследование описывает отношение «новый тип является разновидностью существующего». Дочерний класс может переопределять методы родителя. `super()` обращается к следующей реализации по порядку разрешения методов. Наследование полезно для общего интерфейса, но глубокая иерархия часто связывает несвязанные обязанности. Для сменяемых этапов обработки композиция обычно проще.
+
+## Как объект включается в язык
+
+Специальные методы связывают объект с обычными операциями Python. `__len__` определяет `len(obj)`, `__repr__` — диагностическое представление, `__call__` позволяет вызывать экземпляр как функцию.
 
 ```python
-class Model:
-    framework = "sklearn"
+class Multiply:
+    def __init__(self, factor):
+        self.factor = factor
 
-    def __init__(self, name):
-        self.name = name
+    def __call__(self, value):
+        return value * self.factor
+
+    def __repr__(self):
+        return f"Multiply(factor={self.factor})"
+
+double = Multiply(2)
+print(double(7))   # 14
+print(double)      # Multiply(factor=2)
 ```
 
-`framework` живёт на class, `name` обычно на instance.
+Теперь объект хранит настройку и поддерживает привычную форму вызова. Это объясняет, почему модель PyTorch можно вызывать как функцию: у объекта существует соответствующий протокол поведения.
 
-Неправильно:
-
-```python
-class Team:
-    members = []
-```
-
-Все instances разделяют один mutable list.
-
-Правильно:
-```python
-def __init__(self):
-    self.members = []
-```
-
-## 4. Method call
-
-```python
-u.say()
-```
-
-conceptually связано с:
-```python
-User.say(u)
-```
-
-Это объясняет `self`.
-
-## 5. Encapsulation Python-style
-
-Python не делает жёсткую private-модель как некоторые языки.
-
-Conventions:
-```text
-_name → internal use
-__name → name mangling, not true security
-```
-
-API design важнее «спрятать всё».
-
-## 6. Property
-
-```python
-class Account:
-    def __init__(self, balance):
-        self._balance = balance
-
-    @property
-    def balance(self):
-        return self._balance
-```
-
-Позволяет оставить attribute-like API, но контролировать вычисление/validation.
-
-Не превращайте каждый attribute в property без необходимости.
-
-## 7. Inheritance
-
-```python
-class BaseModel:
-    def predict(self, X):
-        raise NotImplementedError
-
-class CatModel(BaseModel):
-    def predict(self, X):
-        return ["cat" for _ in X]
-```
-
-Inheritance полезно для real "is-a" relation, но composition часто проще.
-
-## 8. Composition
-
-```python
-class Service:
-    def __init__(self, model, logger):
-        self.model = model
-        self.logger = logger
-```
-
-Service использует model/logger, но не обязан наследоваться от них.
-
-Rule:
-> prefer composition when relationship is "has-a".
-
-## 9. `super()`
-
-```python
-class Child(Base):
-    def __init__(self, x):
-        super().__init__(x)
-```
-
-Работает с method resolution order (MRO), а не просто «вызови parent по имени».
-
-## 10. Duck typing
-
-Python часто спрашивает не:
-> какого exact класса объект?
-
-а:
-> поддерживает ли он нужный protocol?
-
-Например `len(x)` вызывает соответствующий protocol.
-
-Если объект ведёт себя как file-like, многие функции могут использовать его без общего base class.
-
-## 11. Special methods
-
-```python
-__len__
-__iter__
-__getitem__
-__enter__
-__exit__
-__call__
-__repr__
-```
-
-Это **модель данных Python**: встроенный синтаксис делегирует объекту.
-
-Пример:
-
-```python
-class Batch:
-    def __len__(self):
-        return len(self.items)
-```
-
-Теперь:
-```python
-len(batch)
-```
-
-## 12. `__repr__`
-
-Хороший debug representation:
-
-```python
-def __repr__(self):
-    return f"Model(name={self.name!r})"
-```
-
-Очень полезно в notebook/logs.
-
-## 13. `__call__`
-
-```python
-class Scaler:
-    def __call__(self, x):
-        return x * 2
-```
-
-Теперь instance можно вызвать:
-```python
-scaler(x)
-```
-
-PyTorch `nn.Module` использует callable-object pattern.
-
-## 14. Dataclass
-
-Для data container:
+Для классов, которые в основном хранят данные, удобен `dataclass`:
 
 ```python
 from dataclasses import dataclass
 
-@dataclass
-class Config:
-    lr: float
-    epochs: int
+@dataclass(frozen=True)
+class TrainConfig:
+    seed: int = 42
+    batch_size: int = 32
+
+print(TrainConfig())   # TrainConfig(seed=42, batch_size=32)
 ```
 
-Автоматически создаёт useful methods вроде `__init__`, `__repr__`, equality.
+Декоратор создаёт типовые методы, а `frozen=True` запрещает обычное переприсваивание полей экземпляра. Это не делает все вложенные объекты глубоко неизменяемыми.
 
-Отлично для configs/simple records.
+## Ошибки, самопроверка и практика
 
-## 15. Protocol thinking для ML
+Не создавайте класс только ради одной функции без состояния. Не складывайте загрузку файлов, обучение и отображение графиков в один объект. Объект должен иметь понятную ответственность и проверяемые условия работы.
 
-sklearn estimator concept:
-```text
-fit
-predict
-transform
-```
+1. Почему два преобразователя могут хранить разные средние?
+2. Зачем `transform` проверяет, был ли вызван `fit`?
+3. Чем композиция отличается от наследования?
+4. Почему диагностическое представление полезно при отладке?
 
-DataLoader:
-```text
-iteration
-```
+Разбор: состояние находится в экземплярах; без обучения требуемый параметр не существует; композиция использует другой объект, наследование описывает разновидность типа; представление показывает фактическую конфигурацию, а не адрес непонятного объекта.
 
-context manager:
-```text
-__enter__ / __exit__
-```
+**Практика.** Создайте два `Centerer`: обучите первый на `[0, 10]`, второй на `[100, 200]`. Для входа `[20]` результаты должны быть `[15.0]` и `[-130.0]`. Добавьте `__repr__`, показывающий сохранённое среднее. Затем объясните, почему обучение второго объекта не должно менять первый.
 
-Понимая protocols, библиотеки выглядят намного менее магическими.
+В визуализации проследите состояние до и после `fit`. Эти же понятия понадобятся в scikit-learn и PyTorch: экземпляр хранит параметры, методы задают правила работы с ними.
 
-## Сквозной пример: эксперимент как набор ролей
+## Источники
 
-В учебном ML-проекте `ExperimentConfig` может быть dataclass с параметрами, а `Trainer` — объектом, который получает модель и конфигурацию. Trainer не обязан наследоваться от модели: композиция точнее выражает отношение «использует», тогда как наследование означает «является разновидностью».
-
-Метод получает экземпляр как `self`; вызов `trainer.fit(X, y)` концептуально превращается в `Trainer.fit(trainer, X, y)`. Атрибуты экземпляра принадлежат конкретному эксперименту, а изменяемый атрибут класса был бы общим для всех экземпляров и мог бы незаметно переносить состояние.
-
-Python часто опирается на протоколы: если объект имеет подходящие методы, его можно использовать независимо от конкретного класса. Модель с `fit` и `predict` подходит Trainer, а объект с `__len__` участвует в `len`. Специальные методы соединяют пользовательский класс с синтаксисом языка.
-
-Dataclass уменьшает шаблонный код для объектов-данных, но не делает объект неизменяемым автоматически. `__repr__` помогает отладке, property контролирует доступ к вычисляемому или проверяемому значению. Класс полезен, когда состояние и операции образуют устойчивое понятие; для простого преобразования обычная функция остаётся яснее.
-
-## Визуализация DataPath
-
-Object/class diagram и интерактивное сопоставление:
-```text
-len(x) → x.__len__()
-for → __iter__()
-with → __enter__/__exit__()
-```
-
-## Типичные ошибки
-
-- mutable class attribute;
-- inheritance ради code reuse без relation;
-- путать `__name` с настоящей security;
-- class, который является только набором unrelated static methods;
-- overly deep inheritance.
-
-## Проверка понимания
-
-1. Class vs instance?
-2. Что такое `self`?
-3. Class attribute vs instance?
-4. Composition vs inheritance?
-5. Duck typing?
-6. Что такое special method?
-7. Для чего dataclass?
-
-## Мини-практика
-
-Создайте `ExperimentConfig` через dataclass:
-- `lr`
-- `batch_size`
-- `epochs`
-и class `Trainer`, который получает config и model через composition.
-
-## Итог
-
-Python OOP лучше понимать через:
-```text
-объекты + protocols + composition
-```
-а не только через четыре школьных принципа ООП.
-
-## Куда дальше
-
-Классы сами по себе не делают программу надёжной. Следующий урок — exceptions,
-`with`, файлы, модули и окружения.
+[Классы Python](https://docs.python.org/3/tutorial/classes.html), [dataclasses](https://docs.python.org/3/library/dataclasses.html).

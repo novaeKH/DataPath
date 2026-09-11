@@ -17,642 +17,85 @@ tags:
 - canonical/source
 ---
 
-# BERT и encoder Transformers: как pretrained encoder превращает текст в контекстные признаки
+# BERT: контекстное представление и новая задача
 
-TF-IDF знает:
+В словаре слово «ключ» всегда получает один и тот же начальный вектор. Но в предложениях «ключ от двери» и «ключ словаря» нужны разные признаки. Transformer-кодировщик строит представление каждой позиции с учётом доступного текста с обеих сторон.
 
-```text
-какие n-граммы встречаются
-```
+BERT — известный пример такого кодировщика с предварительным обучением. Его полезность не в одном специальном токене, а в весах, которые научились решать масштабную языковую задачу. Затем эти веса можно адаптировать для классификации, извлечения сущностей и других задач.
 
-LSTM учит sequence representation.
+## Как учиться, не подсматривая готовый ответ
 
-BERT сделал следующий важный шаг:
+Если предсказывать следующий токен и одновременно дать модели весь текст справа, ответ уже окажется на входе. В masked language modeling часть позиций скрывают или изменяют, а модель восстанавливает исходные токены по оставшемуся контексту.
 
-> **сначала обучить глубокий bidirectional Transformer encoder на огромном неразмеченном corpus, а затем дообучать его для конкретных NLP-задач.**
+Например, в «кот сидит на [MASK]» сеть оценивает возможные слова на месте пропуска. Loss вычисляется по выбранным целевым позициям, а не обязательно по всем токенам. Это учит языковые зависимости без ручной разметки классов обращений.
 
-BERT — не «нейросеть, которая понимает текст» в мистическом смысле.
+Исходный BERT использовал также задачу отношений предложений. Не все последующие encoder-модели повторяют её и остальные детали исходной работы. Поэтому название семейства не заменяет чтение карточки конкретного checkpoint.
 
-Это stack Transformer encoder blocks, обученный через self-supervised objectives.
+## Как из последовательности получить класс
 
----
+Кодировщик выдаёт тензор `[B,L,d]`. Для классификации всей последовательности нужно получить по одному вектору на объект. Часто используется представление специальной начальной позиции, обучаемый pooling или маскированное среднее. Затем небольшая голова выдаёт логиты классов.
 
-## 1. Encoder representation
+Само наличие токена CLS не делает его универсальным качественным embedding предложения. Если цель — поиск похожих предложений, модель и способ pooling должны быть обучены или проверены именно для такой геометрии. Хорошая классификация не гарантирует хорошие косинусные расстояния.
 
-Input:
+Для выделения сущностей выход нужен на позициях токенов, а для извлекающего ответа — оценки начала и конца фрагмента. Одна архитектура получает разные головы в зависимости от задачи.
 
-```text
-token IDs
-attention mask
-```
+## Проверяем договор формы без скачивания весов
 
-После embeddings:
-
-```text
-[B,L,d_model]
-```
-
-После каждого Transformer block representation каждого token становится contextual:
-
-```text
-token "bank"
-```
-
-может иметь разные hidden states в:
-
-```text
-river bank
-bank account
-```
-
-потому что self-attention mixes surrounding context.
-
----
-
-## 2. Bidirectional attention
-
-BERT encoder token может смотреть:
-
-```text
-left context
-+
-right context
-```
-
-Это отлично для:
-- classification;
-- NER;
-- extractive QA.
-
-Но architecture не является causal generator по default, потому что token sees future context.
-
----
-
-## 3. Почему нельзя просто train next-token bidirectionally
-
-Если token видит future token, next-token prediction becomes trivial leakage.
-
-Поэтому original BERT использовал **Masked Language Modeling (MLM)**.
-
-Некоторые input tokens скрываются/заменяются, и model predicts original token using both left/right context.
-
----
-
-## 4. MLM intuition
-
-Original:
-
-```text
-Париж — столица Франции
-```
-
-Masked:
-
-```text
-Париж — [MASK] Франции
-```
-
-Model должна predict:
-
-```text
-столица
-```
-
-Так encoder учится contextual representations без human labels.
-
----
-
-## 5. Original BERT masking nuance
-
-В original BERT paper selected positions составляли 15% tokens, а дальше использовалась смесь:
-- `[MASK]`;
-- random token;
-- unchanged token.
-
-Цель — уменьшить discrepancy, потому что `[MASK]` не появляется в downstream text.
-
-Для practical fine-tuning не обязательно воспроизводить MLM procedure, если берём готовый checkpoint.
-
----
-
-## 6. Next Sentence Prediction
-
-Original BERT также использовал Next Sentence Prediction (NSP).
-
-Но later encoder architectures часто изменяли/убирали этот objective.
-
-Поэтому:
-
-> NSP — часть original BERT recipe, не обязательное свойство любого encoder Transformer.
-
----
-
-## 7. `[CLS]` representation
-
-Original BERT вставляет special `[CLS]` token в начало.
-
-Final hidden state `[CLS]` часто используется как aggregate representation для classification head.
-
-```text
-[CLS] text [SEP]
-↓
-BERT
-↓
-h_CLS
-↓
-Linear
-↓
-class logits
-```
-
-Но alternatives:
-- mean pooling hidden states;
-- task-specific pooling.
-
----
-
-## 8. Sequence classification head
-
-Hugging Face class:
+Пример требует transformers и PyTorch, но не интернета: создаётся крошечный BERT со случайными весами. Он проверяет входы, маску и loss, а не демонстрирует понимание языка.
 
 ```python
-AutoModelForSequenceClassification
-```
+import torch
+from transformers import BertConfig, BertForSequenceClassification
 
-обычно добавляет task-specific classification head поверх pretrained backbone.
-
-Пример:
-
-```python
-from transformers import (
-    AutoTokenizer,
-    AutoModelForSequenceClassification,
+torch.manual_seed(7)
+config = BertConfig(
+    vocab_size=20, hidden_size=16, num_hidden_layers=1,
+    num_attention_heads=4, intermediate_size=32,
+    max_position_embeddings=16, num_labels=2,
 )
-
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-model = AutoModelForSequenceClassification.from_pretrained(
-    model_name,
-    num_labels=5,
-)
+model = BertForSequenceClassification(config)
+ids = torch.tensor([[2, 5, 6, 3], [2, 7, 3, 0]])
+mask = ids.ne(0).long()
+labels = torch.tensor([0, 1])
+output = model(input_ids=ids, attention_mask=mask, labels=labels)
+print(output.logits.shape)  # torch.Size([2, 2])
+print(output.loss.ndim)     # 0: скалярная loss
+output.loss.backward()
 ```
 
----
+В этом искусственном словаре договорились считать 2 начальным, 3 конечным токеном, 0 дополнением. У реального токенизатора номера могут быть другими. Нельзя переносить эти учебные числа в готовую модель без проверки.
 
-## 9. Forward batch
+Передача labels позволяет модулю вычислить соответствующую loss. В производственном эксперименте всё равно нужно понимать её смысл и убедиться, что постановка — single-label или multi-label — задана правильно.
 
-```python
-batch = tokenizer(
-    texts,
-    padding=True,
-    truncation=True,
-    return_tensors="pt",
-)
+## Fine-tuning — тот же цикл, другие начальные веса
 
-outputs = model(
-    **batch,
-    labels=labels,
-)
-```
+Для настоящего переноса загружают совместимые токенизатор и checkpoint, добавляют голову нужной размерности и обучают на размеченном train. Разбиение, выбор лучшего состояния по validation и финальный test остаются такими же, как в обычном PyTorch workflow.
 
-Обычно outputs содержат:
-- `loss`, если labels переданы;
-- `logits`.
+Готовые представления обычно меняют осторожно: слишком большой шаг быстро разрушает полезные зависимости. Конкретный learning rate выбирают по проверке, а не объявляют универсальным для всех моделей. На малом наборе полезно сравнить замороженный encoder и более полное дообучение.
 
-Exact structure зависит model class.
+Длинные тексты увеличивают вычислительные расходы. Уменьшение max_length экономит ресурсы, но может выбросить решающую часть обращения. Поэтому качество нужно смотреть отдельно по длинам и доле обрезания.
 
----
+## Что сравнивать с TF-IDF
 
-## 10. Fine-tuning
+Encoder может лучше переносить смысл между разными формулировками, но проигрывать по задержке, памяти или устойчивости на специфических кодах ошибок. Сравнивайте модели на одних и тех же объектах: где новая исправила прежнюю ошибку, а где создала новую?
 
-Все pretrained weights можно update маленьким learning rate.
+Особенно проверьте редкие классы, отрицания, смешанные языки и новые продукты. Не подменяйте анализ общим приростом средней метрики. Если проблема — неверные метки или текст оператора во входе, предобучение её не исправит.
 
-Typical orders magnitude often much smaller than randomly initialized MLP head, например:
+Наконец, BERT-style encoder не является авторегрессионным генератором. Он может восстанавливать скрытые позиции и решать задачи понимания, но обычная генерация длинного продолжения требует другой постановки и маски.
 
-```text
-1e-5 ... 5e-5
-```
+## Самопроверка и практика
 
-для BERT-like fine-tuning historically common, но это не universal law.
+1. Почему нельзя обучать предсказание следующего токена с открытым истинным будущим?
+2. Чем случайный BertConfig отличается от загрузки pretrained checkpoint?
+3. Почему CLS не автоматически хорош для semantic search?
+4. Почему маленький learning rate не исправляет утечку?
 
-Validation decides.
+Разбор: целевой ответ доступен во входе; конфигурация задаёт архитектуру, а не обученные знания; геометрия определяется задачей обучения и pooling; утечка относится к доступности данных, а не величине обновления весов.
 
----
+**Практика.** Добавьте два PAD в конец учебного пакета. В режиме eval сравните логиты с исходными при корректной маске: они должны совпасть с численной точностью. Затем ошибочно пометьте дополнение как настоящий текст и объясните, почему гарантия исчезает.
 
-## 11. Why low learning rate
-
-Pretrained network already has useful representations.
-
-Huge update:
-
-```text
-может быстро разрушить pretrained solution
-```
-
-Fine-tuning asks:
-> slightly adapt large pretrained function to downstream objective.
-
----
-
-## 12. AdamW
-
-Transformer fine-tuning commonly uses AdamW.
-
-Need:
-- weight decay;
-- LR schedule;
-- sometimes warmup.
-
-Но не нужно blindly copy:
-```text
-lr=2e-5
-warmup=10%
-epochs=3
-```
-как immutable formula.
-
-Dataset/model size differ.
-
----
-
-## 13. Max length
-
-BERT-like models often have configured maximum positions, historically 512 for original BERT.
-
-Но modern checkpoints vary.
-
-Always check tokenizer/model config.
-
-Long docs require:
-- truncation strategy;
-- chunking;
-- hierarchical aggregation;
-- long-context encoder.
-
----
-
-## 14. Token classification
-
-NER:
-
-```text
-token hidden state
-→ Linear to entity labels
-```
-
-Output:
-
-```text
-[B,L,C]
-```
-
-Loss counted on labelled real subtokens, ignoring padding/special subtokens.
-
-Subword alignment becomes critical.
-
----
-
-## 15. Extractive question answering
-
-Model predicts:
-- start position;
-- end position
-
-inside context tokens.
-
-Tokenizer offset mapping is needed to convert predicted token spans back to original text.
-
----
-
-## 16. Sentence embeddings
-
-Raw BERT `[CLS]` hidden state is not automatically optimal sentence embedding for semantic similarity.
-
-Special models like Sentence-BERT are trained with objectives better suited for sentence-level embedding similarity/retrieval.
-
-Important distinction:
-
-> contextual encoder output can be pooled, but good retrieval embedding needs appropriate training objective.
-
----
-
-## 17. BERT vs GPT
-
-### BERT-like
-
-```text
-encoder
-bidirectional
-MLM-style pretraining
-understanding/representation tasks
-```
-
-### GPT-like
-
-```text
-decoder-only
-causal attention
-next-token prediction
-generation
-```
-
-Modern boundaries broader, but architectural distinction remains useful.
-
----
-
-## 18. RoBERTa-like improvements
-
-RoBERTa showed that training recipe matters:
-- more data;
-- longer training;
-- dynamic masking;
-- removed NSP;
-- larger batches, etc.
-
-Lesson:
-
-> architecture alone does not explain pretrained model quality.
-
-Data/objective/training recipe matter enormously.
-
----
-
-## 19. Multilingual BERT
-
-Multilingual model shares vocabulary/parameters across languages.
-
-Pros:
-- one checkpoint;
-- cross-lingual transfer.
-
-Cons:
-- finite capacity/vocabulary shared;
-- language-specific model may tokenize language more efficiently.
-
-For Russian tasks compare multilingual and Russian-specific checkpoints if resources permit.
-
----
-
-## 20. Domain-specific pretraining
-
-Financial/medical/legal text differs from general web/books.
-
-A domain-adapted encoder can improve:
-- terminology;
-- style;
-- rare concepts.
-
-But benchmark claims require fair same split and baseline.
-
----
-
-## 21. Freezing encoder
-
-For small dataset:
-```text
-freeze BERT
-→ train head
-```
-
-может be stable/cheap.
-
-Then:
-```text
-unfreeze upper layers
-```
-
-or full fine-tune.
-
-Often full fine-tuning gives better quality if data/resources enough.
-
----
-
-## 22. PEFT
-
-Large encoder/LLM can use adapters/LoRA-like methods.
-
-For BERT-sized models full fine-tuning may still be affordable, but PEFT useful:
-- many tasks;
-- limited memory;
-- storing small task adapters.
-
----
-
-## 23. Imbalanced labels
-
-Pretrained Transformer does not solve class imbalance.
-
-Need:
-- macro F1;
-- per-class recall;
-- weighted loss if justified;
-- sampling/threshold where appropriate.
-
----
-
-## 24. Overfitting small text dataset
-
-Transformer has millions parameters.
-
-Symptoms:
-```text
-train loss ↓ fast
-validation metric peaks then drops
-```
-
-Use:
-- early stopping;
-- lower lr;
-- weight decay;
-- freeze layers;
-- data augmentation carefully;
-- better labels.
-
----
-
-## 25. Data augmentation text tricky
-
-Image flip often preserves label.
-
-Text transform:
-- synonym replacement;
-- translation;
-- deletion
-
-may alter semantics.
-
-LLM-generated augmentation can introduce label artifacts.
-
-Use only with validation and source tracking.
-
----
-
-## 26. Gradient accumulation / mixed precision
-
-Transformer memory can limit batch size.
-
-Use:
-```text
-gradient accumulation
-mixed precision
-```
-
-to fit model.
-
-But effective batch size changes optimizer behavior.
-
----
-
-## 27. Evaluation latency
-
-TF-IDF + LinearSVC:
-```text
-very fast
-```
-
-BERT:
-```text
-tokenization + dozens layers
-```
-
-If production SLA strict, 1–2 F1 points may not justify latency.
-
-Model selection includes engineering.
-
----
-
-## 28. Error analysis by length
-
-Transformer truncation means quality can degrade specifically on long documents.
-
-Always segment:
-```text
-short
-medium
-long/truncated
-```
-
-Also:
-- language;
-- class;
-- source;
-- rare labels.
-
----
-
-## 29. Attention as interpretation caveat
-
-Можно visualize BERT attention maps, но:
-> attention weight не автоматически faithful explanation prediction.
-
-Use model interpretation carefully and compare token attribution methods if needed.
-
----
-
-## 30. Интерактивная визуализация DataPath
-
-### Contextual word
-
-Two sentences with `bank`.
-Show same initial token embedding conceptually, different final contextual states.
-
-### MLM
-
-Mask token and show candidate probabilities.
-
-### Fine-tuning
-
-Pretrained encoder layers + new classifier head; freeze/unfreeze controls.
-
-### Truncation
-
-Long text, selected target phrase after position 512 gets dropped → model cannot use it.
-
----
-
-## 31. Типичные ошибки
-
-**«BERT — decoder language model».**\
-Original BERT is Transformer encoder.
-
-**«BERT uses causal mask».**\
-Not standard bidirectional encoder self-attention.
-
-**«NSP обязателен всем BERT-like models».**\
-Нет.
-
-**«`[CLS]` всегда лучший sentence embedding».**\
-Нет.
-
-**«Transformer автоматически решает long documents».**\
-Нет.
-
-**«Pretrained model отменяет baseline».**\
-Нет.
-
-**«Fine-tuning lr можно брать один универсальный».**\
-Нет.
-
----
-
-## 32. Проверка понимания
-
-1. Почему BERT contextual?
-2. Зачем MLM?
-3. Bidirectional vs causal?
-4. Что делает `[CLS]`?
-5. Sequence vs token classification?
-6. Почему sentence retrieval требует suitable objective?
-7. BERT vs GPT architecture?
-8. Почему tokenizer/max length important?
-9. Почему small lr common fine-tuning?
-10. Почему Transformer может overfit small dataset?
-
----
-
-## 33. Мини-практика
-
-Dataset:
-```text
-12k Russian support tickets
-30 intents
-median=60 tokens
-p99=700
-```
-
-План:
-1. choose checkpoint;
-2. inspect tokenization Russian/domain;
-3. max length strategy;
-4. frozen vs fine-tune;
-5. macro F1;
-6. long-text error segment;
-7. compare TF-IDF baseline;
-8. latency benchmark.
-
----
-
-## Что нужно унести
-
-1. BERT — pretrained bidirectional Transformer encoder.
-2. Contextual hidden states depend on surrounding tokens.
-3. MLM enabled bidirectional self-supervised pretraining.
-4. NSP was original recipe, not universal.
-5. `[CLS]` often used classification representation.
-6. Fine-tuning updates pretrained weights for downstream task.
-7. Tokenizer/max length are part of model contract.
-8. BERT-like encoder differs from causal GPT-like decoder.
-9. Pretrained quality depends on data/objective/training recipe.
-10. Strong TF-IDF baseline remains necessary.
-
-## Куда дальше
-
-Теперь у нас есть models.
-
-Следующий вопрос важнее leaderboard:
-
-> **как честно оценить NLP system и понять, где именно она ошибается?**
+Далее будем оценивать NLP-модели по качеству решений, а не по впечатлению от архитектуры.
 
 ## Источники
-- Devlin et al., "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding".
-- Hugging Face sequence classification/token classification documentation.
+
+[Исходная работа BERT](https://arxiv.org/abs/1810.04805), [BERT в transformers](https://huggingface.co/docs/transformers/model_doc/bert).

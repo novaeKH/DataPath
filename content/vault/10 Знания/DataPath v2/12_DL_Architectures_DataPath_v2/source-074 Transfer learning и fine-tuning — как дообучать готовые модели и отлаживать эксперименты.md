@@ -17,819 +17,125 @@ tags:
 - canonical/source
 ---
 
-# Transfer learning и fine-tuning: как использовать уже обученные представления
+# Transfer learning: как использовать готовую модель осмысленно
 
-Обучить CNN или Transformer с нуля может потребовать:
+Нужно различать пять видов деталей, но размеченных фотографий всего несколько тысяч. Обучать большую сеть с нуля рискованно: ей придётся одновременно научиться видеть контуры и решать нашу конкретную задачу. Transfer learning переносит уже обученные представления в новую задачу.
 
-- огромный dataset;
-- GPU-hours;
-- careful optimization.
+Это не гарантия, что готовая модель подходит. Важно, на каких данных она обучалась, какие входы ожидает и насколько исходная задача близка к новой. Начнём с самого простого режима и будем усложнять его только по результатам валидации.
 
-Но часто существует pretrained model, которая уже научилась полезным representations.
+## Что переносим и что заменяем
 
-**Перенос обучения (transfer learning)** использует knowledge pretrained model для новой задачи.
+**Backbone** — часть сети, которая извлекает признаки. **Head** — выходная часть, которая превращает эти признаки в ответы нужной задачи. У готового классификатора последняя голова рассчитана на исходные классы; для наших пяти классов её заменяют.
 
-**Дообучение (fine-tuning)** обновляет часть или все pretrained parameters на новом dataset.
+В режиме извлечения признаков backbone заморожен, а новая голова обучается. При fine-tuning обновляется часть или весь backbone. Первый вариант дешевле и устойчивее на малых данных; второй позволяет приспособить признаки, но повышает риск переобучения и разрушения полезных представлений.
 
-Это один из самых практичных подходов современного DL.
+Даже при замороженных весах входное преобразование должно соответствовать модели: порядок каналов, масштаб пикселей, нормировка и геометрия изображения являются частью договора.
 
----
+## Разделяем заморозку и режим вычислений
 
-## 1. Почему transfer работает
+`requires_grad=False` исключает параметры из расчёта их градиентов. `eval()` меняет поведение отдельных слоёв. Ни одно не заменяет другое. Например, BatchNorm может обновлять статистики в режиме train даже при замороженных весах.
 
-Early/middle representations часто переиспользуемы.
-
-Vision model может уже знать patterns:
-
-```text
-edges
-textures
-shapes
-object parts
-```
-
-Language model:
-
-```text
-syntax
-semantics
-contextual patterns
-```
-
-Новая задача не обязана учить всё с нуля.
-
----
-
-## 2. Feature extractor mode
-
-Первый вариант:
-
-```text
-pretrained backbone frozen
-→ новые features
-→ train only new head
-```
-
-Например image model:
-
-```text
-ResNet backbone
-→ 2048-d representation
-→ new Linear for 5 classes
-```
-
-Backbone parameters:
+Ниже автономная демонстрация механики на маленькой сети. Её случайные веса не являются полезными предобученными признаками: здесь проверяем только то, какие параметры меняются.
 
 ```python
-for p in backbone.parameters():
-    p.requires_grad = False
+import torch
+from torch import nn
+
+torch.manual_seed(7)
+backbone = nn.Sequential(nn.Linear(4, 8), nn.ReLU())
+head = nn.Linear(8, 3)
+for parameter in backbone.parameters():
+    parameter.requires_grad_(False)
+backbone.eval()
+head.train()
+
+X = torch.randn(6, 4)
+y = torch.tensor([0, 1, 2, 0, 1, 2])
+optimizer = torch.optim.AdamW(head.parameters(), lr=0.01)
+before = [parameter.detach().clone() for parameter in backbone.parameters()]
+optimizer.zero_grad(set_to_none=True)
+with torch.no_grad():
+    features = backbone(X)
+loss = nn.CrossEntropyLoss()(head(features), y)
+loss.backward()
+optimizer.step()
+print(all(torch.equal(a, b) for a, b in zip(before, backbone.parameters())))
+# True
 ```
 
-Head обучается.
+`no_grad()` вокруг замороженного извлечения признаков экономит построение графа. После разморозки этот контекст нужно убрать, иначе backbone не получит градиенты, даже если его параметры снова разрешены к обучению.
 
----
+## Переход к настоящим готовым весам
 
-## 3. Full fine-tuning
-
-Второй вариант:
-
-```text
-load pretrained
-→ replace task head
-→ update all or most parameters
-```
-
-Это позволяет representations адаптироваться к domain.
-
-Но выше:
-
-- compute;
-- overfit risk на small data;
-- риск разрушить useful pretrained features слишком большим lr.
-
----
-
-## 4. Gradual unfreezing
-
-Компромисс:
-
-```text
-сначала head
-→ затем upper backbone layers
-→ затем больше layers
-```
-
-Это называется gradual unfreezing как general strategy.
-
-Не всегда нужно, но полезно при small data/domain shift.
-
----
-
-## 5. Learning rate pretrained backbone vs new head
-
-New head:
-
-```text
-random initialization
-```
-
-может требовать larger lr.
-
-Pretrained layers:
-
-```text
-already useful
-```
-
-часто fine-tune меньшим lr.
-
-Можно использовать parameter groups.
+Следующий фрагмент требует отдельно установленного torchvision. При первом обращении готовые веса загружаются из интернета; для офлайн-работы их нужно заранее сохранить в локальном кеше. Сам DataPath не скачивает модель при чтении урока.
 
 ```python
+from torchvision.models import resnet18, ResNet18_Weights
+
+weights = ResNet18_Weights.DEFAULT
+vision_model = resnet18(weights=weights)
+preprocess = weights.transforms()
+for parameter in vision_model.parameters():
+    parameter.requires_grad_(False)
+vision_model.fc = nn.Linear(vision_model.fc.in_features, 5)
+vision_model.eval()
+vision_model.fc.train()
+optimizer = torch.optim.AdamW(vision_model.fc.parameters(), lr=0.001)
+print(sum(p.numel() for p in vision_model.parameters() if p.requires_grad))
+# 2565: 512 * 5 весов + 5 смещений
+```
+
+Новая голова создана после заморозки, поэтому её параметры обучаемы. В цикле обучения нельзя бездумно вызвать `vision_model.train()` и забыть о BatchNorm backbone: это переключит весь модуль. Выбранный режим нужно устанавливать явно на каждой эпохе. Преобразование `preprocess` применяют к каждому изображению до формирования пакета.
+
+## Размораживаем постепенно и проверяем гипотезу
+
+Если голова уже обучается, но признаки плохо различают новые классы, можно разморозить верхние блоки backbone. Для них часто задают меньший learning rate, чем для новой головы: полезные веса хочется менять осторожно.
+
+Продолжим автономный пример с маленьким backbone:
+
+```python
+for parameter in backbone.parameters():
+    parameter.requires_grad_(True)
 optimizer = torch.optim.AdamW([
-    {"params": backbone.parameters(), "lr": 1e-5},
-    {"params": head.parameters(), "lr": 1e-3},
+    {"params": backbone.parameters(), "lr": 0.0001},
+    {"params": head.parameters(), "lr": 0.001},
 ])
+optimizer.zero_grad(set_to_none=True)
+loss = nn.CrossEntropyLoss()(head(backbone(X)), y)
+loss.backward()
+print(all(p.grad is not None for p in backbone.parameters()))  # True
+optimizer.step()
 ```
 
----
+Optimizer создан заново с нужными группами. Это начинает новую фазу оптимизации; старые накопленные состояния не переносятся автоматически. Сравнивайте замороженную и размороженную версии на одной валидации, сохраняя лучший checkpoint, а не обязательно последний.
 
-## 6. Frozen parameters и optimizer
+## Когда перенос вредит
 
-Если `requires_grad=False`, gradients для этих parameters не вычисляются обычным образом.
+На очень малом наборе full fine-tuning может запомнить примеры и ухудшить проверку. Слишком большой шаг способен разрушить ранее полезные признаки — это одна из форм катастрофического забывания. Если новые изображения сильно отличаются от исходных, замороженный backbone тоже может оказаться слабым.
 
-Но важно также не включать unnecessary frozen parameters в optimizer groups для ясности.
+Утечка не исчезает от использования готовых весов. Похожие фотографии одного объекта не должны оказаться по разные стороны разбиения, если цель — качество на новых объектах. Проверьте также, не попали ли тестовые данные в предобучение, когда эта информация доступна.
 
-После unfreeze optimizer configuration может потребовать update/recreation.
+Для текста принцип тот же: модель, токенизатор и словарь должны соответствовать друг другу. Детали fine-tuning языковых моделей изучим в NLP и LLM-блоках, после введения их задач и метрик.
 
----
+## Экономное дообучение и разумный эксперимент
 
-## 7. `model.eval()` не значит freeze weights
+Методы вроде LoRA обучают небольшую поправку к некоторым матрицам вместо всех исходных весов. Поправка низкого ранга представляется произведением двух узких матриц. Это уменьшает число обучаемых параметров и объём состояний optimizer, но не убирает стоимость хранения базовой модели и всех активаций.
 
-Это очень частая ошибка.
+Не начинайте с LoRA только из-за популярности названия. Сначала задайте простую опорную модель, замороженный вариант и критерий улучшения. Для небольшого проекта полезнее три сопоставимых эксперимента с корректным разбиением, чем десятки несопоставимых запусков.
 
-`model.eval()`:
+## Самопроверка и практика
 
-- меняет Dropout;
-- меняет BatchNorm behavior.
+1. Почему `eval()` не означает заморозку?
+2. Почему замороженный backbone всё равно требует правильной нормировки входов?
+3. Что нужно поменять при переходе от frozen features к fine-tuning?
+4. Почему меньшая обучаемая часть не означает нулевые расходы памяти?
 
-Но parameters всё ещё могут иметь:
+Разбор: eval управляет поведением слоёв, а не разрешением градиентов; веса ожидают прежний масштаб данных; нужны градиенты, корректные группы optimizer и режим слоёв; базовые веса и промежуточные тензоры остаются.
 
-```text
-requires_grad=True
-```
+**Практика.** В автономном примере сохраните веса головы до шага и проверьте две вещи: замороженный backbone не изменился, а хотя бы один параметр головы изменился. После разморозки убедитесь, что градиенты есть у обеих частей. Это проверяет реальный режим обучения, а не название эксперимента.
 
-и участвовать в backprop.
-
-Freeze:
-
-```python
-p.requires_grad = False
-```
-
-— другой механизм.
-
----
-
-## 8. BatchNorm при frozen backbone
-
-Тонкий вопрос.
-
-Даже если weights frozen, `model.train()` заставит BatchNorm обновлять running statistics.
-
-Иногда это desired adaptation, иногда разрушает pretrained stats при tiny batches/domain.
-
-Поэтому transfer learning требует осознанного handling:
-
-- frozen parameters;
-- module train/eval states;
-- normalization behavior.
-
-Нет одного универсального recipe.
-
----
-
-## 9. Vision transfer learning
-
-Typical:
-
-```text
-pretrained CNN/ViT
-→ replace classifier
-→ train head
-→ optionally fine-tune backbone
-```
-
-Preprocessing должен соответствовать pretrained weights.
-
-В torchvision weights objects часто предоставляют recommended transforms.
-
-Это важно: pretrained features ожидают определённое input distribution.
-
----
-
-## 10. NLP fine-tuning
-
-Transformer pretrained objective может быть:
-
-```text
-masked language modeling
-next-token prediction
-```
-
-Для classification добавляется task head или используется architecture-specific head.
-
-Fine-tuning dataset может быть в тысячи раз меньше pretraining corpus.
-
----
-
-## 11. Tokenizer нельзя случайно менять
-
-Pretrained Transformer embedding table соответствует конкретному vocabulary/tokenizer.
-
-Если взять другой tokenizer:
-
-```text
-ID 123
-```
-
-будет означать другой token.
-
-Model получит бессмысленные embeddings.
-
-Поэтому:
-
-> tokenizer/version — часть pretrained model contract.
-
----
-
-## 12. Sequence length и memory
-
-Fine-tuning Transformer memory сильно зависит от:
-
-```text
-batch size
-sequence length
-hidden size
-layers
-```
-
-Attention memory растёт примерно quadratically по sequence length.
-
-Иногда уменьшить max length полезнее, чем уменьшить batch не думая.
-
----
-
-## 13. Parameter-efficient fine-tuning
-
-Большую LLM дорого full fine-tune.
-
-Появились методы **параметрически эффективного дообучения (Parameter-Efficient Fine-Tuning, PEFT)**.
-
-Идея:
-
-```text
-base weights mostly frozen
-→ train small added/adaptation parameters
-```
-
-Один известный подход — LoRA.
-
----
-
-## 14. LoRA intuition
-
-Вместо полного update большой matrix:
-
-\[
-W'=W+\Delta W,
-\]
-
-LoRA parameterizes update low-rank factors:
-
-\[
-\Delta W=BA,
-\]
-
-где rank \(r\) намного меньше full dimension.
-
-Training updates A/B, base W может оставаться frozen.
-
-Плюсы:
-
-- меньше trainable parameters;
-- меньше optimizer state memory;
-- удобно хранить adapters.
-
----
-
-## 15. LoRA не уменьшает все memory costs
-
-Хотя trainable parameters меньше, forward activations base model всё равно существуют.
-
-Поэтому:
-
-> LoRA делает fine-tuning легче, но не превращает огромную model в бесплатную.
-
-Memory также тратится на:
-
-- weights;
-- activations;
-- attention;
-- KV/cache depending setting.
-
----
-
-## 16. Catastrophic forgetting
-
-При aggressive fine-tuning на узком/small dataset model может потерять часть pretrained capabilities.
-
-Это **катастрофическое забывание (catastrophic forgetting)**.
-
-Mitigation ideas:
-
-- smaller lr;
-- freeze more layers;
-- shorter training;
-- mixed data;
-- adapters/LoRA.
-
-Но степень проблемы зависит от task.
-
----
-
-## 17. Domain shift
-
-ImageNet-pretrained CNN → medical microscopy.
-
-Representation transfer может быть хуже, чем:
-
-```text
-ImageNet → everyday objects
-```
-
-потому что visual domain отличается.
-
-Но pretrained low-level features всё равно иногда помогают.
-
-Transfer usefulness нужно измерять, не предполагать.
-
----
-
-## 18. Baseline: pretrained vs scratch
-
-Обязательно сравнить:
-
-```text
-small model from scratch
-pretrained frozen
-pretrained fine-tuned
-```
-
-Иногда pretrained model dramatically wins.
-
-Иногда domain/size делает simpler approach competitive.
-
----
-
-# Отладка fine-tuning
-
-## 19. Сначала проверить head
-
-Если frozen backbone:
-
-```text
-train loss вообще снижается?
-```
-
-Если нет:
-
-- head shapes;
-- labels;
-- loss;
-- optimizer;
-- features;
-- dtype.
-
-Не надо сразу unfreeze всю model.
-
----
-
-## 20. Проверить trainable parameter count
-
-```python
-trainable = sum(
-    p.numel()
-    for p in model.parameters()
-    if p.requires_grad
-)
-```
-
-Очень полезно вывести:
-
-```text
-total params
-trainable params
-```
-
-Так сразу видно, действительно ли freeze сработал.
-
----
-
-## 21. Проверить optimizer groups
-
-Можно accidentally:
-
-- не добавить new head;
-- забыть unfrozen layer;
-- использовать одинаковый lr, хотя планировали differential.
-
-Печать optimizer param group sizes/lrs — простой sanity check.
-
----
-
-## 22. Overfit tiny subset
-
-Как и раньше:
-
-```text
-взять 20–100 samples
-→ попытаться почти memorise
-```
-
-Если fine-tuning pipeline не может overfit tiny clean subset, full dataset запускать рано.
-
----
-
-## 23. Train loss падает, validation нет
-
-Возможны:
-
-- overfit;
-- label noise;
-- domain mismatch;
-- bad split;
-- leakage inverse issue;
-- threshold/metric mismatch.
-
-Actions:
-
-```text
-more regularization
-less unfreezing
-smaller lr
-early stopping
-augmentation
-better data
-```
-
-Но сначала error analysis.
-
----
-
-## 24. Validation лучше frozen, хуже full fine-tune
-
-Это частый result на small data.
-
-Interpretation:
-
-```text
-pretrained features useful
-full updates overfit / destroy useful representation
-```
-
-Можно попробовать:
-
-- lower backbone lr;
-- partial unfreeze;
-- stronger regularization;
-- fewer epochs.
-
----
-
-## 25. Learning rate finder intuition
-
-Если lr явно неясен, можно провести короткий experiment, постепенно increasing lr и смотреть loss behavior.
-
-Но автоматический LR finder — heuristic.
-
-Главнее:
-
-- reasonable range;
-- validation;
-- training curves.
-
----
-
-## 26. Checkpoint pretrained fine-tune
-
-Сохраняем:
-
-```text
-base model identifier/version
-tokenizer / preprocessing version
-adapter/head state
-optimizer if resume
-config
-metrics
-```
-
-Если LoRA adapter зависит от конкретного base checkpoint, это должно быть явно записано.
-
----
-
-## 27. Reproducibility и model hub
-
-Если pretrained model загружается по mutable alias вроде:
-
-```text
-latest
-```
-
-через год weights могут отличаться.
-
-Для serious experiment полезно фиксировать:
-
-- exact model revision/checkpoint;
-- library version;
-- tokenizer revision.
-
----
-
-## 28. Data quality важнее architecture
-
-Большая pretrained model может быстро overfit:
-
-- duplicate examples;
-- wrong labels;
-- leakage;
-- shortcut features.
-
-Fine-tuning не исправляет bad dataset.
-
-Напротив, powerful representation может эксплуатировать shortcuts ещё эффективнее.
-
----
-
-## 29. Fine-tuning LLM: instruction data
-
-Для generative model training example может иметь structure:
-
-```text
-system/instruction
-user input
-assistant target
-```
-
-Loss часто считают по target tokens according to training setup, иногда masks exclude prompt tokens.
-
-Очень важно понимать data collator/trainer semantics: на каких tokens реально считается loss.
-
-Не копировать instruction fine-tuning script без проверки labels mask.
-
----
-
-## 30. Evaluation generative models
-
-Loss/perplexity не всегда достаточно.
-
-Нужны task-specific checks:
-
-- exact match;
-- F1;
-- factuality;
-- format adherence;
-- human evaluation;
-- safety constraints.
-
-Generative evaluation сложнее simple classification.
-
----
-
-## 31. Transfer learning и leakage
-
-Pretrained model уже видела огромные datasets.
-
-Если benchmark examples могли входить в pretraining, это contamination concern.
-
-Для ordinary company dataset это часто менее критично, но для benchmark claims важно.
-
-Также нельзя fine-tune on validation/test.
-
----
-
-## 32. Полный practical decision tree
-
-```text
-Есть pretrained model close to task?
-│
-├─ нет → train reasonable baseline from scratch
-│
-└─ да
-   ↓
-   freeze backbone + train head
-   ↓
-   enough quality?
-   ├─ да → stop/simple solution
-   └─ нет
-      ↓
-      partial/full fine-tune
-      ↓
-      compare validation
-      ↓
-      consider PEFT if model huge
-```
-
----
-
-## 33. Интерактивная визуализация DataPath
-
-### Freeze/unfreeze
-
-Network layers с lock icons.
-
-Показать trainable parameter count.
-
-### Differential LR
-
-Head red arrow bigger step, backbone smaller.
-
-### LoRA
-
-Full weight matrix + low-rank A/B adapter.
-
-Slider rank показывает trainable parameters.
-
-### Experiment curves
-
-Compare:
-
-```text
-scratch
-frozen
-full fine-tune
-LoRA
-```
-
-Train/validation curves на toy task.
-
----
-
-## 34. Типичные ошибки
-
-**«`eval()` замораживает weights».**\
-Нет.
-
-**«Fine-tuning = обязательно обновлять все parameters».**\
-Нет.
-
-**«Pretrained model всегда лучше scratch».**\
-Нет.
-
-**«LoRA обучает всю weight matrix».**\
-Нет, обычно low-rank adapters при frozen/mostly frozen base.
-
-**«Tokenizer можно заменить, если vocab size такой же».**\
-Нет.
-
-**«Frozen BatchNorm автоматически ведёт себя как eval».**\
-Не обязательно: module mode отдельный.
-
-**«Большая model исправит маленький bad dataset».**\
-Нет.
-
----
-
-## 35. Проверка понимания
-
-1. Transfer learning vs fine-tuning?
-2. Feature extractor mode?
-3. Почему pretrained backbone часто использует smaller lr?
-4. `eval()` vs freeze?
-5. Почему BatchNorm transfer tricky?
-6. Что такое PEFT?
-7. Что делает LoRA?
-8. Почему tokenizer part of model contract?
-9. Что такое catastrophic forgetting?
-10. Почему tiny-subset overfit test полезен?
-11. Что фиксировать в checkpoint metadata?
-12. Почему full fine-tune может быть хуже frozen?
-
----
-
-## 36. Capstone-практика
-
-Задача:
-
-```text
-15 000 изображений
-5 классов
-Apple Silicon laptop для прототипа
-есть pretrained ResNet
-```
-
-План:
-
-1. baseline;
-2. preprocessing;
-3. freeze strategy;
-4. new head;
-5. optimizer/lr groups;
-6. augmentation;
-7. validation split;
-8. early stopping;
-9. checkpoint;
-10. criteria for partial unfreeze;
-11. inference preprocessing.
-
-Вторая задача:
-
-```text
-50 000 текстовых примеров
-binary classification
-pretrained Transformer
-```
-
-Сравните:
-
-```text
-TF-IDF + Logistic Regression
-frozen embeddings/head
-full fine-tune
-PEFT
-```
-
-по quality, memory, speed и complexity.
-
----
-
-## 37. Как объяснить на собеседовании
-
-### Transfer learning
-
-Используем representations model, обученной на большой исходной задаче, для новой downstream task.
-
-### Fine-tuning
-
-Продолжаем gradient-based training части или всех pretrained parameters на downstream data.
-
-### LoRA
-
-Представляет update некоторых large matrices через low-rank factors, уменьшая число trainable parameters и optimizer-state cost.
-
-### Как начать small dataset?
-
-С strong simple baseline, затем pretrained frozen backbone/head, и только если нужно — постепенно fine-tune с меньшим lr и validation control.
-
----
-
-## 38. Что нужно унести
-
-1. Pretraining позволяет переиспользовать learned representations.
-2. Frozen feature extraction — самый простой transfer regime.
-3. Fine-tuning обновляет pretrained parameters.
-4. Head и backbone могут иметь разные learning rates.
-5. `eval()` и freezing — разные механизмы.
-6. Normalization behavior при transfer нужно контролировать.
-7. Tokenizer/preprocessing must match pretrained model.
-8. PEFT уменьшает trainable parameter budget.
-9. LoRA использует low-rank updates.
-10. Fine-tuning может вызвать overfit/catastrophic forgetting.
-11. Scratch/frozen/fine-tuned approaches надо сравнивать.
-12. Tiny-subset overfit, parameter-count и optimizer-group checks критичны.
-13. Model/data/checkpoint revisions — часть reproducibility.
-14. Большая pretrained model не исправляет leakage и плохие labels.
-
----
-
-## Куда дальше: от Deep Learning к NLP
-
-Теперь архитектурная линия Deep Learning выглядит цельно:
-
-```text
-MLP
-→ CNN
-→ pooling / residual hierarchy
-→ RNN
-→ LSTM / GRU
-→ embeddings
-→ attention
-→ Transformer
-→ PyTorch project workflow
-→ transfer learning / fine-tuning
-```
-
-Следующий естественный крупный блок — **NLP**:
-
-- текстовая предобработка и токенизация;
-- TF-IDF baseline;
-- embeddings;
-- sequence classification;
-- Transformer-based NLP;
-- оценка NLP models.
+Теперь можно перейти к NLP: сначала определить, какие сведения содержит текст и какие преобразования не разрушат его смысл.
 
 ## Источники
-- PyTorch transfer learning tutorials.
-- torchvision pretrained weights/transforms documentation.
-- Hugging Face fine-tuning documentation.
-- Hu et al., "LoRA: Low-Rank Adaptation of Large Language Models".
+
+[Перенос обучения в PyTorch](https://docs.pytorch.org/tutorials/beginner/transfer_learning_tutorial.html), [готовые модели torchvision](https://docs.pytorch.org/vision/stable/models.html), [LoRA](https://arxiv.org/abs/2106.09685).

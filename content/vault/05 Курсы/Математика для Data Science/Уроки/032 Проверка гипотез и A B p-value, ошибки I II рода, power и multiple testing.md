@@ -14,7 +14,7 @@ module_order: 4
 lesson_order: 2
 canonical_number: 32
 content_path: 10 Знания/DataPath v2/05_Probability_Statistics_DataPath_v2/source-032 Проверка гипотез и A B p-value, ошибки I II рода, power и multiple testing.md
-estimated_minutes: 100
+estimated_minutes: 30
 difficulty: core
 skill_ids:
 - math.ab-testing
@@ -31,7 +31,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №32, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Объяснять p-value, ошибки проверки и мощность без ложных интерпретаций.
+- Отделять статистический эффект от практической значимости и учитывать множественные проверки.
 
 ## Сценарий урока
 
@@ -39,6 +42,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

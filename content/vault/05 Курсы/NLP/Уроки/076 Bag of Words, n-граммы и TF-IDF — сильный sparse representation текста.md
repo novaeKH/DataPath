@@ -14,7 +14,7 @@ module_order: 1
 lesson_order: 2
 canonical_number: 76
 content_path: 10 Знания/DataPath v2/13_NLP_DataPath_v2/source-076 Bag of Words, n-граммы и TF-IDF — сильный sparse representation текста.md
-estimated_minutes: 75
+estimated_minutes: 30
 difficulty: core
 skill_ids:
 - nlp.classical
@@ -30,7 +30,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №76, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Вычислять частоты, DF и TF-IDF на небольшом корпусе.
+- Выбирать n-граммы и сохранять обучающий словарь неизменным на проверке.
 
 ## Сценарий урока
 
@@ -38,6 +41,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

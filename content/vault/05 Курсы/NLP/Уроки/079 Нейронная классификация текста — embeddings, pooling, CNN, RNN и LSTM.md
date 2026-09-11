@@ -14,7 +14,7 @@ module_order: 2
 lesson_order: 1
 canonical_number: 79
 content_path: 10 Знания/DataPath v2/13_NLP_DataPath_v2/source-079 Нейронная классификация текста — embeddings, pooling, CNN, RNN и LSTM.md
-estimated_minutes: 75
+estimated_minutes: 30
 difficulty: core
 skill_ids:
 - nlp.rnn
@@ -31,7 +31,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №79, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Собрать нейронный классификатор с маскированным pooling.
+- Сравнивать ограничения среднего, свёртки и рекурсии.
 
 ## Сценарий урока
 
@@ -39,6 +42,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

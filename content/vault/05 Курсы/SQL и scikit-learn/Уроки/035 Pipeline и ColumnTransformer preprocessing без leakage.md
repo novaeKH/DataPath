@@ -14,7 +14,7 @@ module_order: 3
 lesson_order: 2
 canonical_number: 35
 content_path: 10 Знания/DataPath v2/06_scikit_learn_DataPath_v2/source-035 Pipeline и ColumnTransformer preprocessing без leakage.md
-estimated_minutes: 80
+estimated_minutes: 30
 difficulty: core
 skill_ids:
 - data-tools.preprocessing
@@ -30,7 +30,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №35, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Собрать Pipeline с разными преобразованиями столбцов.
+- Проверять пропуски, неизвестные категории и отсутствие утечки.
 
 ## Сценарий урока
 
@@ -38,6 +41,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

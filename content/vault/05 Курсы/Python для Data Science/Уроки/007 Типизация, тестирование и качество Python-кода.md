@@ -14,7 +14,7 @@ module_order: 3
 lesson_order: 2
 canonical_number: 7
 content_path: 10 Знания/DataPath v2/01_Python_Core_DataPath_v2/source-007 Типизация, тестирование и качество Python-кода.md
-estimated_minutes: 55
+estimated_minutes: 30
 difficulty: foundation
 skill_ids:
 - python.11-typing-testing-i-kachestvo-koda
@@ -32,7 +32,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №7, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Отличать аннотацию типа от проверки во время выполнения.
+- Написать тесты результата, пограничных случаев и отсутствия нежелательных изменений.
 
 ## Сценарий урока
 
@@ -40,6 +43,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

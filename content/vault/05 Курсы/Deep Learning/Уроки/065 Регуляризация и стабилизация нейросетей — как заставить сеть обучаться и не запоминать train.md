@@ -14,7 +14,7 @@ module_order: 1
 lesson_order: 5
 canonical_number: 65
 content_path: 10 Знания/DataPath v2/11_DL_Foundations_DataPath_v2/source-065 Регуляризация и стабилизация нейросетей — как заставить сеть обучаться и не запоминать train.md
-estimated_minutes: 80
+estimated_minutes: 25
 difficulty: core
 skill_ids:
 - datapath.v2.065
@@ -30,7 +30,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №65, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Различать признаки недообучения и переобучения.
+- Объяснять инициализацию, нормировку, dropout и режим оценки.
 
 ## Сценарий урока
 
@@ -38,6 +41,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

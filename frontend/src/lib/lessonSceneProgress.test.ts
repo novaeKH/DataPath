@@ -20,6 +20,26 @@ const scenes = [
 ]
 
 describe('lesson scene visit tracking', () => {
+  it('keeps historical evidence without crediting it to rewritten paragraphs', () => {
+    const rewritten = [scene('scene-theory-2026-09-01'), scene('scene-theory-2026-09-02')]
+    const oldVisits = ['scene-01', 'scene-02', 'scene-03']
+    expect(completedSceneCount(oldVisits, rewritten)).toBe(0)
+    const saved = mergeCompletedSceneIds(
+      oldVisits,
+      ['scene-theory-2026-09-01'],
+      rewritten.map((item) => item.id),
+    )
+    const reopened = JSON.parse(JSON.stringify(saved)) as string[]
+    expect(completedSceneCount(reopened, rewritten)).toBe(1)
+    const staleResponse = mergeCompletedSceneIds(
+      reopened,
+      oldVisits,
+      rewritten.map((item) => item.id),
+    )
+    expect(completedSceneCount(staleResponse, rewritten)).toBe(1)
+    expect(staleResponse).toEqual(expect.arrayContaining(oldVisits))
+  })
+
   it('records a section when slow scrolling brings it into the reading viewport', () => {
     expect(
       collectVisitedSceneIndices({

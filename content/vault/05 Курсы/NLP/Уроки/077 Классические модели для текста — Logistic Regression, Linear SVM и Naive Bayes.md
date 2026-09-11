@@ -14,7 +14,7 @@ module_order: 1
 lesson_order: 3
 canonical_number: 77
 content_path: 10 Знания/DataPath v2/13_NLP_DataPath_v2/source-077 Классические модели для текста — Logistic Regression, Linear SVM и Naive Bayes.md
-estimated_minutes: 70
+estimated_minutes: 30
 difficulty: core
 skill_ids:
 - datapath.v2.077
@@ -33,7 +33,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №77, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Собрать сильный текстовый baseline внутри Pipeline.
+- Различать вероятности, margin и предположения Naive Bayes.
 
 ## Сценарий урока
 
@@ -41,6 +44,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

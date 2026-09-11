@@ -14,7 +14,7 @@ module_order: 1
 lesson_order: 1
 canonical_number: 9
 content_path: 10 Знания/DataPath v2/02_NumPy_pandas_EDA_DataPath_v2/source-009 NumPy изнутри ndarray, shape, dtype, strides и векторизация.md
-estimated_minutes: 60
+estimated_minutes: 25
 difficulty: core
 skill_ids:
 - data.analysis
@@ -31,7 +31,10 @@ tags:
 
 ## Результат урока
 
-Разобрать каноническую главу №9, воспроизвести её ключевой механизм и оценить готовность объяснить тему.
+После урока вы сможете:
+
+- Читать shape, dtype и оси ndarray.
+- Различать представление и копию, поэлементную операцию и матричное произведение.
 
 ## Сценарий урока
 
@@ -39,6 +42,7 @@ tags:
 {
   "schema_version": 2,
   "layout": "focus",
+  "content_revision": "theory-2026-09",
   "scenes": [
     {
       "type": "hook",

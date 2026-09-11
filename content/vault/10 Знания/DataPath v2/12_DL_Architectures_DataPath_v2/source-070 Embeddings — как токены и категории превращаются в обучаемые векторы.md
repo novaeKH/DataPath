@@ -17,660 +17,97 @@ tags:
 - canonical/source
 ---
 
-# Embeddings: как токены и категории превращаются в обучаемые векторы
+# Embeddings: как дискретный объект становится вектором
 
-Представим словарь из 50 000 токенов.
+Нейросеть умеет складывать и умножать числа, но идентификатор слова — не числовая величина в обычном смысле. Если «кот» получил номер 17, а «собака» — 34, собака не стала вдвое больше кота. Номера нужны для поиска объектов в словаре, а не для вычисления расстояний между ними.
 
-One-hot representation слова `cat`:
+Embedding, или векторное представление, сопоставляет каждому идентификатору набор обучаемых чисел. Такие таблицы используются не только для слов: категории товаров, пользователи и фильмы тоже могут получать векторы. Главное — понимать, откуда берётся их смысл и что происходит с неизвестными объектами.
 
-```text
-[0,0,0,...,1,...,0]
-```
+## Таблица вместо бессмысленной арифметики над ID
 
-имеет 50 000 dimensions.
-
-Для каждого token только одна единица.
-
-Это очень sparse и не выражает similarity:
-
-```text
-cat
-dog
-car
-```
-
-все пары one-hot vectors одинаково ортогональны.
-
-**Embedding** заменяет discrete ID на плотный обучаемый vector:
-
-```text
-cat → [0.31, -0.82, 0.14, ...]
-dog → [0.28, -0.74, 0.20, ...]
-car → [-0.51, 0.10, 0.93, ...]
-```
-
-Similarity может быть выучена через training objective.
-
----
-
-## 1. Embedding matrix
-
-Если vocabulary size:
-
-\[
-V=50000
-\]
-
-и embedding dimension:
-
-\[
-d=256,
-\]
-
-то embedding table:
-
-\[
-E\in\mathbb R^{50000\times256}.
-\]
-
-Каждая row соответствует одному token ID.
-
----
-
-## 2. Lookup вместо matrix multiplication mental model
-
-Token ID:
-
-```text
-42
-```
-
-просто выбирает row:
-
-```text
-E[42]
-```
-
-В PyTorch:
-
-```python
-embedding = nn.Embedding(
-    num_embeddings=50000,
-    embedding_dim=256,
-)
-
-x = embedding(token_ids)
-```
-
-Это эффективный lookup operation.
-
----
-
-## 3. Shape
-
-Input token IDs:
-
-```text
-[batch, seq_len]
-```
-
-Например:
-
-```text
-[32,100]
-```
-
-После:
-
-```python
-nn.Embedding(50000,256)
-```
-
-получим:
-
-```text
-[32,100,256]
-```
-
-Каждый token превращён в vector length 256.
-
----
-
-## 4. One-hot × matrix эквивалентность
-
-Если token one-hot vector:
-
-\[
-e_i\in\mathbb R^V
-\]
-
-и matrix:
-
-\[
-E\in\mathbb R^{V\times d},
-\]
-
-то:
-
-\[
-e_i^TE
-\]
-
-выбирает i-ю row \(E\).
-
-Embedding lookup математически эквивалентен one-hot + Linear без bias, но вычислительно намного эффективнее.
-
-Это важная связь с уже знакомой linear algebra.
-
----
-
-## 5. Embedding обучается
-
-`nn.Embedding` содержит learnable weight matrix.
-
-Backprop обновляет rows tokens, которые участвовали в batch.
-
-Meaning vectors возникает не из словаря заранее, а из objective.
-
-Если model должна предсказывать похожий context для `cat` и `dog`, их vectors могут стать похожими.
-
----
-
-## 6. Что значит «похожими»
-
-Часто similarity измеряют cosine:
-
-\[
-cos(u,v)
-=
-\frac{u\cdot v}
-{\|u\|\|v\|}.
-\]
-
-Но сама training model не обязана напрямую оптимизировать cosine similarity.
-
-Geometry возникает как побочный результат objective.
-
----
-
-![Учебная иллюстрация: Embeddings. Семантические кластеры и nearest neighbors по cosine similarity.](content-assets/datapath-v2/figures/70_embeddings.png "Семантические кластеры и nearest neighbors по cosine similarity.")
-
-## 7. Embeddings не обязательно слова
-
-Embedding применим к любому discrete ID:
-
-- token;
-- product_id;
-- user_id;
-- movie_id;
-- category;
-- position.
-
-Например recommender:
-
-```text
-user embedding
-item embedding
-```
-
-и score через dot product.
-
----
-
-## 8. Padding token
-
-Variable-length sequences padding до общей длины.
-
-Можно задать:
-
-```python
-nn.Embedding(
-    vocab_size,
-    dim,
-    padding_idx=0,
-)
-```
-
-Row `padding_idx` имеет special behavior: gradient для неё не обновляется стандартным способом, что удобно для fixed padding representation.
-
-Но attention/RNN всё равно часто требуют masks/lengths, чтобы padding не влиял downstream.
-
----
-
-## 9. Unknown token
-
-Tokenizer может иметь:
-
-```text
-<UNK>
-```
-
-для unseen words/subwords.
-
-Modern subword tokenizers уменьшают проблему unknown, разбивая слова на pieces.
-
-Embedding table index всегда должен быть valid integer ID.
-
----
-
-## 10. Vocabulary и tokenizer — не одно и то же
-
-Tokenizer:
-
-```text
-raw text
-→ token IDs
-```
-
-Embedding:
-
-```text
-token IDs
-→ dense vectors
-```
-
-Например:
-
-```text
-"unbelievable"
-```
-
-может превратиться в несколько subword IDs.
-
-Embedding не решает tokenization.
-
----
-
-## 11. Positional information отсутствует
-
-Если два sequences:
-
-```text
-dog bites man
-man bites dog
-```
-
-используют те же token embeddings, набор vectors одинаков, меняется только order positions tensor.
-
-RNN inherently обрабатывает order последовательно.
-
-Transformer self-attention без positional information сама по себе permutation-equivariant и не знает order.
-
-Поэтому Transformer добавляет positional representation.
-
----
-
-## 12. Learned positional embeddings
-
-Можно иметь отдельную table:
-
-```text
-position 0 → vector
-position 1 → vector
-...
-```
-
-И складывать:
-
-\[
-token\_embedding+position\_embedding.
-\]
-
-Так model получает информацию «что» и «где».
-
----
-
-## 13. Sinusoidal positional encoding
-
-Original Transformer использовал deterministic sin/cos positional encodings:
-
-\[
-PE(pos,2i)
-=
-\sin\left(
-pos/10000^{2i/d}
-\right),
-\]
-
-\[
-PE(pos,2i+1)
-=
-\cos\left(
-pos/10000^{2i/d}
-\right).
-\]
-
-Для foundation важно не заучить exponent, а понять:
-
-> каждой position соответствует structured vector разных frequencies.
-
-Modern Transformers используют множество positional schemes: learned, rotary и другие.
-
----
-
-## 14. Embedding dimension
-
-Слишком маленький:
-
-```text
-representation bottleneck
-```
-
-Слишком большой:
-
-```text
-parameters ↑
-memory ↑
-overfit risk ↑
-```
-
-Embedding table часто составляет огромную часть parameters NLP model:
-
-\[
-V\cdot d.
-\]
-
-Например:
-
-\[
-50000\cdot768
-=
-38.4\text{ млн parameters}.
-\]
-
----
-
-## 15. Weight tying
-
-Language models иногда используют одну и ту же matrix для:
-
-- input token embeddings;
-- output vocabulary projection.
-
-Это называется weight tying.
-
-Идея уменьшает parameters и связывает input/output token geometry.
-
-Но implementation depends architecture.
-
----
-
-## 16. Pretrained embeddings
-
-До contextual Transformers были популярны Word2Vec/GloVe embeddings.
-
-Один token имел почти один static vector вне зависимости от context.
-
-Проблема:
-
-```text
-bank
-```
-
-в:
-
-```text
-river bank
-bank account
-```
-
-получал один embedding.
-
-Contextual models создают representations, которые меняются в зависимости от surrounding tokens.
-
----
-
-## 17. Static embedding vs contextual representation
-
-Важно не путать:
-
-**Embedding layer output**
-
-```text
-token ID → initial vector
-```
-
-**Transformer hidden state**
-
-```text
-token representation after mixing context
-```
-
-Последнее уже contextual.
-
-В BERT-like model token `bank` в разных sentences будет иметь разные hidden states.
-
----
-
-## 18. Embeddings категорий в tabular DL
-
-Категориальный feature:
-
-```text
-city_id
-```
-
-можно представить через embedding вместо OHE.
-
-Несколько category features:
-
-```text
-city embedding
-device embedding
-tariff embedding
-```
-
-затем concatenate с numerical features и подать в MLP.
-
-Это common pattern neural tabular models.
-
-Но embeddings требуют enough data, особенно для rare categories.
-
----
-
-## 19. Rare IDs
-
-Embedding row rare token получает мало gradient updates.
-
-Representation может быть poorly learned.
-
-Способы:
-
-- merge rare categories;
-- regularization;
-- pretrained embeddings;
-- shared subword structure;
-- hashing.
-
----
-
-## 20. Code example
+Пусть в словаре четыре токена, а размер вектора равен трём. Тогда таблица $E$ имеет форму $4\times3$. Для ID 2 берём третью строку. Это операция поиска строки, а не умножение числа 2 на веса.
 
 ```python
 import torch
-import torch.nn as nn
+from torch import nn
 
-embedding = nn.Embedding(
-    num_embeddings=10000,
-    embedding_dim=128,
-    padding_idx=0,
-)
-
-token_ids = torch.randint(
-    0,
-    10000,
-    (32, 50),
-)
-
-x = embedding(token_ids)
-
-print(x.shape)
-# [32,50,128]
+embedding = nn.Embedding(4, 3, padding_idx=0)
+with torch.no_grad():
+    embedding.weight.copy_(torch.tensor([
+        [0., 0., 0.],     # техническое дополнение
+        [1., 0., 0.5],    # токен 1
+        [0., 1., 0.5],    # токен 2
+        [1., 1., 0.],     # токен 3
+    ]))
+ids = torch.tensor([[1, 2, 0], [3, 1, 2]], dtype=torch.long)
+vectors = embedding(ids)
+print(vectors.shape)     # torch.Size([2, 3, 3])
+print(vectors[0, 1])     # tensor([0.0000, 1.0000, 0.5000], ...)
 ```
 
----
+Вход содержит два объекта по три позиции. На выходе к каждой позиции добавилась ось из трёх признаков. Число параметров таблицы равно размеру словаря, умноженному на размер вектора: здесь 12. При большом словаре сама таблица может занимать существенную память.
 
-## 21. Embedding + LSTM
+One-hot-вектор с единицей в позиции ID, умноженный на $E$, выбрал бы ту же строку. Но создавать длинный почти нулевой вектор не требуется. Так связываются категориальные данные, линейная алгебра и эффективная реализация.
+
+## Почему векторы становятся полезными
+
+В примере мы задали числа вручную. Обычно таблица начинает со случайных значений и меняется при обучении всей модели. Ошибка прогноза проходит через использованные строки таблицы; веса сдвигаются так, чтобы помогать задаче.
+
+Если модель предсказывает соседние слова, геометрия может отражать сходство контекстов. Если предсказывает покупки, она отражает закономерности взаимодействий. Поэтому «близко в embedding» не означает универсально «одинаково по смыслу». Антонимы могут встречаться в похожих контекстах, а частота и особенности данных тоже влияют на результат.
+
+Косинусная близость сравнивает направления:
+
+$$
+\operatorname{cos}(u,v)=\frac{u^\top v}{\|u\|\|v\|}.
+$$
+
+В числителе скалярное произведение, в знаменателе произведение длин. Для $u=(1,0)$ и $v=(2,0)$ близость равна 1, хотя векторы разной длины. Для перпендикулярных ненулевых векторов — 0. Нулевой вектор не имеет определённого направления; нельзя бездумно интерпретировать его косинус.
+
+## Дополнение не должно становиться содержанием
+
+`padding_idx=0` резервирует строку для дополнения. Но даже нулевой вектор может испортить простое среднее: сумма останется прежней, а делитель вырастет. Поэтому усреднять нужно по настоящим позициям.
+
+Продолжим предыдущий пример:
 
 ```python
-class TextClassifier(nn.Module):
-    def __init__(self, vocab_size, emb_dim, hidden, classes):
-        super().__init__()
-        self.emb = nn.Embedding(
-            vocab_size,
-            emb_dim,
-            padding_idx=0,
-        )
-        self.lstm = nn.LSTM(
-            emb_dim,
-            hidden,
-            batch_first=True,
-        )
-        self.head = nn.Linear(hidden, classes)
-
-    def forward(self, token_ids):
-        x = self.emb(token_ids)
-        _, (h_n, _) = self.lstm(x)
-        return self.head(h_n[-1])
+mask = ids.ne(0).unsqueeze(-1)
+pooled = (vectors * mask).sum(dim=1) / mask.sum(dim=1).clamp_min(1)
+print(pooled[0].detach())  # tensor([0.5000, 0.5000, 0.5000])
 ```
 
-Pipeline:
+Технический ноль исключён и из суммы, и из числа элементов. `clamp_min(1)` предотвращает деление на ноль для пустой последовательности, но не определяет продуктовую политику для пустого текста. Его можно отклонять или обрабатывать отдельно.
 
-```text
-IDs
-→ embeddings
-→ sequence model
-→ classifier
-```
+Неизвестный токен и дополнение — разные ситуации. Дополнение означает отсутствие элемента; неизвестный токен означает реальный элемент, которого нет в словаре. Для него нужна отдельная стратегия: специальный ID или разбиение на известные части.
 
----
+## Один токен, позиция и контекст
 
-## 22. Embedding и semantic interpretation
+Обычная таблица выдаёт одному ID одну и ту же строку в любом предложении. Это **статическое** представление. Последующая RNN или Transformer смешивает его с соседними позициями и создаёт **контекстное** представление. Слово «ключ» в предложениях о двери и о словаре Python может иметь одинаковый начальный вектор, но разные выходные состояния.
 
-Нельзя утверждать:
+Сам поиск строки не кодирует порядок. Усреднение также теряет его. В Transformer добавляют позиционную информацию; в RNN порядок задаёт последовательное обновление состояния. Не приписывайте embedding свойства архитектуры, которая работает после него.
 
-```text
-dimension 17 = "животность"
-dimension 42 = "позитивность"
-```
+## Ошибки и рабочая стратегия
 
-обычно meaning distributed across dimensions.
+Нельзя построить новый словарь с другим соответствием ID и подать его в старую таблицу: строки будут обозначать чужие токены. Словарь, токенизатор и веса сохраняют вместе.
 
-Лучше анализировать geometry, nearest neighbors или downstream behavior.
+Редкие категории получают мало обучающего сигнала, а новый пользователь вообще может не иметь обученной строки. В рекомендациях это проблема холодного старта: помогают признаки объекта и общий запасной вариант, а не произвольное назначение чужого ID.
 
----
+Не выбирайте размер вектора по принципу «чем больше, тем умнее». Он влияет на память и способность запоминать данные. Сравнивайте размеры на отложенной выборке и учитывайте частоту объектов.
 
-## 23. Интерактивная визуализация DataPath
+![Схема вычислений, разобранных в уроке](content-assets/datapath-v2/figures/70_embeddings.png)
 
-### One-hot vs embedding
+## Самопроверка и практика
 
-Vocabulary 10 tokens.
+1. Почему ID нельзя интерпретировать как величину признака?
+2. Что обучает смысл строк таблицы?
+3. Почему нулевое дополнение всё равно мешает обычному среднему?
+4. Чем статическое представление отличается от контекстного?
 
-Показать sparse one-hot vectors и dense learned vectors.
+Разбор: номера произвольны; смысл задаёт целевая функция и данные; дополнение увеличивает делитель; статическая строка зависит только от ID, контекстное состояние — ещё и от окружения.
 
-### Lookup
+**Практика.** В первом объекте добавьте ещё два нулевых ID. Маскированное среднее должно остаться `[0.5,0.5,0.5]`. Обычное среднее станет меньше. Затем поменяйте местами ID 1 и 2: оба средних не изменятся. Объясните, почему для понимания порядка нужна следующая модель.
 
-Token ID подсвечивает row embedding matrix.
-
-### Training
-
-Два tokens часто встречаются в похожих contexts → vectors визуально сближаются в toy 2D space.
-
-### Position
-
-Переставить tokens местами:
-
-```text
-A B C
-C B A
-```
-
-Показать, что token vectors сами по себе те же, positional representations разные.
-
----
-
-## 24. Типичные ошибки
-
-**«Embedding — готовый semantic словарь».**\
-Не обязательно, он обучается objective.
-
-**«Embedding выполняет tokenization».**\
-Нет.
-
-**«Embedding и contextual hidden state одно и то же».**\
-Нет.
-
-**«ID можно подать в Linear как обычное число».**\
-Так появляется искусственная ordinal geometry.
-
-**«Padding embedding автоматически маскирует padding во всей network».**\
-Нет.
-
-**«Больше embedding dimension всегда лучше».**\
-Нет.
-
----
-
-## 25. Проверка понимания
-
-1. Shape embedding matrix?
-2. Почему lookup эквивалентен one-hot × matrix?
-3. Shape output `[32,50]` IDs при dim=128?
-4. Что делает `padding_idx`?
-5. Tokenizer vs embedding?
-6. Почему Transformer нужны positions?
-7. Static vs contextual representation?
-8. Почему rare token embedding слабый?
-9. Где embeddings используются кроме NLP?
-10. Что такое weight tying?
-
----
-
-## 26. Мини-практика
-
-Vocabulary:
-
-```text
-30 000 tokens
-embedding_dim=256
-batch=64
-seq_len=128
-```
-
-Ответьте:
-
-1. parameters embedding table;
-2. output shape;
-3. approximate FP32 memory table только для weights;
-4. зачем mask padding;
-5. почему contextual model после embedding layer всё ещё нужна.
-
----
-
-## Что нужно унести
-
-1. Embedding — learnable dense vector для discrete ID.
-2. Embedding matrix shape `[vocab_size, embedding_dim]`.
-3. Lookup equivalent one-hot matrix multiplication, но эффективнее.
-4. Token embeddings обучаются через downstream objective.
-5. Padding/unknown требуют special handling.
-6. Tokenization и embedding — разные этапы.
-7. Token embedding не содержит order автоматически.
-8. Positional information добавляется отдельно.
-9. Contextual representation появляется после sequence/context layers.
-10. Embeddings применимы к tokens, users, items и categories.
-
-## Куда дальше
-
-Теперь каждый token представлен vector.
-
-Но RNN читает context последовательно.
-
-Можно ли текущему token **напрямую посмотреть на все остальные tokens** и решить, какие важны?
-
-Так появляется **attention**.
+Далее разберём attention — способ выбирать и смешивать нужные представления контекста.
 
 ## Источники
-- PyTorch `nn.Embedding`.
-- PyTorch NLP tutorials.
-- "Attention Is All You Need" для positional encoding как первичного референса.
+
+[Embedding и padding_idx](https://docs.pytorch.org/docs/stable/generated/torch.nn.Embedding.html), [обучение представлений по контексту](https://arxiv.org/abs/1301.3781).
